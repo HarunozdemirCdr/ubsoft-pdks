@@ -1,0 +1,69 @@
+name: ubsoft_pdks
+description: "UBSoft PDKS — QR kodlu, konum doğrulamalı çok kiracılı personel devam kontrol sistemi."
+publish_to: 'none'
+version: 1.1.0+2
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase — sürümler SABİT.
+  #
+  # Caret (^) ile bırakıldığında pub, `firebase_core_web 3.11.0`'a çıkıyor;
+  # o sürüm `dart:js_interop`'un bu Flutter kanalında bulunmayan bir
+  # yöntemini (`isA<JSObject>()`) kullanıyor ve web derlemesi
+  # "The method 'isA' isn't defined for the type 'Object'" ile patlıyor.
+  # `flutter analyze` ve `flutter test` temiz geçtiği için hata ancak
+  # derleme anında görünüyor. Yükseltmeden önce `flutter build web` ile
+  # doğrulayın.
+  firebase_core: 4.12.1
+  firebase_auth: 6.5.6
+  cloud_firestore: 6.7.1
+
+  # Web uygulamaları doğrudan yazılır: bunlar `firebase_core`'un aktarımlı
+  # (transitive) bağımlılıklarıdır ve caret ile bırakıldığında yukarıdaki
+  # hatayı getiren sürüme çıkarlar. Doğrudan yazmak sürümü kilitler.
+  firebase_core_web: 3.9.1
+
+  # Durum yönetimi & yönlendirme
+  flutter_riverpod: ^3.3.2
+  go_router: ^17.3.0
+
+  # UI
+  google_fonts: ^8.2.0
+  cupertino_icons: ^1.0.8
+
+  # Yardımcılar
+  intl: 0.20.2
+  equatable: ^2.1.0
+  collection: ^1.19.1
+
+  # Özellikler
+  mobile_scanner: ^7.4.0
+  geolocator: ^14.0.0
+  barcode_widget: ^2.0.4
+  barcode: ^2.2.9
+  pdf: ^3.11.4
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.5
+  fake_cloud_firestore: ^4.2.0
+  firebase_auth_mocks: ^0.15.2
+
+flutter:
+  uses-material-design: true
+
+  # PDF raporun fontları. Uygulamanın ekran fontuyla (Plus Jakarta Sans)
+  # aynıdır ve gömülü olması şarttır: PDF'in yerleşik Helvetica'sında Türkçe
+  # harfler (ş, ğ, İ, ı) yoktur ve rapor kutu karakterleriyle çıkar.
+  assets:
+    - assets/fonts/

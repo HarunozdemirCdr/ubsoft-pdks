@@ -1,0 +1,47 @@
+# Her push ve pull request'te analiz ve testleri koşturur.
+#
+# Neden: 159 test var ama yalnız biri onları çalıştırmayı hatırladığında
+# koruyorlar. Yayına çıkmadan önce koşturmayı bir kez unutmak, testlerin
+# tamamını o an için yok saymak demek. Burada unutulamaz.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Aynı dal için arka arkaya push yapıldığında eskisini iptal et: sıradaki
+# koşum zaten daha yeni kodu sınayacak.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter:
+    name: Flutter — analiz ve testler
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.41.6
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # `analyze` ayrı bir adım: bir lint hatası test çıktısının içinde
+      # kaybolmasın, kendi satırında dursun.
+      - name: flutter analyze
+        run: flutter analyze
+
+      - name: flutter test
+        run: flutter test
+
+      # Derlemenin gerçekten çıktığını da doğrula: analiz temiz olduğu hâlde
+      # web derlemesi bir eklenti yüzünden patlayabiliyor.
+      - name: flutter build web
+        run: flutter build web --release

@@ -1,0 +1,63 @@
+{
+  "//": [
+    "Bileşik indeksler ve alan geçersiz kılmaları.",
+    "Tek alanlı sorgular Firestore tarafından kendiliğinden indekslenir —",
+    "ama YALNIZ koleksiyon kapsamında. Koleksiyon GRUBU üzerinde tek alanlı",
+    "bir sorgu (oturum çözümündeki `collectionGroup('users')`) ayrıca",
+    "'fieldOverrides' ile açılmalıdır; 'indexes' altına yazmak",
+    "'this index is not necessary' hatası verir.",
+    "Eksik bir indeks sorguyu üretimde 'failed-precondition' ile düşürür",
+    "ve ekran boş kalır."
+  ],
+  "indexes": [
+    {
+      "//": "Bir personelin tarih aralığındaki günleri, yeniden eskiye.",
+      "collectionGroup": "attendanceDays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "//": "Rapor: bir personelin aralıktaki günleri (tek seferlik okuma).",
+      "collectionGroup": "attendanceDays",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "//": "Bir kişinin belirli gündeki okutmaları.",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": [
+    {
+      "//": "Oturum çözümü: kullanıcı hangi müşterinin altında?",
+      "collectionGroup": "users",
+      "fieldPath": "uid",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    },
+    {
+      "//": "Kullanıcı oluştururken e-posta zaten kayıtlı mı kontrolü.",
+      "collectionGroup": "users",
+      "fieldPath": "email",
+      "indexes": [
+        { "order": "ASCENDING", "queryScope": "COLLECTION" },
+        { "order": "DESCENDING", "queryScope": "COLLECTION" },
+        { "order": "ASCENDING", "queryScope": "COLLECTION_GROUP" }
+      ]
+    }
+  ]
+}

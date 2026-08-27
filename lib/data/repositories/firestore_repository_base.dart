@@ -1,0 +1,86 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
+import 'package:ubsoft_pdks/core/error/error_mapper.dart';
+import 'package:ubsoft_pdks/core/result/result.dart';
+
+/// Firestore repository'leri için ortak temel.
+///
+/// İki şeyi tek yerde çözer:
+///  • **Hata dönüşümü** — her platform istisnası [Result] içinde bir
+///    `Failure`'a çevrilir; çağıran taraf asla `FirebaseException` görmez.
+///  • **Yol üretimi** — tenant altındaki koleksiyonlara erişim tek yerden
+///    kurulur, böylece bir yerde yanlış yol yazılıp veri sızması olmaz.
+abstract base class FirestoreRepositoryBase {
+  const FirestoreRepositoryBase(this.firestore);
+
+  @protected
+  final FirebaseFirestore firestore;
+
+  // ─────────────────────────── Yol üreticiler ───────────────────────────
+
+  @protected
+  CollectionReference<Map<String, dynamic>> get tenantsRef =>
+      firestore.collection(FsPaths.tenants);
+
+  /// Bir müşterinin kullanıcıları: `tenants/{tenantId}/users`.
+  @protected
+  CollectionReference<Map<String, dynamic>> usersRef(String tenantId) =>
+      subcollection(tenantId, FsPaths.users);
+
+  /// Tüm müşterilerdeki kullanıcılar üzerinde arama yapar.
+  ///
+  /// Giriş yapan kullanıcı hangi müşteriye ait olduğunu bilmediği için
+  /// oturum çözümü bu sorguyla başlar.
+  @protected
+  Query<Map<String, dynamic>> get allUsersQuery =>
+      firestore.collectionGroup(FsPaths.users);
+
+  @protected
+  DocumentReference<Map<String, dynamic>> tenantRef(String tenantId) =>
+      tenantsRef.doc(tenantId);
+
+  @protected
+  CollectionReference<Map<String, dynamic>> subcollection(
+    String tenantId,
+    String name,
+  ) => tenantRef(tenantId).collection(name);
+
+  // ─────────────────────────── Hata sarmalayıcılar ───────────────────────
+
+  /// Bir yazma/okuma işlemini çalıştırır ve hatayı [Result]'a çevirir.
+  @protected
+  Future<Result<T>> guard<T>(Future<T> Function() action) async {
+    try {
+      return Ok<T>(await action());
+    } catch (error, stackTrace) {
+      _log(error, stackTrace);
+      return Err<T>(ErrorMapper.map(error, stackTrace));
+    }
+  }
+
+  /// Değer döndürmeyen işlemler için kısayol.
+  @protected
+  Future<Result<void>> guardVoid(Future<void> Function() action) =>
+      guard<void>(() async {
+        await action();
+      });
+
+  /// Bir akışı dinlerken oluşan hataları günlüğe düşürür ve yeniden fırlatır.
+  ///
+  /// Akış hataları [Result]'a sarılmaz; Riverpod'un `AsyncError` mekanizması
+  /// üzerinden arayüze taşınır ve `ErrorView` tarafından Türkçeye çevrilir.
+  @protected
+  Stream<T> guardStream<T>(Stream<T> source) {
+    return source.handleError((Object error, StackTrace stackTrace) {
+      _log(error, stackTrace);
+      throw ErrorMapper.map(error, stackTrace);
+    });
+  }
+
+  void _log(Object error, StackTrace stackTrace) {
+    if (kDebugMode) {
+      debugPrint('[${runtimeType.toString()}] $error');
+    }
+  }
+}

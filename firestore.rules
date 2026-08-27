@@ -1,0 +1,327 @@
+rules_version = '2';
+
+// ════════════════════════════════════════════════════════════════════════
+//  UBSoft PDKS — Firestore Güvenlik Kuralları
+//
+//  ŞEMA: tek kök koleksiyon.
+//    tenants/{tenantId}/users/{uid}
+//    tenants/{tenantId}/roleDefaults/{role}
+//    tenants/{tenantId}/checkpoints/{checkpointId}
+//    tenants/{tenantId}/qrIndex/{code}
+//    tenants/{tenantId}/attendance/{eventId}
+//    tenants/{tenantId}/attendanceDays/{uid}_{dateKey}
+//
+//  Süper adminler `tenants/_system/users/{uid}` altında yaşar.
+//
+//  İZOLASYON: bir kullanıcı yalnız KENDİ tenantId'sine eşit yoldaki verilere
+//  ulaşır. Kullanıcının tenant'ı, kendi doküman yolundan okunur.
+//
+//  YETKİ: etkin izin = tenants/{tid}/roleDefaults/{role}.permissions[izin]
+//         üzerine tenants/{tid}/users/{uid}.permissions[izin] override'ı.
+//
+//  İstemci erişiminin TAMAMI bu dosyada doğrulanır; uygulamadaki izin
+//  kontrolleri yalnız arayüzü doğru çizmek içindir.
+// ════════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─────────────────────────── Yardımcılar ───────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userPath(tid) {
+      return /databases/$(database)/documents/tenants/$(tid)/users/$(request.auth.uid);
+    }
+
+    function meIn(tid) {
+      return get(userPath(tid)).data;
+    }
+
+    function existsIn(tid) {
+      return isSignedIn() && exists(userPath(tid));
+    }
+
+    // Bu müşterinin etkin bir üyesi miyim?
+    function memberOf(tid) {
+      return existsIn(tid) && meIn(tid).status == 'active';
+    }
+
+    function roleIn(tid) {
+      return meIn(tid).role;
+    }
+
+    // Süper admin sistem müşterisinde yaşar ve her yere erişir.
+    function isSuperAdmin() {
+      return existsIn('_system') &&
+             meIn('_system').status == 'active' &&
+             meIn('_system').role == 'superAdmin';
+    }
+
+    // Müşteri yöneticisi. Kendi tenant'ında her yetkiye sahiptir; izin
+    // override'ları yalnız personel içindir.
+    function isAdminOf(tid) {
+      return memberOf(tid) && roleIn(tid) == 'admin';
+    }
+
+    // Rol varsayılan izni — müşterinin kendi tablosundan.
+    function roleDefault(tid, perm) {
+      return get(/databases/$(database)/documents/tenants/$(tid)/roleDefaults/$(roleIn(tid)))
+               .data.permissions.get(perm, false);
+    }
+
+    // Etkin izin.
+    //
+    // SIRA MALİYETTİR. Kurallardaki her `get()`/`exists()` faturalandırılan bir
+    // okumadır. `isSuperAdmin()` başta çağrılırsa, sistemdeki her müşteri
+    // kullanıcısı her işlemde `tenants/_system/users/{uid}` üzerinde — kendisi
+    // için asla var olmayan bir doküman — fazladan bir okuma öder. Bu yüzden
+    // önce kendi müşterisindeki kayda bakılır; süper admin kontrolü en sona
+    // bırakılır.
+    //
+    // `permissions` alanı EKSİK OLABİLİR (konsoldan elle açılmış bir kayıtta).
+    // Doğrudan okumak kuralı "Property permissions is undefined" ile HATAYA
+    // düşürür; hata reddedilme gibi görünür ve kullanıcı hiçbir şey yapamayan,
+    // sebebi anlaşılmayan bir hesapla kalır. `get('permissions', {})` bu
+    // durumda rol varsayılanına düşmeyi sağlar.
+    function can(tid, perm) {
+      return isAdminOf(tid) ||
+             (memberOf(tid) &&
+              meIn(tid).get('permissions', {})
+                       .get(perm, roleDefault(tid, perm)) == true) ||
+             isSuperAdmin();
+    }
+
+    // Yazmaya kapalı müşteri salt-okunur hâle gelir: askıya alınmış olmak
+    // (bilinçli karar) ya da abonelik süresinin dolması (kendiliğinden).
+    //
+    // SÜRE KONTROLÜ BURADA OLMAK ZORUNDA. Arayüz de bakar, ama arayüz yalnız
+    // bir kolaylıktır: tarayıcı konsolundan doğrudan Firestore'a yazan biri
+    // için tek kapı budur.
+    //
+    // Alanların VARLIĞI önce açıkça sınanır: eksik alana erişmek kuralı
+    // "evaluation error"a düşürür ve gerçek hatalar günlük gürültüsünde
+    // kaybolur. Eksik alan burada "kapalı" demektir — para kapısında eksik
+    // veri "sınırsız erişim" anlamına gelmemeli.
+    //
+    // Süper admin bu kapının DIŞINDADIR: kapı, ödemeyi bırakmış MÜŞTERİYİ
+    // durdurmak içindir, yazılımın sahibini değil.
+    function writable(tid) {
+      let t = get(/databases/$(database)/documents/tenants/$(tid)).data;
+      return (t.status != 'suspended' &&
+              'subscription' in t &&
+              'expiresAt' in t.subscription &&
+              t.subscription.expiresAt > request.time) ||
+             isSuperAdmin();
+    }
+
+    // Yazılan zaman damgası sunucu saati olmalı — geçmişe dönük kayıt
+    // uydurulamaz. Devam kontrolünde bu kuralın karşılığı doğrudan paradır:
+    // telefonun saatini geri alıp erken giriş yazdırmak aksi hâlde mümkündü.
+    function serverTime(field) {
+      return request.resource.data[field] == request.time;
+    }
+
+    function touchesOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+
+    // ═══════════════ Koleksiyon grubu: kendi kaydını bulma ═══════════════
+    //
+    // Giriş yapan kullanıcı hangi müşterinin altında olduğunu bilmez.
+    // Oturum çözümü `collectionGroup('users').where('uid','==',auth.uid)`
+    // sorgusuyla başlar. Bu kural YALNIZ kişinin kendi kaydını döndürür:
+    // başkasının kaydını arayan bir sorgu tümüyle reddedilir.
+
+    match /{path=**}/users/{uid} {
+      allow read: if isSignedIn() && resource.data.uid == request.auth.uid;
+    }
+
+
+    // ═══════════════════════ Müşteriler (Tenant) ═══════════════════════
+
+    match /tenants/{tid} {
+
+      allow get:  if isSuperAdmin() || memberOf(tid);
+      allow list: if isSuperAdmin();
+
+      allow create, delete: if isSuperAdmin();
+
+      allow update: if isSuperAdmin() || (
+                      // Müşteri kendi şirket bilgilerini ve devam ayarlarını
+                      // düzenleyebilir; abonelik, plan, durum ve sayaçlara
+                      // dokunamaz.
+                      memberOf(tid) &&
+                      can(tid, 'settings.edit') &&
+                      touchesOnly(['name', 'timezone', 'locale', 'settings',
+                                   'updatedAt'])
+                    ) || (
+                      // Sayaç güncellemeleri kayıt ekleyen/silen işlemlerin
+                      // parçasıdır (kullanıcı, QR noktası).
+                      memberOf(tid) &&
+                      touchesOnly(['counters', 'updatedAt'])
+                    );
+
+
+      // ─────────────────────── Kullanıcılar ───────────────────────
+
+      match /users/{uid} {
+
+        allow get: if isSuperAdmin() ||
+                      request.auth.uid == uid ||
+                      can(tid, 'user.view');
+
+        // Personel listesi devam tablolarının KADROSUDUR: gelmeyenleri
+        // gösterebilmek için okutma yapmış kişileri değil, tüm aktif
+        // personeli bilmek gerekir. Bu yüzden liste, kullanıcı yönetimi
+        // yetkisine değil devam kayıtlarını görme yetkisine de açıktır.
+        allow list: if isSuperAdmin() ||
+                       can(tid, 'user.view') ||
+                       can(tid, 'attendance.viewAll');
+
+        allow create: if (isSuperAdmin() ||
+                          (can(tid, 'user.create') && writable(tid))) &&
+                         request.resource.data.uid == uid &&
+                         request.resource.data.tenantId == tid &&
+                         request.resource.data.role in ['admin', 'staff'] &&
+                         serverTime('createdAt');
+
+        allow update: if isSuperAdmin() || (
+                        // Kişi kendi adını ve iletişim bilgisini düzenler;
+                        // rolüne ve izinlerine dokunamaz.
+                        request.auth.uid == uid &&
+                        memberOf(tid) &&
+                        touchesOnly(['displayName', 'phone', 'note',
+                                     'title', 'lastLoginAt', 'updatedAt'])
+                      ) || (
+                        can(tid, 'user.edit') && writable(tid) &&
+                        touchesOnly(['displayName', 'phone', 'note',
+                                     'title', 'status', 'deletedAt',
+                                     'updatedAt'])
+                      ) || (
+                        can(tid, 'user.assignRole') && writable(tid) &&
+                        touchesOnly(['role', 'updatedAt']) &&
+                        request.resource.data.role in ['admin', 'staff']
+                      ) || (
+                        can(tid, 'user.assignPermissions') && writable(tid) &&
+                        touchesOnly(['permissions', 'updatedAt'])
+                      );
+
+        // Kullanıcı SİLİNMEZ, `status: deleted` işaretlenir (yukarıdaki
+        // `user.edit` dalı). Geçmiş devam kayıtlarında kimin giriş yaptığı
+        // okunabilir kalmalı.
+        allow delete: if isSuperAdmin();
+      }
+
+
+      // ─────────────────────── Rol varsayılanları ───────────────────────
+
+      match /roleDefaults/{role} {
+        // Herkes okur: kendi izinlerini çözmek için gerekli.
+        allow read: if memberOf(tid) || isSuperAdmin();
+        allow write: if isSuperAdmin() ||
+                        (can(tid, 'settings.edit') && writable(tid));
+      }
+
+
+      // ─────────────────────── QR noktaları ───────────────────────
+
+      match /checkpoints/{checkpointId} {
+
+        // TEK doküman okuma herkese açıktır: okutma sırasında personelin
+        // koda karşılık gelen noktayı çözmesi gerekir ve ona "noktaları
+        // görüntüle" yetkisi vermek, yönetim ekranını da açardı.
+        allow get: if memberOf(tid) || isSuperAdmin();
+
+        // Listeleme yönetim ekranıdır; ayrı yetki ister.
+        allow list: if can(tid, 'checkpoint.view');
+
+        allow create: if can(tid, 'checkpoint.create') && writable(tid) &&
+                         request.resource.data.code is string &&
+                         request.resource.data.code.matches('^[0-9]{1,10}$') &&
+                         serverTime('createdAt');
+
+        allow update: if can(tid, 'checkpoint.edit') && writable(tid) &&
+                         request.resource.data.code.matches('^[0-9]{1,10}$');
+
+        allow delete: if can(tid, 'checkpoint.delete') && writable(tid);
+      }
+
+      // Kod tekilliği defteri.
+      //
+      // Doküman kimliği kodun kendisidir; tekillik ancak böyle kurulabilir.
+      // Okutma sırasında personel bu defterden koda karşılık gelen noktayı
+      // bulur, bu yüzden tek doküman okuması herkese açıktır.
+      match /qrIndex/{code} {
+        allow get: if memberOf(tid) || isSuperAdmin();
+        allow list: if can(tid, 'checkpoint.view');
+
+        allow create: if can(tid, 'checkpoint.create') && writable(tid) &&
+                         code.matches('^[0-9]{1,10}$');
+        allow delete, update: if writable(tid) &&
+                                 (can(tid, 'checkpoint.edit') ||
+                                  can(tid, 'checkpoint.delete'));
+      }
+
+
+      // ─────────────────────── Okutmalar ───────────────────────
+      //
+      // Bir okutma, sistemin TEK doğruluk kaynağıdır. Bu yüzden:
+      //  • Yalnız kişinin kendisi yazabilir (başkası adına okutma yok).
+      //  • `at` sunucu saatidir.
+      //  • HİÇBİR KOŞULDA güncellenemez — düzeltilebilen bir devam kaydı,
+      //    devam kaydı olmaktan çıkar. Yanlış kayıt silinir, yenisi okutulur.
+
+      match /attendance/{eventId} {
+
+        allow get, list: if request.auth.uid == resource.data.userId ||
+                            can(tid, 'attendance.viewAll');
+
+        allow create: if can(tid, 'punch.create') && writable(tid) &&
+                         request.resource.data.userId == request.auth.uid &&
+                         request.resource.data.tenantId == tid &&
+                         request.resource.data.type in ['in', 'out'] &&
+                         request.resource.data.verdict in
+                           ['verified', 'borderline', 'outside', 'unavailable'] &&
+                         request.resource.data.dateKey is string &&
+                         serverTime('at');
+
+        allow update: if false;
+
+        allow delete: if can(tid, 'attendance.delete') && writable(tid);
+      }
+
+
+      // ─────────────────────── Günlük özetler ───────────────────────
+      //
+      // Okutmalardan TÜRETİLİR; kendi başına bir kanıt değildir. Bu yüzden
+      // kişinin kendisi tarafından (okutma işleminin parçası olarak)
+      // yazılabilir. Buradaki bir sahtecilik, altındaki okutmalarla
+      // karşılaştırıldığında ortaya çıkar.
+
+      match /attendanceDays/{dayId} {
+
+        allow get, list: if request.auth.uid == resource.data.userId ||
+                            can(tid, 'attendance.viewAll');
+
+        allow create, update: if writable(tid) && (
+                                 (can(tid, 'punch.create') &&
+                                  request.resource.data.userId == request.auth.uid) ||
+                                 can(tid, 'attendance.delete')
+                               ) &&
+                               request.resource.data.tenantId == tid;
+
+        allow delete: if can(tid, 'attendance.delete') && writable(tid);
+      }
+    }
+
+
+    // Yukarıda açıkça izin verilmeyen her yol kapalıdır.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
