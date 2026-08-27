@@ -193,6 +193,22 @@ yok.
 
 ---
 
+## Kullanım kılavuzu
+
+Müşteriye verilecek sade kılavuz depoda hazır durur:
+[`Kullanim-Kilavuzu.docx`](Kullanim-Kilavuzu.docx). İçinde teknik ayrıntı
+yoktur; personel ve yönetici için ne yapılacağını ve sık sorulanları anlatır.
+
+Metni değiştirmek gerekirse Word'de değil `tool/kullanim_kilavuzu.py`
+içinde değiştirilir ve belge yeniden üretilir:
+
+```bash
+pip install python-docx
+python tool/kullanim_kilavuzu.py
+```
+
+---
+
 ## Kim neyi görür?
 
 Konum kanıtı ve geç giriş işareti **yöneticinin** bilgisidir. Personel kendi
