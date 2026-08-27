@@ -1,6 +1,6 @@
 # Her push ve pull request'te analiz ve testleri koşturur.
 #
-# Neden: 213 test var ama yalnız biri onları çalıştırmayı hatırladığında
+# Neden: 219 test var ama yalnız biri onları çalıştırmayı hatırladığında
 # koruyorlar. Yayına çıkmadan önce koşturmayı bir kez unutmak, testlerin
 # tamamını o an için yok saymak demek. Burada unutulamaz.
 

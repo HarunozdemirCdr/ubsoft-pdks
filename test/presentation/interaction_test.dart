@@ -8,10 +8,13 @@ import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
+import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/enums/user_role.dart';
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/history/history_page.dart';
+import 'package:ubsoft_pdks/presentation/features/history/person_history_page.dart';
+import 'package:ubsoft_pdks/presentation/features/punch/punch_home_page.dart';
 import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
 import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/permission_editor_page.dart';
@@ -591,6 +594,126 @@ void main() {
       // formda kaldı.
       expect(users.docs, hasLength(1));
       expect(find.text('→ /kullanicilar'), findsNothing);
+    });
+  });
+
+  /// Konum kanıtı ve geç giriş işareti **yöneticinin** bilgisidir.
+  ///
+  /// Personelin kendi ekranında yalnız ne olduğu yazar: içeride mi, giriş
+  /// var mı, çıkış var mı. Aynı satırların yönetici ekranında kanıtıyla
+  /// birlikte görünmeye devam ettiği de burada kayıt altındadır.
+  group('Personel ne görür', () {
+    Future<TestScope> staffScope() async {
+      final TestScope scope = await buildScope(
+        signedInAs: TestData.user(),
+        checkpoints: <Checkpoint>[TestData.checkpoint()],
+        location: TestData.locationNorthOf(8, accuracy: 6),
+      );
+
+      final String today = AppDate.todayKey();
+      await seedDay(
+        scope,
+        userId: TestData.staffUid,
+        dateKey: today,
+        entryAt: '09:40',
+        late: true,
+        verdict: LocationVerdict.outside,
+      );
+      await seedEvent(
+        scope,
+        userId: TestData.staffUid,
+        dateKey: today,
+        type: PunchType.entry,
+        time: '09:40',
+      );
+      return scope;
+    }
+
+    testWidgets('okutma ekranında konum ve geç giriş yazmaz', (
+      WidgetTester tester,
+    ) async {
+      final TestScope scope = await staffScope();
+      addTearDown(scope.dispose);
+
+      await tester.pumpWidget(
+        wrapPage(const PunchHomePage(), container: scope.container),
+      );
+      await settle(tester);
+
+      // Kaydın kendisi görünür…
+      expect(find.text('09:40'), findsWidgets);
+      expect(find.text('Ana Giriş'), findsOneWidget);
+
+      // …ama yargılar görünmez.
+      expect(find.text('Geç giriş'), findsNothing);
+      expect(find.text('Nokta dışında'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('kendi geçmişinde yalnız gün durumu görünür', (
+      WidgetTester tester,
+    ) async {
+      final TestScope scope = await staffScope();
+      addTearDown(scope.dispose);
+
+      // Dün çıkışını unutmuş bir gün: kişiye söylenen tek şey budur.
+      await seedDay(
+        scope,
+        userId: TestData.staffUid,
+        dateKey: AppDate.dateKey(
+          DateTime.now().subtract(const Duration(days: 1)),
+        ),
+        exitAt: null,
+        verdict: LocationVerdict.borderline,
+      );
+
+      await tester.pumpWidget(
+        wrapPage(
+          const PersonHistoryPage(userId: TestData.staffUid),
+          container: scope.container,
+          size: const Size(500, 1000),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Çıkış yok'), findsWidgets);
+
+      // Yargılar yok: ne geç giriş ne konum kararı.
+      expect(find.text('Geç'), findsNothing);
+      expect(find.text('Sınırda'), findsNothing);
+      expect(find.text('Nokta dışında'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('aynı gün yöneticide kanıtıyla görünür', (
+      WidgetTester tester,
+    ) async {
+      final TestScope scope = await adminScope(
+        extraUsers: <AppUser>[TestData.user(uid: 'u1')],
+      );
+      addTearDown(scope.dispose);
+
+      final String today = AppDate.todayKey();
+      await seedDay(
+        scope,
+        userId: 'u1',
+        dateKey: today,
+        entryAt: '09:40',
+        late: true,
+        verdict: LocationVerdict.outside,
+      );
+
+      await tester.pumpWidget(
+        wrapPage(
+          const HistoryPage(),
+          container: scope.container,
+          size: const Size(900, 1200),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Geç'), findsWidgets);
+      expect(tester.takeException(), isNull);
     });
   });
 }

@@ -24,6 +24,7 @@ class AttendanceDayTile extends StatelessWidget {
     this.onTap,
     this.showName = true,
     this.showDate = false,
+    this.showFlags = true,
     super.key,
   });
 
@@ -35,6 +36,12 @@ class AttendanceDayTile extends StatelessWidget {
 
   /// Başlıkta gün yazılsın mı? (Kişinin geçmiş listesinde gerekir.)
   final bool showDate;
+
+  /// Geç giriş ve konum rozetleri gösterilsin mi?
+  ///
+  /// Personelin kendi ekranında kapatılır; orada gösterilen tek yargı günün
+  /// durumudur (tamamlandı / çıkış yok / giriş yok).
+  final bool showFlags;
 
   @override
   Widget build(BuildContext context) {
@@ -101,11 +108,11 @@ class AttendanceDayTile extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               StatusChip(
-                label: status.label,
+                label: showFlags ? status.label : status.selfLabel,
                 tone: EnumLabels.toneOf(status),
                 compact: true,
               ),
-              if (day.late || flagged) ...<Widget>[
+              if (showFlags && (day.late || flagged)) ...<Widget>[
                 AppSpacing.vXxs,
                 StatusChip(
                   label: day.late ? 'Geç' : day.worstVerdict.label,

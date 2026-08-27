@@ -22,10 +22,18 @@ class PunchResultView extends StatelessWidget {
     required this.state,
     required this.onAgain,
     required this.onClose,
+    this.showLocation = true,
     super.key,
   });
 
   final PunchState state;
+
+  /// Konum kararı ve noktaya uzaklık gösterilsin mi?
+  ///
+  /// Personelin ekranında kapalıdır: kaydın düştüğünü görmesi yeter.
+  /// **Reddedilen** okutmanın sebebi bundan bağımsızdır ve her zaman
+  /// yazılır — aksi hâlde neden okutamadığını bilemezdi.
+  final bool showLocation;
 
   /// Kameraya dön ve yeniden okut.
   final VoidCallback onAgain;
@@ -45,6 +53,7 @@ class PunchResultView extends StatelessWidget {
           child: switch (state) {
             PunchSuccess(:final AttendanceEvent event) => _Success(
               event: event,
+              showLocation: showLocation,
               onAgain: onAgain,
               onClose: onClose,
             ),
@@ -64,11 +73,13 @@ class PunchResultView extends StatelessWidget {
 class _Success extends StatelessWidget {
   const _Success({
     required this.event,
+    required this.showLocation,
     required this.onAgain,
     required this.onClose,
   });
 
   final AttendanceEvent event;
+  final bool showLocation;
   final VoidCallback onAgain;
   final VoidCallback onClose;
 
@@ -105,30 +116,33 @@ class _Success extends StatelessWidget {
         ),
         AppSpacing.vMd,
 
-        Row(
-          children: <Widget>[
-            StatusChip(
-              label: event.verdict.label,
-              tone: EnumLabels.toneOfVerdict(event.verdict),
-              icon: EnumLabels.iconOfVerdict(event.verdict),
-            ),
-            if (event.distanceMeters case final double distance)
-              if (event.verdict != LocationVerdict.unavailable) ...<Widget>[
-                AppSpacing.hXs,
-                Text(
-                  'Noktaya ${Geo.formatDistance(distance)}',
-                  style: AppTypography.small(context.colors.onSurfaceVariant),
-                ),
-              ],
-          ],
-        ),
-
-        if (event.verdict.needsAttention) ...<Widget>[
-          AppSpacing.vXs,
-          Text(
-            _verdictNote(event.verdict),
-            style: AppTypography.small(context.colors.onSurfaceVariant),
+        if (showLocation) ...<Widget>[
+          Row(
+            children: <Widget>[
+              StatusChip(
+                label: event.verdict.label,
+                tone: EnumLabels.toneOfVerdict(event.verdict),
+                icon: EnumLabels.iconOfVerdict(event.verdict),
+              ),
+              if (event.distanceMeters case final double distance)
+                if (event.verdict != LocationVerdict.unavailable) ...<Widget>[
+                  AppSpacing.hXs,
+                  Text(
+                    'Noktaya ${Geo.formatDistance(distance)}',
+                    style: AppTypography.small(
+                      context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+            ],
           ),
+          if (event.verdict.needsAttention) ...<Widget>[
+            AppSpacing.vXs,
+            Text(
+              _verdictNote(event.verdict),
+              style: AppTypography.small(context.colors.onSurfaceVariant),
+            ),
+          ],
         ],
 
         AppSpacing.vLg,

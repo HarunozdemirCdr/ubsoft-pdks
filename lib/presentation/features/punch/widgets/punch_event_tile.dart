@@ -19,6 +19,7 @@ class PunchEventTile extends StatelessWidget {
   const PunchEventTile({
     required this.event,
     this.showUser = false,
+    this.showLocation = true,
     this.onDelete,
     super.key,
   });
@@ -27,6 +28,10 @@ class PunchEventTile extends StatelessWidget {
 
   /// Yönetici listelerinde personel adı da yazılır.
   final bool showUser;
+
+  /// Konum rozeti ve noktaya uzaklık gösterilsin mi? Personelin kendi
+  /// ekranında kapatılır.
+  final bool showLocation;
 
   /// Verildiğinde satırın sonunda silme düğmesi çıkar.
   final VoidCallback? onDelete;
@@ -76,7 +81,7 @@ class PunchEventTile extends StatelessWidget {
                   <String>[
                     if (showUser) event.userName,
                     event.checkpointName,
-                    _distanceLabel(),
+                    if (showLocation) _distanceLabel(),
                   ].where((String s) => s.isNotEmpty).join(' · '),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -85,13 +90,15 @@ class PunchEventTile extends StatelessWidget {
               ],
             ),
           ),
-          AppSpacing.hXs,
-          StatusChip(
-            label: event.verdict.label,
-            tone: EnumLabels.toneOfVerdict(event.verdict),
-            icon: EnumLabels.iconOfVerdict(event.verdict),
-            compact: true,
-          ),
+          if (showLocation) ...<Widget>[
+            AppSpacing.hXs,
+            StatusChip(
+              label: event.verdict.label,
+              tone: EnumLabels.toneOfVerdict(event.verdict),
+              icon: EnumLabels.iconOfVerdict(event.verdict),
+              compact: true,
+            ),
+          ],
           if (onDelete != null)
             IconButton(
               tooltip: 'Okutmayı sil',

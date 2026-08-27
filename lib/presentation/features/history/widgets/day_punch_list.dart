@@ -34,6 +34,7 @@ class DayPunchList extends ConsumerWidget {
     final bool canDelete = ref.watch(
       canProvider(AppPermission.attendanceDelete),
     );
+    final bool showLocation = ref.watch(attendanceDetailVisibleProvider);
 
     return Padding(
       padding: padding,
@@ -49,6 +50,7 @@ class DayPunchList extends ConsumerWidget {
                 padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
                 child: PunchEventTile(
                   event: event,
+                  showLocation: showLocation,
                   onDelete: canDelete
                       ? () => _confirmDelete(context, ref, event)
                       : null,

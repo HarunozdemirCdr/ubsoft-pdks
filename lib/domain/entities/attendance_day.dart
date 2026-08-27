@@ -90,10 +90,20 @@ class AttendanceDay extends Equatable {
   ///
   /// Personel hâlâ içerideyse açık giriş süresi de eklenir; böylece "şu an
   /// 3 sa 12 dk" canlı olarak görünür.
-  int workedMinutesAt(DateTime now) {
+  ///
+  /// Açık giriş [graceHours] saati aştığında sayaç **durur**: o gün artık
+  /// "içeride" değil, [DayStatus.missingExit]'tir. Durmasaydı, çıkışını
+  /// okutmayı unutan birinin üç gün önceki günü ekranda "78 sa 40 dk" olarak
+  /// büyümeye devam ederdi — uygulamanın hiçbir zaman iddia etmediği bir
+  /// çalışma süresi.
+  int workedMinutesAt(DateTime now, {int graceHours = 16}) {
     if (!open || lastEntryAt == null) return workedMinutes;
+
     final int live = now.difference(lastEntryAt!).inMinutes;
-    return workedMinutes + (live > 0 ? live : 0);
+    if (live <= 0) return workedMinutes;
+    if (live >= graceHours * 60) return workedMinutes;
+
+    return workedMinutes + live;
   }
 
   Duration get workedDuration => Duration(minutes: workedMinutes);

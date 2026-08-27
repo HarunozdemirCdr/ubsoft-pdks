@@ -5,12 +5,14 @@ import 'package:ubsoft_pdks/application/attendance/punch_controller.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/report/report_providers.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
+import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 import 'package:ubsoft_pdks/domain/entities/report_filter.dart';
 import 'package:ubsoft_pdks/domain/entities/session.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
+import 'package:ubsoft_pdks/domain/enums/day_status.dart';
 import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/enums/report_focus.dart';
@@ -221,6 +223,60 @@ void main() {
       reportProvider(filter).future,
     );
     expect(after.rows.single.days.single.exitCount, 0);
+  });
+
+  test('dün çıkış unutulmuşsa bugünkü giriş etkilenmez', () async {
+    final String yesterday = AppDate.dateKey(
+      DateTime.now().subtract(const Duration(days: 1)),
+    );
+
+    // Dün girişi var, çıkışı yok: gün açık kalmış.
+    await seedDay(
+      scope,
+      userId: TestData.staffUid,
+      dateKey: yesterday,
+      exitAt: null,
+    );
+
+    // Bugün normal giriş.
+    await scope.container.read(punchControllerProvider.notifier).submit('1');
+    final PunchState state = scope.container.read(punchControllerProvider);
+    expect(state, isA<PunchSuccess>(), reason: _describe(state));
+
+    await flush();
+
+    // Bugünün özeti temiz başlar: dünün açık günü buraya sızmaz.
+    final AttendanceDay today = scope.container
+        .read(myTodayProvider)
+        .requireValue;
+    expect(today.dateKey, AppDate.todayKey());
+    expect(today.entryCount, 1);
+    expect(today.exitCount, 0);
+    expect(today.workedMinutes, 0);
+
+    // Dünün kaydı olduğu gibi durur: uygulama bir çıkış uydurmaz.
+    final ({String userId, ReportFilter filter}) args = (
+      userId: TestData.staffUid,
+      filter: ReportFilter.lastDays(2),
+    );
+    // Riverpod 3'te dinleyicisi olmayan sağlayıcı okuma sırasında atılır ve
+    // future asla tamamlanmaz; akış test boyunca canlı tutulur.
+    scope.retain(scope.container.listen(personDaysProvider(args), (_, _) {}));
+
+    final List<AttendanceDay> days = await scope.container.read(
+      personDaysProvider(args).future,
+    );
+
+    final AttendanceDay past = days.firstWhere(
+      (AttendanceDay d) => d.dateKey == yesterday,
+    );
+    expect(past.open, isTrue);
+    expect(past.exitCount, 0);
+    expect(past.workedMinutes, 0);
+    expect(past.statusAt(DateTime.now()), DayStatus.missingExit);
+
+    // Ve o gün için süre uydurulmaz — sayaç durmuştur.
+    expect(past.workedMinutesAt(DateTime.now()), 0);
   });
 
   test('tanımsız kod reddedilir', () async {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:ubsoft_pdks/application/attendance/attendance_providers.dart';
 import 'package:ubsoft_pdks/application/attendance/punch_controller.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
@@ -101,6 +102,7 @@ class _ScanPageState extends ConsumerState<ScanPage> {
               bottom: 0,
               child: PunchResultView(
                 state: state,
+                showLocation: ref.watch(attendanceDetailVisibleProvider),
                 onAgain: () =>
                     ref.read(punchControllerProvider.notifier).reset(),
                 onClose: () => context.pop(),

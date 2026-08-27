@@ -301,6 +301,58 @@ void main() {
       expect(_empty().statusAt(DateTime.now()), DayStatus.absent);
     });
 
+    test('unutulmuş çıkışta canlı sayaç durur', () {
+      final AttendanceDay day = SummarizeDay.applyPunch(
+        day: _empty(),
+        type: PunchType.entry,
+        at: _at(9, 0),
+        verdict: LocationVerdict.verified,
+        userName: 'Ahmet Yılmaz',
+        settings: _settings,
+      );
+
+      // Gün "çıkış yok"a döndükten sonra süre büyümeye devam etmemeli:
+      // uygulama personelin ne zaman çıktığını bilmiyor.
+      expect(
+        day.statusAt(_at(9, 0).add(const Duration(hours: 20))),
+        DayStatus.missingExit,
+      );
+      expect(day.workedMinutesAt(_at(9, 0).add(const Duration(hours: 20))), 0);
+      expect(day.workedMinutesAt(_at(9, 0).add(const Duration(days: 3))), 0);
+    });
+
+    test('eşleşmiş süre unutulmuş çıkıştan sonra da korunur', () {
+      // Sabah gelip öğlen çıkan, öğleden sonra tekrar girip çıkışını
+      // unutan bir gün: ilk çift sayılır, açık kalan ikinci giriş sayılmaz.
+      AttendanceDay day = SummarizeDay.applyPunch(
+        day: _empty(),
+        type: PunchType.entry,
+        at: _at(9, 0),
+        verdict: LocationVerdict.verified,
+        userName: 'Ahmet Yılmaz',
+        settings: _settings,
+      );
+      day = SummarizeDay.applyPunch(
+        day: day,
+        type: PunchType.exit,
+        at: _at(12, 0),
+        verdict: LocationVerdict.verified,
+        userName: 'Ahmet Yılmaz',
+        settings: _settings,
+      );
+      day = SummarizeDay.applyPunch(
+        day: day,
+        type: PunchType.entry,
+        at: _at(13, 0),
+        verdict: LocationVerdict.verified,
+        userName: 'Ahmet Yılmaz',
+        settings: _settings,
+      );
+
+      expect(day.workedMinutes, 180);
+      expect(day.workedMinutesAt(_at(13, 0).add(const Duration(days: 2))), 180);
+    });
+
     test('canlı süre açık girişi de sayar', () {
       final AttendanceDay day = SummarizeDay.applyPunch(
         day: _empty(),

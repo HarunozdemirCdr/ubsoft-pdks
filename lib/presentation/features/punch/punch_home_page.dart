@@ -35,6 +35,7 @@ class PunchHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AppUser? user = ref.watch(currentUserProvider);
     final bool canPunch = ref.watch(canProvider(AppPermission.punchCreate));
+    final bool showDetail = ref.watch(attendanceDetailVisibleProvider);
 
     return AppScaffold(
       title: AppDate.date(DateTime.now()),
@@ -55,6 +56,7 @@ class PunchHomePage extends ConsumerWidget {
             builder: (AttendanceDay day) => _TodayCard(
               day: day,
               canPunch: canPunch,
+              showDetail: showDetail,
               onScan: () => context.push(AppRoutes.scanPath),
             ),
           ),
@@ -78,7 +80,10 @@ class PunchHomePage extends ConsumerWidget {
                       for (final AttendanceEvent event in events)
                         Padding(
                           padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                          child: PunchEventTile(event: event),
+                          child: PunchEventTile(
+                            event: event,
+                            showLocation: showDetail,
+                          ),
                         ),
                     ],
                   ),
@@ -95,11 +100,16 @@ class _TodayCard extends StatefulWidget {
   const _TodayCard({
     required this.day,
     required this.canPunch,
+    required this.showDetail,
     required this.onScan,
   });
 
   final AttendanceDay day;
   final bool canPunch;
+
+  /// Geç giriş işareti gösterilsin mi? Personelin kendi kartında kapalıdır.
+  final bool showDetail;
+
   final VoidCallback onScan;
 
   @override
@@ -164,7 +174,7 @@ class _TodayCardState extends State<_TodayCard> {
                 icon: inside ? Icons.login_rounded : Icons.logout_rounded,
               ),
               const Spacer(),
-              if (day.late)
+              if (widget.showDetail && day.late)
                 const StatusChip(
                   label: 'Geç giriş',
                   tone: StatusTone.warning,

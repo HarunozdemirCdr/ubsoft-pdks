@@ -16,6 +16,8 @@ birbirinden ayrılır.
 - [Konum doğrulaması nasıl çalışır](#konum-doğrulaması-nasıl-çalışır)
 - [Geçmiş mi, Raporlar mı?](#geçmiş-mi-raporlar-mı)
 - [Görünüm](#görünüm)
+- [Çıkış okutulmazsa ne olur?](#çıkış-okutulmazsa-ne-olur)
+- [Kim neyi görür?](#kim-neyi-görür)
 - [Roller ve yetkiler](#roller-ve-yetkiler)
 - [Veri modeli](#veri-modeli)
 - [Mimari](#mimari)
@@ -31,7 +33,7 @@ birbirinden ayrılır.
 
 | Ekran | Kim görür | Ne işe yarar |
 |---|---|---|
-| **Okut** | Personel + yönetici | Tek düğme: içerideyse "çıkış için okut", değilse "giriş için okut". Altında günün okutmaları. |
+| **Okut** | Personel + yönetici | Tek düğme: içerideyse "çıkış için okut", değilse "giriş için okut". Altında günün okutmaları. Personel burada konum kararını ve geç giriş işaretini görmez. |
 | **Bugün** | Yönetici | Kim içeride, kim tamamladı, kim gelmedi, hangi okutma dikkat istiyor. |
 | **Geçmiş** | Yönetici (personel yalnız kendisi) | Bir günün tüm kadrosu tek tabloda: solda ad, sağda giriş ve çıkış saatleri. Hızlı gözlem içindir. |
 | **QR Noktaları** | Yönetici | Nokta oluştur, konumunu gir, yarıçapını ayarla, yazdırılabilir QR etiketini al. |
@@ -143,6 +145,75 @@ değiştirmek tek dosyaya dokunmaktır.
 PDF raporu ekrandaki paletin aynısını kullanır ve fontu `assets/fonts`
 altında gömülü taşır — PDF'in yerleşik Helvetica'sında Türkçe harfler
 (ş, ğ, İ, ı) yoktur.
+
+---
+
+## Çıkış okutulmazsa ne olur?
+
+En sık yaşanan durum: personel akşam çıkarken okutmayı unutur, gün biter,
+ertesi sabah normal şekilde işe gelir. Sistem bunu **karıştırmaz**, çünkü
+her gün kendi belgesindedir (`attendanceDays/{uid}_{gün}`) ve bir okutma
+hangi güne düşerse o günün hanesine yazılır.
+
+Sırayla ne olur:
+
+| Zaman | Ne olur |
+|---|---|
+| Salı 08:30 | Giriş okutulur. Gün "İçeride" olur. |
+| Salı 18:00 | Çıkış okutulmaz. Gün açık kalır. |
+| Salı 24:00 | Hiçbir şey olmaz; gün kendiliğinden kapanmaz. |
+| Çarşamba 00:30 | Girişin üstünden 16 saat geçti: Salı artık **"Çıkış yok"**. Çalışma süresi sayacı **durur**. |
+| Çarşamba 08:30 | Giriş okutulur. **Çarşamba'nın kendi belgesi** açılır ve sıfırdan başlar. |
+
+Üç sonucu ayrıca söylemek gerek:
+
+1. **Ertesi günün girişi engellenmez.** "Zaten giriş yapmışsınız" uyarısı
+   yalnız *aynı gün* içinde çalışır; Salı'nın açık kalması Çarşamba'yı
+   etkilemez.
+2. **Salı'nın çalışma süresi 0 kalır**, "eksik" olarak. Uygulama bir çıkış
+   saati uydurmaz — ne 18:00 yazar ne de gece yarısında keser. Kaç saat
+   çalışıldığını yalnız orada olan insanlar bilir.
+3. **Sayaç sonsuza kadar büyümez.** 16 saat dolduktan sonra süre donar;
+   aksi hâlde üç gün önce unutulmuş bir çıkış ekranda "78 saat" olarak
+   görünürdü.
+
+Yönetici bunu iki yerde görür: Geçmiş tablosunda o satırın çıkış kolonu
+boştur ve durumu "Çıkış yok"tur; Raporlar'da **"Çıkış yok"** süzgeci tam
+olarak bu günleri listeler ve PDF'e döker. Düzeltme yolu yoktur, olması da
+istenmedi: bir devam kaydının saati elle değiştirilebiliyorsa o kayıt kanıt
+olmaktan çıkar. Yanlış bir okutma **silinebilir** (gün özeti kalan
+okutmalardan yeniden hesaplanır), ama olmayan bir okutma sonradan
+yazılamaz.
+
+**Gece vardiyası desteklenmez.** 20:00'de girip ertesi gün 05:00'te çıkan
+biri iki ayrı güne düşer: ilk gün "çıkış yok", ikinci gün "girişi olmayan
+çıkış" olarak görünür ve hiçbirinde süre hesaplanmaz. Böyle bir vardiya
+gerekirse gün sınırının mesai başlangıcına kaydırılması gerekir; bu bugün
+yok.
+
+---
+
+## Kim neyi görür?
+
+Konum kanıtı ve geç giriş işareti **yöneticinin** bilgisidir. Personel kendi
+ekranında yalnız ne olduğunu görür:
+
+| | Personel (kendi kaydı) | Yönetici |
+|---|---|---|
+| Giriş / çıkış saati | ✓ | ✓ |
+| Gün durumu (İçeride / Tamamlandı / Çıkış yok / Giriş yok) | ✓ | ✓ |
+| Çalışma süresi | ✓ | ✓ |
+| Konum kararı (doğrulandı / sınırda / nokta dışında) | — | ✓ |
+| Noktaya uzaklık | — | ✓ |
+| Geç giriş işareti | — | ✓ |
+
+Sebep: bunlar bir **konuşmanın malzemesidir**, personelin her gün karşısına
+çıkan bir yargı değil. Ölçüt `attendance.viewAll` iznidir — başkalarının
+kaydını görebilen kişi zaten yöneticidir.
+
+Bunun bir bedeli var ve bilinerek ödeniyor: uzaktan okutma yapan personel,
+kaydının işaretlendiğini o an görmez. Okutması **reddedildiğinde** (katı mod
+açıksa) sebebi yine görür; aksi hâlde neden okutamadığını bilemezdi.
 
 ---
 
@@ -285,7 +356,7 @@ flutter analyze
 flutter test
 ```
 
-213 test beş katmanda:
+219 test beş katmanda:
 
 | Dosya | Neyi korur |
 |---|---|

@@ -27,6 +27,12 @@ enum DayStatus {
     _ => DayStatus.absent,
   };
 
+  /// Personelin **kendi** ekranında görünen ad.
+  ///
+  /// Yöneticinin listesinde "Gelmedi" doğru özettir; kişinin kendi
+  /// geçmişinde ise uygulamanın bildiği tek şey okutma olmadığıdır.
+  String get selfLabel => this == DayStatus.absent ? 'Giriş yok' : label;
+
   bool get isPresent => this == DayStatus.present;
   bool get isAbsent => this == DayStatus.absent;
 }

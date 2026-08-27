@@ -8,6 +8,23 @@ import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/report_filter.dart';
 import 'package:ubsoft_pdks/domain/enums/day_status.dart';
+import 'package:ubsoft_pdks/domain/permissions/app_permission.dart';
+
+/// Devam kaydının **kanıt ayrıntısını** kim görür?
+///
+/// Konum kararı (doğrulandı / sınırda / nokta dışında), noktaya uzaklık ve
+/// geç giriş işareti yöneticiye aittir: bunlar bir konuşmanın malzemesidir,
+/// personelin ekranında her gün karşısına çıkan bir yargı değil.
+///
+/// Personel kendi ekranında yalnız **ne olduğunu** görür: içeride mi, giriş
+/// var mı, çıkış var mı, ne kadar sürdü. Okutması reddedildiğinde sebebi
+/// yine görür — aksi hâlde neden okutamadığını bilemezdi.
+///
+/// Ölçüt olarak [AppPermission.attendanceViewAll] kullanılır: başkalarının
+/// devam kaydını görebilen kişi zaten yöneticidir.
+final Provider<bool> attendanceDetailVisibleProvider = Provider<bool>(
+  (ref) => ref.watch(canProvider(AppPermission.attendanceViewAll)),
+);
 
 /// Geçmiş ekranlarında seçili gün. Varsayılan: bugün.
 final NotifierProvider<SelectedDay, String> selectedDayProvider =

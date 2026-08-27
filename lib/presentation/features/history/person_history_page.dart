@@ -70,6 +70,7 @@ class _PersonHistoryPageState extends ConsumerState<PersonHistoryPage> {
               days: days,
               filter: _filter,
               userId: widget.userId,
+              showFlags: ref.watch(attendanceDetailVisibleProvider),
               expandedDay: _expandedDay,
               onToggle: (String dateKey) => setState(
                 () => _expandedDay = _expandedDay == dateKey ? null : dateKey,
@@ -122,6 +123,7 @@ class _DayList extends ConsumerWidget {
     required this.days,
     required this.filter,
     required this.userId,
+    required this.showFlags,
     required this.expandedDay,
     required this.onToggle,
   });
@@ -129,6 +131,9 @@ class _DayList extends ConsumerWidget {
   final List<AttendanceDay> days;
   final ReportFilter filter;
   final String userId;
+
+  /// Geç giriş ve konum rozetleri — personelin kendi geçmişinde kapalı.
+  final bool showFlags;
   final String? expandedDay;
   final ValueChanged<String> onToggle;
 
@@ -192,6 +197,7 @@ class _DayList extends ConsumerWidget {
             day: day,
             showName: false,
             showDate: true,
+            showFlags: showFlags,
             onTap: day.isEmpty ? null : () => onToggle(day.dateKey),
           ),
           // 180 ms: fark edilir ama beklenmez. Ağır geçişler bu ekranda
