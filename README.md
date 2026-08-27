@@ -22,6 +22,7 @@ birbirinden ayrılır.
 - [Kurulum](#kurulum)
 - [Geliştirme](#geliştirme)
 - [Testler](#testler)
+- [Okuma maliyeti](#okuma-maliyeti)
 - [Dağıtım](#dağıtım)
 
 ---
@@ -238,12 +239,21 @@ gcloud auth print-access-token
 # Yalnız süper admin
 dart run tool/seed.dart --token=<jeton> --only-super-admin
 
-# Süper admin + örnek müşteri, personel, QR noktaları ve on günlük devam kaydı
+# Süper admin + örnek müşteri: bir yönetici, on iki personel, üç QR noktası
+# ve son bir buçuk aylık devam kaydı
 dart run tool/seed.dart --token=<jeton>
 ```
 
 Betik yeniden çalıştırılabilir; sabit kimlikler kullandığı için kayıtları
-çoğaltmaz. Oluşturduğu hesaplar ekrana yazılır.
+çoğaltmaz. Devam kayıtlarını yazmadan **önce siler**: belge kimliği değişen
+bir okutma yanında kalsaydı, gün özeti "bir giriş" derken listede iki giriş
+görünürdü.
+
+Örnek kadronun her üyesinin bir davranış profili vardır (`_Profile`) —
+sürekli geç gelen, çıkışını unutan, konumu doğrulanamayan, öğle arası çıkıp
+dönen, yarı zamanlı, hafta sonu nöbetçisi ve işten ayrılmış bir personel.
+Amaç dolu görünen bir veritabanı değil, arayüzün **her durumunu** gerçek
+veriyle görebilmek: geç gelen biri yoksa geç giriş rozeti hiç denenemez.
 
 ### Firebase Console'da açılması gerekenler
 
@@ -275,7 +285,7 @@ flutter analyze
 flutter test
 ```
 
-175 test dört katmanda:
+213 test beş katmanda:
 
 | Dosya | Neyi korur |
 |---|---|
@@ -289,6 +299,7 @@ flutter test
 | `test/services/pdf_report_test.dart` | PDF gerçekten üretiliyor mu; gömülü fontlar yerinde mi. |
 | `test/e2e/punch_flow_test.dart` | Uçtan uca okutma: kural + depo + işlem + gün özeti. |
 | `test/presentation/all_screens_smoke_test.dart` | Her ekranın gerçek veriyle çizilmesi. |
+| `test/presentation/layout_stress_test.dart` | On iki kişilik kadro ve uzun adlarla üç genişlikte (360 / 768 / 1440) ve karanlık temada taşma denetimi. |
 | `test/presentation/interaction_test.dart` | Form doğrulama, konum alma, ayar ve yetki kaydı, geçmiş tablosu ve rapor dökümü. |
 
 Windows'ta `flutter test` bazen `build\unit_test_assets` dizinini silemediği
@@ -297,6 +308,35 @@ için patlar. Öncesinde:
 ```powershell
 Remove-Item -Recurse -Force build\unit_test_assets -ErrorAction SilentlyContinue
 ```
+
+---
+
+## Okuma maliyeti
+
+Firestore faturası okunan **belge sayısıyla** ölçülür, sorgu sayısıyla değil.
+Bu yüzden ekranların ne kadar okuduğu tasarımın parçasıdır:
+
+| Ekran | Okuma |
+|---|---|
+| Okut | Kişinin bugünkü özeti + okutmaları — canlı, tek dinleyici |
+| Bugün / Geçmiş | Seçili günün özetleri (kadro kadar belge) — canlı, tek dinleyici; iki ekran aynı günü seçtiğinde aynı dinleyiciyi paylaşır |
+| Raporlar | Aralıktaki özetler — **tek seferlik** okuma, oturum boyunca önbellekte |
+| Oturum açılışı | Bir kullanıcı + bir müşteri + rol varsayılanları |
+
+Üç karar bunu ucuz tutuyor:
+
+1. **Gün özeti ayrı bir belgedir.** "Bu ay kim kaç saat çalıştı" sorusu
+   binlerce okutma yerine otuz özet okunarak cevaplanır.
+2. **Rapor canlı dinlemez.** Rapor bir fotoğraftır; açık kalan bir ekran her
+   yeni okutmada yeniden belge okumaz.
+3. **Gün süzgeci ağa çıkmaz.** "Geç giriş", "çıkış yok", "gelmediği gün"
+   süzgeçleri istemcide çalışır ve okuma anahtarı yalnız tarih aralığı +
+   personelden oluşur (`ReportQuery`). Çipler arasında gezinmek sıfır okuma
+   maliyetlidir.
+
+Ölçek örneği: 12 kişilik bir kadroda otuz günlük rapor ≈ 360 belge okur ve
+o aralığa geri dönüldüğünde yeniden okumaz. Günlük panelde bir gün ≈ 12
+belgedir.
 
 ---
 

@@ -185,6 +185,44 @@ void main() {
     expect(onlyFlagged.rows, isEmpty);
   });
 
+  test('okutma silinince rapor önbelleği tazelenir', () async {
+    final PunchController controller = scope.container.read(
+      punchControllerProvider.notifier,
+    );
+
+    await controller.submit('1');
+    controller.reset();
+    await controller.submit('2');
+    await flush();
+
+    final ReportFilter filter = ReportFilter.today();
+    scope.retain(scope.container.listen(reportProvider(filter), (_, _) {}));
+
+    final ReportResult before = await scope.container.read(
+      reportProvider(filter).future,
+    );
+    expect(before.rows.single.days.single.exitCount, 1);
+
+    final List<AttendanceEvent> events = scope.container
+        .read(myTodayEventsProvider)
+        .requireValue;
+    final AttendanceEvent exit = events.firstWhere(
+      (AttendanceEvent e) => e.type == PunchType.exit,
+    );
+
+    await scope.container
+        .read(attendanceAdminControllerProvider.notifier)
+        .deleteEvent(exit);
+    await flush();
+
+    // Rapor okuması oturum boyunca önbelleklidir; silme onu geçersiz kılmasa
+    // ekranda silinmiş bir çıkış yaşamaya devam ederdi.
+    final ReportResult after = await scope.container.read(
+      reportProvider(filter).future,
+    );
+    expect(after.rows.single.days.single.exitCount, 0);
+  });
+
   test('tanımsız kod reddedilir', () async {
     await scope.container.read(punchControllerProvider.notifier).submit('999');
 

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ubsoft_pdks/application/checkpoint/checkpoint_providers.dart';
@@ -14,6 +15,7 @@ import 'package:ubsoft_pdks/presentation/features/history/history_page.dart';
 import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
 import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/permission_editor_page.dart';
+import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
 
 import '../support/test_harness.dart';
@@ -487,6 +489,108 @@ void main() {
       expect(find.text('09:45'), findsOneWidget);
       expect(find.text('08:30'), findsNothing);
       expect(tester.takeException(), isNull);
+    });
+  });
+
+  group('Personel formu', () {
+    testWidgets('yeni personel Auth hesabı ve Firestore kaydı üretir', (
+      WidgetTester tester,
+    ) async {
+      final TestScope scope = await adminScope();
+      addTearDown(scope.dispose);
+
+      // Kayıt başarılı olunca ekran personel listesine gider; yönlendirme
+      // için gerçek bir router gerekir.
+      await tester.pumpWidget(
+        wrapRouted(
+          const UserFormPage(),
+          container: scope.container,
+          size: const Size(800, 1600),
+        ),
+      );
+      await settle(tester);
+
+      // Alan etiketleri girdinin ÜSTÜNDE ayrı bir Text'tir (labelText değil);
+      // bu yüzden alanlar form sırasına göre bulunur.
+      await tester.enterText(find.byType(TextField).at(0), 'Yeni Personel');
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'yeni@beyazyapi.com',
+      );
+      await tester.enterText(find.byType(TextField).at(2), 'Pdks2026!');
+      await tester.enterText(
+        find.byWidgetPredicate(
+          (Widget w) =>
+              w is TextField && w.decoration?.hintText == 'Gece vardiyası',
+        ),
+        'Gece vardiyası',
+      );
+      await settle(tester);
+
+      final Finder save = find.widgetWithText(AppButton, 'Personeli ekle');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await settle(tester);
+
+      final QuerySnapshot<Map<String, dynamic>> users = await scope.firestore
+          .collection(FsPaths.tenants)
+          .doc(TestData.tenantId)
+          .collection(FsPaths.users)
+          .where('email', isEqualTo: 'yeni@beyazyapi.com')
+          .get();
+
+      expect(users.docs, hasLength(1));
+      final Map<String, dynamic> saved = users.docs.single.data();
+      expect(saved['displayName'], 'Yeni Personel');
+      expect(saved['role'], 'staff');
+      expect(saved['status'], 'active');
+      // Sicil no ve görev alanları kaldırıldı; yerlerine tek bir açıklama.
+      expect(saved['note'], 'Gece vardiyası');
+      expect(saved.containsKey('employeeNo'), isFalse);
+
+      // Kaydın ardından personel listesine dönülür.
+      expect(find.text('→ /kullanicilar'), findsOneWidget);
+    });
+
+    testWidgets('geçersiz e-posta ile kayıt yapılmaz', (
+      WidgetTester tester,
+    ) async {
+      final TestScope scope = await adminScope();
+      addTearDown(scope.dispose);
+
+      // Kayıt başarılı olunca ekran personel listesine gider; yönlendirme
+      // için gerçek bir router gerekir.
+      await tester.pumpWidget(
+        wrapRouted(
+          const UserFormPage(),
+          container: scope.container,
+          size: const Size(800, 1600),
+        ),
+      );
+      await settle(tester);
+
+      await tester.enterText(find.byType(TextField).at(0), 'Hatalı Kayıt');
+      await tester.enterText(
+        find.byType(TextField).at(1),
+        'bu-bir-eposta-degil',
+      );
+      await settle(tester);
+
+      final Finder save = find.widgetWithText(AppButton, 'Personeli ekle');
+      await tester.ensureVisible(save);
+      await tester.tap(save);
+      await settle(tester);
+
+      final QuerySnapshot<Map<String, dynamic>> users = await scope.firestore
+          .collection(FsPaths.tenants)
+          .doc(TestData.tenantId)
+          .collection(FsPaths.users)
+          .get();
+
+      // Yalnız yöneticinin kendi kaydı durur; hatalı form yazmadı ve ekran
+      // formda kaldı.
+      expect(users.docs, hasLength(1));
+      expect(find.text('→ /kullanicilar'), findsNothing);
     });
   });
 }
