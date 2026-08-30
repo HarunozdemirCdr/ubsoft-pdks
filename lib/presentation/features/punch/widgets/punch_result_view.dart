@@ -146,14 +146,14 @@ class _Success extends StatelessWidget {
         ],
 
         AppSpacing.vLg,
+        // Tek eylem: kapat.
+        //
+        // Burada bir "Yeniden okut" düğmesi vardı ve zararlıydı. Kayıt
+        // düşmüşken okunacak bir şey kalmaz; düğme ise bir öneri gibi değil
+        // **talimat** gibi okunuyordu ("yeniden okut"). Basan kişi kamerayı
+        // hâlâ aynı etiketin önünde tutuyor oluyor, kod anında yeniden
+        // gönderiliyor ve reddediliyordu — sonu gelmeyen bir döngü.
         AppButton.primaryWide(label: 'Tamam', onPressed: onClose),
-        AppSpacing.vXs,
-        AppButton(
-          label: 'Yeniden okut',
-          variant: AppButtonVariant.text,
-          expand: true,
-          onPressed: onAgain,
-        ),
       ],
     );
   }

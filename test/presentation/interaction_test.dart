@@ -1,12 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ubsoft_pdks/application/attendance/punch_controller.dart';
 import 'package:ubsoft_pdks/application/checkpoint/checkpoint_providers.dart';
 import 'package:ubsoft_pdks/application/user/user_providers.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
+import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
+import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
@@ -17,6 +20,7 @@ import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_form_pa
 import 'package:ubsoft_pdks/presentation/features/history/history_page.dart';
 import 'package:ubsoft_pdks/presentation/features/history/person_history_page.dart';
 import 'package:ubsoft_pdks/presentation/features/punch/punch_home_page.dart';
+import 'package:ubsoft_pdks/presentation/features/punch/widgets/punch_result_view.dart';
 import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
 import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
@@ -633,6 +637,88 @@ void main() {
   /// Personelin kendi ekranında yalnız ne olduğu yazar: içeride mi, giriş
   /// var mı, çıkış var mı. Aynı satırların yönetici ekranında kanıtıyla
   /// birlikte görünmeye devam ettiği de burada kayıt altındadır.
+  /// Okutma sonucu panelindeki düğmeler.
+  ///
+  /// Sahadan gelen şikâyet: "okutuyorum, sonra yeniden okut diyor, tekrar
+  /// okutunca zaten okuttunuz diyor, sonsuz döngüye giriyor."
+  ///
+  /// Sebebi başarı panelindeki "Yeniden okut" düğmesiydi. Kayıt düşmüşken
+  /// okunacak bir şey kalmaz; düğme ise öneri gibi değil **talimat** gibi
+  /// okunuyordu. Basan kişi kamerayı hâlâ aynı etiketin önünde tutuyor
+  /// oluyor, kod anında yeniden gönderiliyor ve reddediliyordu.
+  group('Okutma sonucu paneli', () {
+    Widget panel(PunchState state) => PunchResultView(
+      state: state,
+      showLocation: false,
+      onAgain: () {},
+      onClose: () {},
+    );
+
+    testWidgets('başarıda tek eylem vardır: Tamam', (
+      WidgetTester tester,
+    ) async {
+      final TestScope scope = await buildScope(signedInAs: TestData.user());
+      addTearDown(scope.dispose);
+
+      await tester.pumpWidget(
+        wrapPage(
+          panel(
+            PunchState.success(
+              event: AttendanceEvent(
+                id: 'e1',
+                tenantId: TestData.tenantId,
+                userId: TestData.staffUid,
+                userName: 'Ahmet Yılmaz',
+                type: PunchType.entry,
+                at: DateTime.now(),
+                dateKey: AppDate.todayKey(),
+                checkpointId: 'cp-1',
+                checkpointName: 'Ana Giriş',
+                checkpointCode: '1',
+                verdict: LocationVerdict.verified,
+              ),
+              checkpoint: TestData.checkpoint(),
+            ),
+          ),
+          container: scope.container,
+          size: const Size(420, 900),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Tamam'), findsOneWidget);
+      expect(find.text('Yeniden okut'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('reddedilen okutmada tekrar denenebilir', (
+      WidgetTester tester,
+    ) async {
+      // Ret farklıdır: sebep giderilebilir (yanlış etiket, konum kapalı),
+      // o yüzden burada bir çıkış yolu bulunmalı.
+      final TestScope scope = await buildScope(signedInAs: TestData.user());
+      addTearDown(scope.dispose);
+
+      await tester.pumpWidget(
+        wrapPage(
+          panel(
+            const PunchState.failed(
+              PunchFailure('Bu kodu az önce okuttunuz.', code: 'too-soon'),
+            ),
+          ),
+          container: scope.container,
+          size: const Size(420, 900),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Bu kodu az önce okuttunuz.'), findsOneWidget);
+      expect(find.text('Tekrar dene'), findsOneWidget);
+      expect(find.text('Vazgeç'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   group('Personel ne görür', () {
     Future<TestScope> staffScope() async {
       final TestScope scope = await buildScope(

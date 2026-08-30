@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
@@ -49,14 +52,42 @@ final class CheckpointRepositoryImpl extends FirestoreRepositoryBase
             ),
       );
 
+  /// Belgeyi önce sunucudan, süre dolarsa önbellekten okur.
+  ///
+  /// Okutma akışının ortasında süresiz beklemek kabul edilemez: kullanıcı
+  /// dönen bir göstergeye bakar ve okutmanın olup olmadığını bilemez.
+  /// Önbelleğe düşmek doğru karşılıktır — nokta bilgisi seyrek değişir ve
+  /// bir önceki okutmadan zaten yereldedir; taze olmayan bir ad, hiç
+  /// çalışmayan bir okutmadan iyidir.
+  Future<DocumentSnapshot<Map<String, dynamic>>> _read(
+    DocumentReference<Map<String, dynamic>> ref,
+  ) async {
+    try {
+      return await ref.get().timeout(AppConfig.lookupTimeout);
+    } on TimeoutException {
+      try {
+        return await ref.get(const GetOptions(source: Source.cache));
+      } on FirebaseException {
+        // Önbellekte de yok: gerçekten bağlantı sorunu. Kullanıcıya
+        // "kod tanımsız" demek yanıltıcı olurdu.
+        throw const NetworkFailure(
+          message:
+              'Bağlantı çok yavaş; kod okunamadı. Bağlantınızı kontrol edip '
+              'tekrar deneyin.',
+          code: 'lookup-timeout',
+        );
+      }
+    }
+  }
+
   @override
   Future<Result<Checkpoint>> findByCode({
     required String tenantId,
     required String code,
   }) => guard(() async {
-    final DocumentSnapshot<Map<String, dynamic>> entry = await _index(
-      tenantId,
-    ).doc(code).get();
+    final DocumentSnapshot<Map<String, dynamic>> entry = await _read(
+      _index(tenantId).doc(code),
+    );
 
     if (!entry.exists) {
       throw PunchFailure(
@@ -68,9 +99,9 @@ final class CheckpointRepositoryImpl extends FirestoreRepositoryBase
     final String checkpointId = (entry.data() ?? <String, dynamic>{}).str(
       FsFields.checkpointId,
     );
-    final DocumentSnapshot<Map<String, dynamic>> doc = await _checkpoints(
-      tenantId,
-    ).doc(checkpointId).get();
+    final DocumentSnapshot<Map<String, dynamic>> doc = await _read(
+      _checkpoints(tenantId).doc(checkpointId),
+    );
 
     if (!doc.exists) {
       // Defter kaydı duruyor ama nokta silinmiş: veri tutarsızlığı. Kullanıcı

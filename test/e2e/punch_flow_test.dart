@@ -279,6 +279,53 @@ void main() {
     expect(past.workedMinutesAt(DateTime.now()), 0);
   });
 
+  /// Sahadaki asıl şikâyet: "okutuyorum, sonra yeniden okut diyor, tekrar
+  /// okutunca zaten okuttunuz diyor, sonsuz döngüye giriyor."
+  ///
+  /// Burada o döngünün alan tarafı kapatılır. Arayüz tarafı (başarı
+  /// panelinde artık "Yeniden okut" düğmesi olmaması ve kameranın aynı kodu
+  /// anında yeniden göndermemesi) `interaction_test.dart` içindedir.
+  test('kazara ikinci okutma kaydı bozmaz', () async {
+    final TestScope guarded = await buildScope(
+      signedInAs: TestData.user(),
+      checkpoints: <Checkpoint>[
+        TestData.checkpoint(id: 'cp-both', code: '9', kind: CheckpointKind.both),
+      ],
+      location: TestData.locationNorthOf(15),
+      punchCooldown: const Duration(minutes: 1),
+    );
+    addTearDown(guarded.dispose);
+    await guarded.container.read(sessionProvider.future);
+
+    final PunchController controller = guarded.container.read(
+      punchControllerProvider.notifier,
+    );
+
+    await controller.submit('9');
+    expect(guarded.container.read(punchControllerProvider), isA<PunchSuccess>());
+    await flush();
+
+    // Telefon hâlâ etiketin önünde: ikinci okutma.
+    await controller.submit('9');
+    final PunchState second = guarded.container.read(punchControllerProvider);
+
+    expect(second, isA<PunchFailed>(), reason: _describe(second));
+    expect((second as PunchFailed).failure.code, 'too-soon');
+
+    await flush();
+
+    // Asıl kanıt: kişi hâlâ İÇERİDE. Bekleme kuralı olmasaydı giriş+çıkış
+    // noktası bu ikinci okutmayı çıkış sayar, kişi bir saniye arayla girip
+    // çıkmış ve o gün sıfır dakika çalışmış görünürdü.
+    final AttendanceDay today = guarded.container
+        .read(myTodayProvider)
+        .requireValue;
+
+    expect(today.open, isTrue);
+    expect(today.entryCount, 1);
+    expect(today.exitCount, 0);
+  });
+
   test('tanımsız kod reddedilir', () async {
     await scope.container.read(punchControllerProvider.notifier).submit('999');
 

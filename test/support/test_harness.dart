@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:ubsoft_pdks/application/attendance/attendance_providers.dart';
+import 'package:ubsoft_pdks/application/attendance/punch_controller.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
@@ -268,6 +269,7 @@ Future<TestScope> buildScope({
   List<Checkpoint> checkpoints = const <Checkpoint>[],
   List<AppUser> extraUsers = const <AppUser>[],
   ScanLocation? location,
+  Duration punchCooldown = Duration.zero,
 }) async {
   final FakeFirebaseFirestore firestore = FakeFirebaseFirestore();
   final Tenant company = tenant ?? TestData.tenant();
@@ -296,6 +298,16 @@ Future<TestScope> buildScope({
       firestoreProvider.overrideWithValue(firestore),
       authRepositoryProvider.overrideWithValue(auth),
       locationServiceProvider.overrideWithValue(locationService),
+      // Kazara ikinci okutmaya karşı konan bekleme süresi testlerde
+      // varsayılan olarak SIFIRDIR.
+      //
+      // Uçtan uca senaryolar bir girişi ve çıkışı milisaniyeler içinde
+      // yapar — gerçek bir insanın asla yapamayacağı hızda. Süre açık
+      // bırakılsaydı bu testler kuralın kendisini değil, testin hızını
+      // ölçerdi. Kuralın doğruluğu `resolve_punch_test.dart` içinde ve
+      // `punch_flow_test.dart`'taki "kazara ikinci okutma" senaryosunda
+      // ayrıca sınanır.
+      punchCooldownProvider.overrideWithValue(punchCooldown),
     ],
   );
 

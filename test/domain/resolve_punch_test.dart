@@ -140,6 +140,105 @@ void main() {
     });
   });
 
+  /// Kazara ikinci okutma.
+  ///
+  /// Sahadan gelen şikâyet buydu: kod okunuyor, sonuç paneli çıkıyor,
+  /// kullanıcı telefonu hâlâ etiketin önünde tutarken ikinci bir okutma
+  /// gidiyor. En pahalı hâli giriş+çıkış noktasındadır — tek etiket iki iş
+  /// gördüğü için kişi bir saniye arayla içeri alınıp dışarı çıkarılır ve o
+  /// gün sıfır dakika çalışmış görünür. Kayıt sessizce yanlış olur.
+  group('ResolvePunch — kazara ikinci okutma', () {
+    // Testin kendi değeri. Varsayılanla (AppConfig.punchCooldown) aynı
+    // olsaydı beklentiler yapılandırma sabitine bağlanır, sabit değişince
+    // test sessizce başka bir şeyi ölçmeye başlardı.
+    const Duration cooldown = Duration(seconds: 30);
+    final DateTime punchedAt = DateTime(2026, 8, 27, 8, 30);
+
+    AttendanceDay dayPunchedAt(DateTime at, {bool open = true}) =>
+        AttendanceDay.empty(
+          tenantId: TestData.tenantId,
+          userId: TestData.staffUid,
+          userName: 'Ahmet Yılmaz',
+          dateKey: '2026-08-27',
+        ).copyWith(
+          open: open,
+          entryCount: 1,
+          firstEntryAt: at,
+          lastEntryAt: at,
+        );
+
+    test('bekleme süresi dolmadan ikinci okutma reddedilir', () {
+      final PunchResolution result = ResolvePunch.call(
+        checkpoint: TestData.checkpoint(kind: CheckpointKind.both),
+        today: dayPunchedAt(punchedAt),
+        settings: const TenantSettings(),
+        location: _verified,
+        now: punchedAt.add(const Duration(seconds: 3)),
+        cooldown: cooldown,
+      );
+
+      expect(result, isA<PunchRejected>());
+      expect((result as PunchRejected).failure.code, 'too-soon');
+    });
+
+    test('reddin gerekçesi kişiyi paniğe sevk etmez', () {
+      // "Zaten giriş yapmışsınız. Önce çıkış kodunu okutmalısınız." demek,
+      // olmayan bir sorunu tarif eder: olan biten yalnızca kodun iki kez
+      // okunmasıdır ve kayıt zaten alınmıştır. Bu yüzden bekleme denetimi
+      // yön denetiminden ÖNCE gelir.
+      final PunchResolution result = ResolvePunch.call(
+        checkpoint: TestData.checkpoint(),
+        today: dayPunchedAt(punchedAt),
+        settings: const TenantSettings(),
+        location: _verified,
+        now: punchedAt.add(const Duration(seconds: 3)),
+        cooldown: cooldown,
+      );
+
+      final String message = (result as PunchRejected).failure.message;
+      expect(message, contains('Kaydınız alındı'));
+      expect(message, isNot(contains('Zaten giriş yapmışsınız')));
+    });
+
+    test('süre dolduktan sonra normal kurallar işler', () {
+      // Giriş+çıkış noktası: bir dakika sonra bu okutma gerçek bir çıkıştır.
+      final PunchResolution result = ResolvePunch.call(
+        checkpoint: TestData.checkpoint(kind: CheckpointKind.both),
+        today: dayPunchedAt(punchedAt),
+        settings: const TenantSettings(),
+        location: _verified,
+        now: punchedAt.add(const Duration(minutes: 2)),
+        cooldown: cooldown,
+      );
+
+      expect(result, isA<PunchAccepted>());
+      expect((result as PunchAccepted).type, PunchType.exit);
+    });
+
+    test('günün ilk okutması beklemeye takılmaz', () {
+      final PunchResolution result = ResolvePunch.call(
+        checkpoint: TestData.checkpoint(),
+        today: _day(),
+        settings: const TenantSettings(),
+        location: _verified,
+        now: punchedAt,
+        cooldown: cooldown,
+      );
+
+      expect(result, isA<PunchAccepted>());
+    });
+
+    test('son okutma anı iki damgadan geç olanıdır', () {
+      // Gün içinde giriş de çıkış da varsa, bekleme çıkıştan sayılmalı.
+      final AttendanceDay day = dayPunchedAt(punchedAt, open: false).copyWith(
+        exitCount: 1,
+        lastExitAt: punchedAt.add(const Duration(hours: 4)),
+      );
+
+      expect(day.lastPunchAt, punchedAt.add(const Duration(hours: 4)));
+    });
+  });
+
   group('ResolvePunch — konum kuralları', () {
     test('konum zorunluyken ölçüm alınamazsa reddedilir', () {
       final PunchResolution result = ResolvePunch.call(

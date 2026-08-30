@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:ubsoft_pdks/application/attendance/attendance_providers.dart';
 import 'package:ubsoft_pdks/application/attendance/punch_controller.dart';
+import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
@@ -30,6 +31,30 @@ class ScanPage extends ConsumerStatefulWidget {
 }
 
 class _ScanPageState extends ConsumerState<ScanPage> {
+  /// Bu ekranda en son gönderilen kod ve gönderilme anı.
+  ///
+  /// Kamera saniyede birkaç kare üretir ve etiket önündeyken **aynı kodu**
+  /// durmadan bildirir. Sonuç paneli kapandığı anda (ya da "Tekrar dene"ye
+  /// basıldığında) telefon hâlâ etikete bakıyor olduğu için kod anında
+  /// yeniden gönderiliyor, aynı cevabı alıyor ve kullanıcı çıkamadığı bir
+  /// döngüye giriyordu. Aynı kodun yeniden işlenmesi için kısa bir süre
+  /// geçmesi ya da başka bir koda bakılması gerekir.
+  String? _lastCode;
+  DateTime? _lastCodeAt;
+
+  /// Bu kod şu an yok sayılmalı mı?
+  bool _isRepeat(String code) {
+    if (_lastCode != code) return false;
+    final DateTime? at = _lastCodeAt;
+    if (at == null) return false;
+    return DateTime.now().difference(at) < AppConfig.punchCooldown;
+  }
+
+  void _remember(String code) {
+    _lastCode = code;
+    _lastCodeAt = DateTime.now();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +73,8 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     if (state.isBusy || state.isResolved) return;
 
     final String? code = QrCodeReader.extract(capture);
+    if (code != null && _isRepeat(code)) return;
+    if (code != null) _remember(code);
     if (code == null) {
       // Okundu ama bizim biçimimizde değil: kullanıcıya "kamera çalışmıyor"
       // dedirtmemek için ham içerik de kural motoruna gönderilir, hata

@@ -1,3 +1,4 @@
+import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
@@ -50,21 +51,54 @@ final class PunchRejected extends PunchResolution {
 /// Denetim sırası, kullanıcıya **en yararlı** hata mesajını verecek şekilde
 /// seçildi:
 /// 1. Nokta etkin mi?
-/// 2. Yön nedir? (Noktanın türü sabitse ondan, değilse kişinin o anki
+/// 2. Az önce okutulmuş mu? (Kazara ikinci okutma.)
+/// 3. Yön nedir? (Noktanın türü sabitse ondan, değilse kişinin o anki
 ///    durumundan çözülür.)
-/// 3. Aynı yön üst üste tekrarlanıyor mu?
-/// 4. Konum kuralları sağlanıyor mu?
+/// 4. Aynı yön üst üste tekrarlanıyor mu?
+/// 5. Konum kuralları sağlanıyor mu?
+///
+/// İkinci maddenin üçüncüden **önce** gelmesi bilinçlidir. Kazara ikinci
+/// okutmada "Zaten giriş yapmışsınız. Önce çıkış kodunu okutmalısınız."
+/// demek, kişiye yapmaması gereken bir şeyi tarif eder ve panikletir; oysa
+/// olan biten yalnızca kodun iki kez okunmasıdır.
 abstract final class ResolvePunch {
   static PunchResolution call({
     required Checkpoint checkpoint,
     required AttendanceDay today,
     required TenantSettings settings,
     required LocationCheck location,
+    DateTime? now,
+    Duration cooldown = AppConfig.punchCooldown,
   }) {
     if (!checkpoint.active) {
       return PunchResolution.rejected(
         PunchFailure('${checkpoint.name} noktası devre dışı bırakılmış.'),
       );
+    }
+
+    // Kazara ikinci okutma.
+    //
+    // En pahalı hâli giriş+çıkış noktasındadır: tek etiket iki iş gördüğü
+    // için art arda iki okutma kişiyi bir saniye arayla içeri alıp dışarı
+    // çıkarır ve o gün sıfır dakika çalışmış görünür. Kayıt sessizce yanlış
+    // olur; kimse fark etmez.
+    final DateTime moment = now ?? DateTime.now();
+    if (today.lastPunchAt case final DateTime last) {
+      final Duration since = moment.difference(last);
+      if (!since.isNegative && since < cooldown) {
+        // Mesajda saat YAZILMAZ. Saati biçimlendirmek `intl`in yerel
+        // verisini ister; bu sınıf ise saf kalmalı — cihaz, ağ ve yerel
+        // ayar bilmeyen bir kural motoru, gerçek bir çalışma ortamı
+        // kurmadan sınanabilir. Kullanıcının bilmesi gereken zaten saat
+        // değil, kaydının alınmış olduğudur.
+        return const PunchResolution.rejected(
+          PunchFailure(
+            'Bu kodu az önce okuttunuz. Kaydınız alındı, tekrar okutmanıza '
+            'gerek yok.',
+            code: 'too-soon',
+          ),
+        );
+      }
     }
 
     final PunchType type = resolveType(

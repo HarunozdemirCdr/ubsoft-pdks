@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ubsoft_pdks/application/attendance/attendance_providers.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
+import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/core/utils/qr_code.dart';
@@ -72,6 +75,16 @@ final class PunchFailed extends PunchState {
 /// Konum adımı okutmayı **kendi başına** reddetmez: reddetme kararı tek bir
 /// yerde, kural motorunda verilir. Böylece "hangi ayar neyi engelliyor"
 /// sorusunun cevabı tek dosyada durur.
+/// Aynı kişinin iki okutması arasında olması gereken en az süre.
+///
+/// Sağlayıcı üzerinden verilir ki testler sıfırlayabilsin: uçtan uca
+/// senaryolar bir girişi ve çıkışı milisaniyeler içinde yapar — gerçek bir
+/// insanın asla yapamayacağı hızda. Kuralın kendisi
+/// `test/domain/resolve_punch_test.dart` içinde ayrıca sınanır.
+final Provider<Duration> punchCooldownProvider = Provider<Duration>(
+  (ref) => AppConfig.punchCooldown,
+);
+
 class PunchController extends Notifier<PunchState> {
   @override
   PunchState build() => const PunchState.idle();
@@ -117,12 +130,34 @@ class PunchController extends Notifier<PunchState> {
       return;
     }
 
-    // 1) Kod hangi noktaya ait?
+    // 1) Kod çözümü ve konum ölçümü AYNI ANDA başlatılır.
+    //
+    // Önceden sırayla yapılıyordu: önce kod çözülüyor, sonra konum
+    // ölçülüyordu. İkisi birbirinden bağımsız olduğu için toplam süre boş
+    // yere ikisinin toplamıydı; şimdi yavaş olanın süresi kadar. Konum
+    // ölçümü uzun kuyruklu olandır (GPS ilk sabitlemesi saniyeler sürer),
+    // bu yüzden kazanç sahada hissedilir.
+    //
+    // Günün özeti bu kümeye BİLEREK alınmadı. O, yazma ile yarışan tek
+    // girdidir: "zaten giriş yapmışsınız" denetimi onun tazeliğine bağlıdır
+    // ve erken okumak, üst üste okutmaya kapı açar. Mümkün olan en geç anda,
+    // 3. adımda okunur.
+    //
+    // Konum, noktanın koordinatı bilinmeden başlatılır; nokta konumsuzsa
+    // sonuç yalnızca kullanılmaz.
     state = const PunchState.working('Kod okunuyor…');
 
-    final Result<Checkpoint> found = await ref
+    final Future<Result<Checkpoint>> findingCheckpoint = ref
         .read(checkpointRepositoryProvider)
         .findByCode(tenantId: tenant.id, code: code);
+    // `ignore()`: kod çözülemezse aşağıda erken dönülür ve konum ölçümü
+    // terk edilir. Terk edilen bir Future'ın hatası SAHİPSİZ kalır ve Dart
+    // onu yakalanmamış bir istisna olarak bildirir — kullanıcı doğru hata
+    // mesajını görürken konsola alakasız bir çökme düşerdi. Hatayı burada
+    // sahiplenir; ileride `await` edilirse yine normal biçimde fırlatır.
+    final Future<ScanLocation?> readingLocation = _readLocation()..ignore();
+
+    final Result<Checkpoint> found = await findingCheckpoint;
 
     if (found case Err<Checkpoint>(:final Failure failure)) {
       state = PunchState.failed(failure);
@@ -133,7 +168,9 @@ class PunchController extends Notifier<PunchState> {
     // 2) Konum — kaydın kanıt tarafı.
     state = const PunchState.working('Konum alınıyor…');
 
-    final ScanLocation? location = await _readLocation(checkpoint);
+    final ScanLocation? location = checkpoint.hasLocation
+        ? await readingLocation
+        : null;
     final LocationCheck check = VerifyLocation.call(
       checkpoint: checkpoint,
       location: location,
@@ -147,6 +184,7 @@ class PunchController extends Notifier<PunchState> {
     final AttendanceDay today = await ref.read(myTodayProvider.future);
 
     final PunchResolution resolution = ResolvePunch.call(
+      cooldown: ref.read(punchCooldownProvider),
       checkpoint: checkpoint,
       today: today,
       settings: tenant.settings,
@@ -189,9 +227,11 @@ class PunchController extends Notifier<PunchState> {
   /// Hata burada gösterilmez: konumun **yokluğu** da bir bilgidir ve karar
   /// kural motorunundur. Ayar konumu zorunlu tutmuyorsa okutma "Konum yok"
   /// damgasıyla kabul edilir.
-  Future<ScanLocation?> _readLocation(Checkpoint checkpoint) async {
-    if (!checkpoint.hasLocation) return null;
-
+  ///
+  /// Nokta filtresi burada DEĞİL, çağıran tarafta uygulanır: ölçüm kod
+  /// çözülmeden başlatıldığı için noktanın koordinatı olup olmadığı bu
+  /// noktada henüz bilinmez.
+  Future<ScanLocation?> _readLocation() async {
     final Result<ScanLocation> result = await ref
         .read(locationServiceProvider)
         .current();

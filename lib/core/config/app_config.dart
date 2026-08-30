@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 /// `flutter build web --dart-define=USE_EMULATOR=true`
 abstract final class AppConfig {
   static const String appName = 'UBSoft PDKS';
-  static const String appVersion = '1.2.0';
+  static const String appVersion = '1.2.1';
 
   /// Yerel Firebase emulator'a bağlan (geliştirme ve kural testleri için).
   static const bool useEmulator = bool.fromEnvironment('USE_EMULATOR');
@@ -63,6 +63,33 @@ abstract final class AppConfig {
   /// Tarayıcı bazen 2–5 km doğrulukla konum bildirir (IP tabanlı tahmin).
   /// Bu payı sınırsız bırakmak, evden okutan birini de "sınırda" saydırırdı.
   static const int maxAccuracySlackMeters = 150;
+
+  /// QR kodunu noktaya çevirirken sunucunun beklenecek en uzun süresi.
+  ///
+  /// Firestore'un `get()` çağrısında zaman aşımı **yoktur**: bağlantı
+  /// bozuksa süresiz bekler. Okutma akışının ortasında bu, dönen bir
+  /// göstergeye bakan ve ne olduğunu anlamayan bir kullanıcı demekti
+  /// (sahada 30 saniyeye varan bekleme bildirildi). Süre dolduğunda
+  /// okutma tıkanmaz: aynı sorgu bu kez **önbellekten** cevaplanır — nokta
+  /// bilgisi daha önce okunmuşsa okutma normal biçimde sürer.
+  ///
+  /// Ölçüm: iki okumanın sunucu tarafı toplamı ~0,6 saniye. Dört saniye,
+  /// yavaş bir bağlantıya bolca pay bırakır ama beklemeyi insanın
+  /// katlanabileceği sınırda tutar.
+  static const Duration lookupTimeout = Duration(seconds: 4);
+
+  /// Aynı kişinin iki okutması arasında olması gereken en az süre.
+  ///
+  /// Kazara ikinci okutmaya karşıdır ve asıl tehlikeli olan **giriş+çıkış**
+  /// noktalarıdır: tek etiket iki iş gördüğü için, art arda iki okutma
+  /// kişiyi bir saniye arayla içeri alıp dışarı çıkarır ve o gün sıfır
+  /// dakika çalışmış görünür. Sabit yönlü noktalarda ikinci okutma zaten
+  /// reddedilirdi ama mesajı ("Zaten giriş yapmışsınız") kazara okutan biri
+  /// için gereksiz sert.
+  ///
+  /// Bir dakika, gerçek bir giriş–çıkış arasında asla görülmeyecek kadar
+  /// kısa; kazara okutmayı yakalayacak kadar uzun.
+  static const Duration punchCooldown = Duration(minutes: 1);
 
   /// Konum alınırken beklenecek en uzun süre.
   static const Duration locationTimeout = Duration(seconds: 12);

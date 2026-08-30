@@ -108,6 +108,17 @@ class AttendanceDay extends Equatable {
 
   Duration get workedDuration => Duration(minutes: workedMinutes);
 
+  /// Bu güne düşen **son** okutmanın anı — yönü ne olursa olsun.
+  ///
+  /// Ayrı bir alan tutulmaz; iki damgadan geç olanı zaten bu bilgidir.
+  DateTime? get lastPunchAt {
+    final DateTime? entry = lastEntryAt;
+    final DateTime? exit = lastExitAt;
+    if (entry == null) return exit;
+    if (exit == null) return entry;
+    return exit.isAfter(entry) ? exit : entry;
+  }
+
   /// Günün durumu.
   ///
   /// [now] verilerek geçmiş bir gün değerlendirildiğinde, açık kalmış bir
