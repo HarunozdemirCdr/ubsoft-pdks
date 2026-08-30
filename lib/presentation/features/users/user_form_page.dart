@@ -276,8 +276,8 @@ class _RoleSelector extends StatelessWidget {
           value.isAdmin
               ? 'Yönetici şirketteki tüm yetkilere sahiptir; ayrıca izin '
                     'ayarlanmaz.'
-              : 'Personel QR okutur ve kendi kayıtlarını görür. Yetkileri '
-                    'kişiye özel ayarlanabilir.',
+              : 'Personel QR okutur ve kendi kayıtlarını görür; başkasının '
+                    'kaydını göremez.',
           style: AppTypography.small(context.colors.onSurfaceVariant),
         ),
       ],
@@ -301,17 +301,6 @@ class _ExistingUserActions extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          if (user.role.isStaff &&
-              ref.watch(canProvider(AppPermission.userAssignPermissions)))
-            ListTile(
-              leading: const Icon(Icons.tune_rounded),
-              title: const Text('Yetkiler'),
-              subtitle: const Text('Bu personelin izinlerini ayarla'),
-              trailing: const Icon(Icons.chevron_right_rounded),
-              contentPadding: EdgeInsets.zero,
-              onTap: () => context.go(AppRoutes.userPermissionsPath(user.uid)),
-            ),
-
           if (ref.watch(canProvider(AppPermission.userResetPassword)))
             ListTile(
               leading: const Icon(Icons.lock_reset_rounded),

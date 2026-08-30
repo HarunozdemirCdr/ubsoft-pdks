@@ -67,9 +67,6 @@ abstract final class AppRoutes {
   static const String userEdit = ':userId';
   static const String userEditName = 'userEdit';
 
-  static const String userPermissions = 'yetkiler';
-  static const String userPermissionsName = 'userPermissions';
-
   static const String reports = '/raporlar';
   static const String reportsName = 'reports';
 
@@ -110,8 +107,6 @@ abstract final class AppRoutes {
   static String checkpointEditPath(String id) => '/noktalar/$id';
   static String checkpointQrPath(String id) => '/noktalar/$id/qr';
   static String userEditPath(String userId) => '/kullanicilar/$userId';
-  static String userPermissionsPath(String userId) =>
-      '/kullanicilar/$userId/yetkiler';
   static String tenantDetailPath(String tenantId) =>
       '/admin/musteriler/$tenantId';
 

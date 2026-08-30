@@ -28,7 +28,6 @@ import 'package:ubsoft_pdks/presentation/features/punch/punch_home_page.dart';
 import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
 import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/today/today_page.dart';
-import 'package:ubsoft_pdks/presentation/features/users/permission_editor_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_list_page.dart';
 
@@ -346,16 +345,6 @@ void main() {
       await tester.pumpWidget(
         wrapPage(
           const UserFormPage(userId: 'u1'),
-          container: scope.container,
-          size: const Size(800, 1600),
-        ),
-      );
-      await settle(tester);
-      expect(tester.takeException(), isNull);
-
-      await tester.pumpWidget(
-        wrapPage(
-          const PermissionEditorPage(userId: 'u1'),
           container: scope.container,
           size: const Size(800, 1600),
         ),

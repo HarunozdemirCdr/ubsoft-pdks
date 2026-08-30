@@ -192,24 +192,6 @@ class UserController extends AsyncNotifier<void> {
     return result;
   }
 
-  /// Kullanıcıya özel izin ayarlarını yazar.
-  ///
-  /// Haritada bulunmayan izinler rol varsayılanına döner; bu yüzden yalnız
-  /// bilinçli değiştirilenler gönderilir.
-  Future<Result<void>> savePermissions(
-    AppUser user,
-    Map<String, bool> overrides,
-  ) async {
-    state = const AsyncValue<void>.loading();
-    final Result<void> result = await _users.updatePermissions(
-      tenantId: user.tenantId,
-      uid: user.uid,
-      overrides: overrides,
-    );
-    _finish(result);
-    return result;
-  }
-
   Future<Result<void>> deleteUser(AppUser user) async {
     state = const AsyncValue<void>.loading();
     final Result<void> result = await _users.softDelete(

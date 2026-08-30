@@ -6,28 +6,34 @@ import 'package:flutter/material.dart';
 /// yerde bu sınıftaki token'lar kullanılır. Böylece tema değişimi, beyaz etiket
 /// (white-label) desteği ve karanlık mod tek noktadan yönetilir.
 ///
-/// **Palet neden mor + sıcak nötr?** Vurgu rengi mavi olsaydı, giriş/çıkış
-/// için kullanılan yeşil–kırmızı ikilisiyle birlikte ekranda üç doygun renk
-/// yarışırdı; ayrıca mavi vurgu bu kurumun devriye ürününün rengidir ve iki
-/// uygulama tek uygulama gibi görünürdü. Mor, durum renklerinin hiçbiriyle
-/// karışmaz. Nötr skala da soğuk gri yerine sıcak taş tonundadır: aynı
-/// düzenin bile farklı bir üründen geldiği ilk bakışta anlaşılır.
+/// **Palet neden lacivert + sıcak nötr?** Lacivert, devam kontrol
+/// yazılımlarının alıştırdığı renktir; kurumsal durur ve ekranın işine
+/// karışmaz. Doygunluğu düşük olduğu için giriş/çıkış'ın yeşil–kırmızı
+/// ikilisiyle yarışmaz — parlak bir mavi seçilseydi üç doygun renk aynı
+/// anda dikkat isterdi.
+///
+/// Aynı kurumun devriye ürünü de mavi kullanır (`#2563EB`, canlı bir
+/// mavi). İki uygulamanın tek uygulama gibi görünmemesi için ayrım
+/// bilinçli olarak üç yerde birden kurulur: **ton** (lacivert `#1E3A8A`,
+/// canlı maviden belirgin biçimde koyu), **nötr skala** (soğuk gri değil
+/// sıcak taş) ve **tipografi** (Manrope değil Plus Jakarta Sans). Tek
+/// başına renk farkı yeterli olmazdı.
 abstract final class AppColors {
   // ─────────────────────────── Vurgu (Primary) ───────────────────────────
   /// Birincil vurgu rengi. Butonlar, aktif durumlar, bağlantılar.
-  static const Color primary = Color(0xFF6D28D9);
+  static const Color primary = Color(0xFF1E3A8A);
 
   /// Hover / basılı durum.
-  static const Color primaryHover = Color(0xFF5B21B6);
+  static const Color primaryHover = Color(0xFF172554);
 
   /// Koyu zemin üzerinde okunabilir vurgu tonu.
-  static const Color primaryOnDark = Color(0xFFC4B5FD);
+  static const Color primaryOnDark = Color(0xFF93C5FD);
 
   /// Açık ikon arkaplanı (light tema).
-  static const Color primarySurface = Color(0xFFEDE9FE);
+  static const Color primarySurface = Color(0xFFDBEAFE);
 
   /// Koyu tema ikon arkaplanı (primary @ %20 opaklık).
-  static const Color primarySurfaceDark = Color(0x336D28D9);
+  static const Color primarySurfaceDark = Color(0x331E3A8A);
 
   // ─────────────────────────── Nötr skala ───────────────────────────
   //

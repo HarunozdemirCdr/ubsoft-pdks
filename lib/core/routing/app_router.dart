@@ -27,7 +27,6 @@ import 'package:ubsoft_pdks/presentation/features/punch/scan_page.dart';
 import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
 import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/today/today_page.dart';
-import 'package:ubsoft_pdks/presentation/features/users/permission_editor_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_list_page.dart';
 import 'package:ubsoft_pdks/presentation/shell/app_shell.dart';
@@ -186,18 +185,6 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((ref) {
                   state,
                   UserFormPage(userId: state.pathParameters['userId']),
                 ),
-                routes: <RouteBase>[
-                  GoRoute(
-                    path: AppRoutes.userPermissions,
-                    name: AppRoutes.userPermissionsName,
-                    pageBuilder: (context, state) => _fade(
-                      state,
-                      PermissionEditorPage(
-                        userId: state.pathParameters['userId'] ?? '',
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),

@@ -159,6 +159,50 @@ class _ReportPageState extends ConsumerState<ReportPage> {
 }
 
 /// Tarih aralığı, personel ve gün süzgeci.
+/// Hazır tarih aralıkları — açılır listenin seçenekleri.
+///
+/// Kullanıcının aralık seçmek için bildiği tek yer burasıdır; [custom]
+/// takvimi açar ve seçilen aralık listede kendi tarihleriyle görünür.
+enum _RangeChoice {
+  today('Bugün'),
+  last7('Son 7 gün'),
+  last30('Son 30 gün'),
+  thisMonth('Bu ay'),
+  custom('Tarih seç…');
+
+  const _RangeChoice(this.label);
+
+  final String label;
+
+  /// [custom] dışındaki seçeneklerin ürettiği aralık.
+  ReportFilter? get filter => switch (this) {
+    _RangeChoice.today => ReportFilter.today(),
+    _RangeChoice.last7 => ReportFilter.lastDays(7),
+    _RangeChoice.last30 => ReportFilter.lastDays(30),
+    _RangeChoice.thisMonth => ReportFilter.thisMonth(),
+    _RangeChoice.custom => null,
+  };
+
+  /// [current] hangi seçeneğe denk düşüyor? Hiçbirine uymuyorsa [custom].
+  static _RangeChoice of(ReportFilter current) {
+    for (final _RangeChoice choice in values) {
+      final ReportFilter? preset = choice.filter;
+      if (preset == null) continue;
+      if (preset.fromKey == current.fromKey &&
+          preset.toKey == current.toKey) {
+        return choice;
+      }
+    }
+    return _RangeChoice.custom;
+  }
+}
+
+/// Rapor süzgeçleri: aralık, personel, hangi günler.
+///
+/// Üçü de açılır listedir ve hepsi aynı biçimdedir. Önceki hâlinde aralık
+/// düğme + rozet dizisi, süzgeç ayrı bir rozet dizisiydi; aynı işi yapan üç
+/// şey üç ayrı görünüme sahipti ve ekranın yarısını kaplıyordu. Açılır liste
+/// hem seçili değeri hem seçenek sayısını tek satırda söyler.
 class _Filters extends ConsumerWidget {
   const _Filters({required this.filter, required this.onPickRange});
 
@@ -171,104 +215,110 @@ class _Filters extends ConsumerWidget {
     final ReportFilterController controller = ref.read(
       reportFilterProvider.notifier,
     );
+    final _RangeChoice choice = _RangeChoice.of(filter);
+
+    final Widget range = DropdownButtonFormField<_RangeChoice>(
+      initialValue: choice,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Tarih aralığı'),
+      // Kapalıyken özel aralık kendi tarihleriyle okunur; "Tarih seç…"
+      // yazsaydı kullanıcı hangi aralığa baktığını göremezdi.
+      selectedItemBuilder: (BuildContext context) => <Widget>[
+        for (final _RangeChoice item in _RangeChoice.values)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              item == _RangeChoice.custom ? filter.label : item.label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+      items: <DropdownMenuItem<_RangeChoice>>[
+        for (final _RangeChoice item in _RangeChoice.values)
+          DropdownMenuItem<_RangeChoice>(value: item, child: Text(item.label)),
+      ],
+      onChanged: (_RangeChoice? selected) {
+        if (selected == null) return;
+        final ReportFilter? preset = selected.filter;
+        if (preset == null) {
+          onPickRange();
+          return;
+        }
+        controller.preset(
+          preset.copyWith(userId: filter.userId, focus: filter.focus),
+        );
+      },
+    );
+
+    final Widget person = DropdownButtonFormField<String?>(
+      initialValue: filter.userId,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Personel'),
+      items: <DropdownMenuItem<String?>>[
+        const DropdownMenuItem<String?>(child: Text('Tüm personel')),
+        for (final AppUser user in users)
+          DropdownMenuItem<String?>(
+            value: user.uid,
+            child: Text(user.displayName, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: controller.setUser,
+    );
+
+    final Widget focus = DropdownButtonFormField<ReportFocus>(
+      initialValue: filter.focus,
+      isExpanded: true,
+      decoration: const InputDecoration(labelText: 'Hangi günler'),
+      items: <DropdownMenuItem<ReportFocus>>[
+        for (final ReportFocus item in ReportFocus.values)
+          DropdownMenuItem<ReportFocus>(value: item, child: Text(item.label)),
+      ],
+      onChanged: (ReportFocus? selected) {
+        if (selected != null) controller.setFocus(selected);
+      },
+    );
 
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              // Dar ekranda üç açılır liste yan yana sıkışır ve personel
+              // adları okunmaz olur; orada alt alta dizilirler.
+              if (constraints.maxWidth < 620) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Text(
-                      'Tarih aralığı',
-                      style: AppTypography.small(
-                        context.colors.onSurfaceVariant,
-                      ),
-                    ),
-                    AppSpacing.vXxs,
-                    Text(
-                      '${filter.label} · ${filter.dayCount} gün',
-                      style: AppTypography.bodyStrong(context.colors.onSurface),
-                    ),
+                    range,
+                    AppSpacing.vSm,
+                    person,
+                    AppSpacing.vSm,
+                    focus,
                   ],
-                ),
-              ),
-              AppButton(
-                label: 'Değiştir',
-                size: AppButtonSize.small,
-                variant: AppButtonVariant.outline,
-                onPressed: onPickRange,
-              ),
-            ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Expanded(child: range),
+                  AppSpacing.hSm,
+                  Expanded(child: person),
+                  AppSpacing.hSm,
+                  Expanded(child: focus),
+                ],
+              );
+            },
           ),
           AppSpacing.vSm,
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xxs,
-            children: <Widget>[
-              for (final (String label, ReportFilter preset)
-                  in <(String, ReportFilter)>[
-                    ('Bugün', ReportFilter.today()),
-                    ('Son 7 gün', ReportFilter.lastDays(7)),
-                    ('Son 30 gün', ReportFilter.lastDays(30)),
-                    ('Bu ay', ReportFilter.thisMonth()),
-                  ])
-                ChoiceChip(
-                  label: Text(label),
-                  selected:
-                      filter.fromKey == preset.fromKey &&
-                      filter.toKey == preset.toKey,
-                  onSelected: (_) => controller.preset(
-                    preset.copyWith(userId: filter.userId, focus: filter.focus),
-                  ),
-                ),
-            ],
-          ),
-          const Divider(height: AppSpacing.lg),
-
-          DropdownButtonFormField<String?>(
-            initialValue: filter.userId,
-            decoration: const InputDecoration(labelText: 'Personel'),
-            items: <DropdownMenuItem<String?>>[
-              const DropdownMenuItem<String?>(child: Text('Tüm personel')),
-              for (final AppUser user in users)
-                DropdownMenuItem<String?>(
-                  value: user.uid,
-                  child: Text(user.displayName),
-                ),
-            ],
-            onChanged: controller.setUser,
-          ),
-          AppSpacing.vMd,
-
           Text(
-            'Hangi günler',
+            filter.focus.isAll
+                ? '${filter.label} · ${filter.dayCount} gün'
+                : '${filter.label} · ${filter.dayCount} gün — '
+                      '${filter.focus.description}',
             style: AppTypography.small(context.colors.onSurfaceVariant),
           ),
-          AppSpacing.vXs,
-          Wrap(
-            spacing: AppSpacing.xs,
-            runSpacing: AppSpacing.xxs,
-            children: <Widget>[
-              for (final ReportFocus focus in ReportFocus.values)
-                ChoiceChip(
-                  label: Text(focus.label),
-                  selected: filter.focus == focus,
-                  onSelected: (_) => controller.setFocus(focus),
-                ),
-            ],
-          ),
-          if (!filter.focus.isAll) ...<Widget>[
-            AppSpacing.vXs,
-            Text(
-              filter.focus.description,
-              style: AppTypography.small(context.colors.onSurfaceVariant),
-            ),
-          ],
         ],
       ),
     );

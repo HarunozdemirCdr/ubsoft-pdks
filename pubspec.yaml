@@ -1,7 +1,7 @@
 name: ubsoft_pdks
 description: "UBSoft PDKS — QR kodlu, konum doğrulamalı çok kiracılı personel devam kontrol sistemi."
 publish_to: 'none'
-version: 1.1.0+2
+version: 1.2.0+3
 
 environment:
   sdk: ^3.11.4

@@ -125,16 +125,18 @@ kopyasına baktığını düşünmemelidir.
 
 | | Devriye | PDKS |
 |---|---|---|
-| Vurgu rengi | Mavi `#2563EB` | Mor `#6D28D9` |
+| Vurgu rengi | Canlı mavi `#2563EB` | Lacivert `#1E3A8A` |
 | Nötr skala | Soğuk gri | Sıcak taş (stone) |
 | Font | Manrope | Plus Jakarta Sans |
 | Köşe ölçeği | 8 / 12 / 16 / 24 | 6 / 10 / 14 / 20 |
 | Buton | Tam yuvarlak (pill) | Yumuşak dikdörtgen |
 | Rozet | Hap | Yumuşak dikdörtgen |
 
-Renk seçimi rastgele değil: vurgu mavi kalsaydı, giriş–çıkış için kullanılan
-yeşil–kırmızı ikilisiyle birlikte ekranda üç doygun renk yarışırdı. Mor,
-durum renklerinin hiçbiriyle karışmaz. Köşelerin sıkılaşması ve butonların
+Lacivert, devam kontrol yazılımlarının alıştırdığı renktir; kurumsal durur
+ve doygunluğu düşük olduğu için giriş–çıkış'ın yeşil–kırmızı ikilisiyle
+yarışmaz. Devriye ürünü de mavi kullandığından ayrım tek renge
+bırakılmamıştır: ton (lacivert, canlı maviden belirgin biçimde koyu), nötr
+skala ve font birlikte ayırır. Köşelerin sıkılaşması ve butonların
 düzleşmesi de aynı gerekçeden gelir: bu ürün gün gün saat okunan bir
 tabloya bakar, tamamen yuvarlak bir dil o hizayı bulanıklaştırıyordu.
 
@@ -239,7 +241,7 @@ açıksa) sebebi yine görür; aksi hâlde neden okutamadığını bilemezdi.
 |---|---|
 | `superAdmin` | Müşteri açar/kapatır, abonelik yönetir. Bir müşteriye ait değildir; `tenants/_system` altında yaşar. |
 | `admin` (Yönetici) | Kendi şirketinde **koşulsuz** tüm yetkilere sahiptir. |
-| `staff` (Personel) | QR okutur, kendi kayıtlarını görür. Yetkileri kişi bazında açılıp kapatılabilir. |
+| `staff` (Personel) | QR okutur, kendi kayıtlarını görür. |
 
 İzin sistemi **yalnız personel içindir**. Yöneticiye izin açıp kapatmak
 anlamsızdır; o zaten admindir. Bu kural iki yerde uygulanır ve ikisi senkron
@@ -253,6 +255,21 @@ kullanıcı override'ı  →  yoksa rol varsayılanı  →  yoksa kapalı
 
 Rol varsayılanları Firestore'da `tenants/{tid}/roleDefaults/{role}` altında
 durur ve güvenlik kuralları da oradan okur.
+
+### Kişiye özel izin ekranı neden yok
+
+Altyapı override'ı destekler ama **arayüzden erişilemez**: kişi bazlı izin
+düzenleme sayfası bilerek kaldırıldı. Müşterinin isteği açıktı — iki rolün
+izin kümesi standarttır ve "yanlışlıkla bile olsa" değişmemelidir. Bir
+personelin sayfası artık tek sayfadır: bilgiler ve işlemler.
+
+Zincirin ortasındaki override basamağı yerinde duruyor: rol varsayılanları
+Firestore'dan okunduğu için ileride gerekirse tek bir belge yazmakla
+açılabilir, kod değişikliği gerekmez. Kapalı olan yalnız arayüz — kazara
+değişimin tek gerçekçi yolu buydu.
+
+Karar [`test/presentation/interaction_test.dart`](test/presentation/interaction_test.dart)
+içindeki "Yetkiler ekrandan değiştirilemez" grubuyla kilitlidir.
 
 ---
 
@@ -372,7 +389,7 @@ flutter analyze
 flutter test
 ```
 
-219 test beş katmanda:
+220 test beş katmanda:
 
 | Dosya | Neyi korur |
 |---|---|

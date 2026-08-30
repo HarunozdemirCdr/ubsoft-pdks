@@ -11,13 +11,14 @@ import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/enums/user_role.dart';
+import 'package:ubsoft_pdks/domain/permissions/app_permission.dart';
+import 'package:ubsoft_pdks/domain/permissions/role_defaults.dart';
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/history/history_page.dart';
 import 'package:ubsoft_pdks/presentation/features/history/person_history_page.dart';
 import 'package:ubsoft_pdks/presentation/features/punch/punch_home_page.dart';
 import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
 import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
-import 'package:ubsoft_pdks/presentation/features/users/permission_editor_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
 
@@ -261,8 +262,15 @@ void main() {
     });
   });
 
-  group('Yetki düzenleme', () {
-    testWidgets('personelin izni açılıp kaydedilir', (
+  /// Yetkiler ürün kararıdır, ekrandan ayarlanmaz.
+  ///
+  /// Roller (yönetici / personel) sabit izin kümeleriyle gelir. Kişiye özel
+  /// izin düzenleme ekranı **bilerek** kaldırıldı: müşteri "yanlışlıkla bile
+  /// olsa" bu kümenin değişmesini istemiyor. Aşağıdaki testler o kapının
+  /// kapalı kaldığını korur — bir gün biri yeniden açmaya kalkarsa burada
+  /// kırılır.
+  group('Yetkiler ekrandan değiştirilemez', () {
+    testWidgets('personel kartında yetki bağlantısı yok', (
       WidgetTester tester,
     ) async {
       final TestScope scope = await adminScope(
@@ -272,62 +280,39 @@ void main() {
 
       await tester.pumpWidget(
         wrapRouted(
-          const PermissionEditorPage(userId: 'u1'),
+          const UserFormPage(userId: 'u1'),
           container: scope.container,
           size: const Size(800, 2400),
         ),
       );
       await settle(tester);
 
-      // "Tüm personelin kayıtlarını görüntüle" personelde varsayılan
-      // olarak kapalıdır.
-      final Finder row = find.ancestor(
-        of: find.text('Tüm personelin kayıtlarını görüntüle'),
-        matching: find.byType(Row),
-      );
-      final Finder toggle = find.descendant(
-        of: row.first,
-        matching: find.byType(Switch),
-      );
+      // Kişinin sayfası tek sayfadır: bilgiler + işlemler. Alt sayfa yok.
+      expect(find.text('Yetkiler'), findsNothing);
+      expect(find.text('Bu personelin izinlerini ayarla'), findsNothing);
 
-      await tester.ensureVisible(toggle);
-      await settle(tester);
-      await tester.tap(toggle);
-      await settle(tester);
-
-      await tester.tap(find.widgetWithText(AppButton, 'Kaydet'));
-      await settle(tester);
-
-      final Map<String, dynamic> saved = await scope.firestore
-          .collection(FsPaths.tenants)
-          .doc(TestData.tenantId)
-          .collection(FsPaths.users)
-          .doc('u1')
-          .get()
-          .then((d) => d.data()!);
-
-      final Map<String, dynamic> permissions =
-          saved['permissions'] as Map<String, dynamic>;
-      expect(permissions['attendance.viewAll'], isTrue);
+      // Sayfanın kendisi çalışmaya devam ediyor.
+      expect(find.text('Şifre sıfırlama gönder'), findsOneWidget);
+      expect(find.text('Hesap etkin'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
-    testWidgets('yönetici için yetki ekranı açılmaz', (
-      WidgetTester tester,
-    ) async {
-      final TestScope scope = await adminScope();
-      addTearDown(scope.dispose);
-
-      await tester.pumpWidget(
-        wrapPage(
-          const PermissionEditorPage(userId: TestData.adminUid),
-          container: scope.container,
-          size: const Size(800, 1200),
-        ),
+    test('rol varsayılanları sabittir', () {
+      // Personel yalnız okutur ve kendi kaydını görür.
+      expect(
+        RoleDefaults.of(UserRole.staff),
+        <AppPermission>{
+          AppPermission.punchCreate,
+          AppPermission.attendanceViewOwn,
+        },
       );
-      await settle(tester);
 
-      // Ürün kararı: yönetici tenant içinde koşulsuz yetkilidir.
-      expect(find.textContaining('tüm yetkilere sahiptir'), findsOneWidget);
+      // Yönetici kendi müşterisinde koşulsuz yetkilidir.
+      expect(
+        RoleDefaults.of(UserRole.admin),
+        contains(AppPermission.attendanceViewAll),
+      );
+      expect(RoleDefaults.of(UserRole.admin), contains(AppPermission.userView));
     });
   });
 
@@ -476,8 +461,11 @@ void main() {
       // Süzgeçsiz hâlde kadronun tamamı satırını korur.
       expect(find.textContaining(' gün geldi'), findsNWidgets(3));
 
-      await tester.ensureVisible(find.text('Geç giriş'));
-      await tester.tap(find.text('Geç giriş'));
+      // Süzgeç açılır listedir: önce açılır, sonra seçenek seçilir.
+      await tester.ensureVisible(find.text('Tümü'));
+      await tester.tap(find.text('Tümü'));
+      await settle(tester);
+      await tester.tap(find.text('Geç giriş').last);
       await settle(tester);
 
       // Geç gelinmiş tek gün var; geri kalan personel rapordan düşer.

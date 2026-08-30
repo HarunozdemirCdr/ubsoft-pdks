@@ -39,12 +39,6 @@ abstract interface class UserRepository {
     required UserStatus status,
   });
 
-  Future<Result<void>> updatePermissions({
-    required String tenantId,
-    required String uid,
-    required Map<String, bool> overrides,
-  });
-
   /// Kullanıcıyı listeden kaldırır.
   ///
   /// Kayıt fiziksel olarak silinmez, [UserStatus.deleted] işaretlenir:

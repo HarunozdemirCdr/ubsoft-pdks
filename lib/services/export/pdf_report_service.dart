@@ -42,13 +42,13 @@ const List<String> _legendNotes = <String>[
 /// yalnız `pdf` paketine bağlı kalır. Değerler ekrandaki token'larla birebir
 /// aynıdır; rapor uygulamanın devamı gibi görünmelidir.
 abstract final class _Ink {
-  static const PdfColor primary = PdfColor.fromInt(0xFF6D28D9);
+  static const PdfColor primary = PdfColor.fromInt(0xFF1E3A8A);
   static const PdfColor heading = PdfColor.fromInt(0xFF1C1917);
   static const PdfColor body = PdfColor.fromInt(0xFF44403C);
   static const PdfColor muted = PdfColor.fromInt(0xFF78716C);
   static const PdfColor line = PdfColor.fromInt(0xFFE7E5E4);
   static const PdfColor zebra = PdfColor.fromInt(0xFFFAFAF9);
-  static const PdfColor tint = PdfColor.fromInt(0xFFEDE9FE);
+  static const PdfColor tint = PdfColor.fromInt(0xFFDBEAFE);
   static const PdfColor warning = PdfColor.fromInt(0xFFD97706);
 
   /// Giriş yeşili ve çıkış kırmızısı — ekrandaki çiftin aynısı.

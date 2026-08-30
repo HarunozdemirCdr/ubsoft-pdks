@@ -129,18 +129,6 @@ final class UserRepositoryImpl extends FirestoreRepositoryBase
   );
 
   @override
-  Future<Result<void>> updatePermissions({
-    required String tenantId,
-    required String uid,
-    required Map<String, bool> overrides,
-  }) => guardVoid(
-    () => usersRef(tenantId).doc(uid).update(<String, Object?>{
-      FsFields.permissions: overrides,
-      'updatedAt': FirestoreWrite.serverTime,
-    }),
-  );
-
-  @override
   Future<Result<void>> softDelete({
     required String tenantId,
     required String uid,

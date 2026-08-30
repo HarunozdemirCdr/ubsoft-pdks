@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 /// `flutter build web --dart-define=USE_EMULATOR=true`
 abstract final class AppConfig {
   static const String appName = 'UBSoft PDKS';
-  static const String appVersion = '1.1.0';
+  static const String appVersion = '1.2.0';
 
   /// Yerel Firebase emulator'a bağlan (geliştirme ve kural testleri için).
   static const bool useEmulator = bool.fromEnvironment('USE_EMULATOR');

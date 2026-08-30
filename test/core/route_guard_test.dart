@@ -220,11 +220,16 @@ void main() {
 
     test('alt sayfalar üst bölümün iznine tabidir', () {
       expect(
-        RouteGuard.resolve(
-          admin,
-          _FakeState(AppRoutes.userPermissionsPath('x')),
-        ),
+        RouteGuard.resolve(admin, _FakeState(AppRoutes.userEditPath('x'))),
         isNull,
+      );
+    });
+
+    test('personel bir başkasının kaydını açamaz', () {
+      final Session staff = _active(UserRole.staff);
+      expect(
+        RouteGuard.resolve(staff, _FakeState(AppRoutes.userEditPath('x'))),
+        isNot(isNull),
       );
     });
 
