@@ -217,29 +217,16 @@ class _Filters extends ConsumerWidget {
     );
     final _RangeChoice choice = _RangeChoice.of(filter);
 
-    final Widget range = DropdownButtonFormField<_RangeChoice>(
-      initialValue: choice,
-      isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Tarih aralığı'),
+    final Widget range = _FilterDropdown<_RangeChoice>(
+      label: 'Tarih aralığı',
+      value: choice,
+      values: _RangeChoice.values,
+      labelOf: (_RangeChoice item) => item.label,
       // Kapalıyken özel aralık kendi tarihleriyle okunur; "Tarih seç…"
       // yazsaydı kullanıcı hangi aralığa baktığını göremezdi.
-      selectedItemBuilder: (BuildContext context) => <Widget>[
-        for (final _RangeChoice item in _RangeChoice.values)
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              item == _RangeChoice.custom ? filter.label : item.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-      items: <DropdownMenuItem<_RangeChoice>>[
-        for (final _RangeChoice item in _RangeChoice.values)
-          DropdownMenuItem<_RangeChoice>(value: item, child: Text(item.label)),
-      ],
-      onChanged: (_RangeChoice? selected) {
-        if (selected == null) return;
+      selectedLabelOf: (_RangeChoice item) =>
+          item == _RangeChoice.custom ? filter.label : item.label,
+      onChanged: (_RangeChoice selected) {
         final ReportFilter? preset = selected.filter;
         if (preset == null) {
           onPickRange();
@@ -251,32 +238,24 @@ class _Filters extends ConsumerWidget {
       },
     );
 
-    final Widget person = DropdownButtonFormField<String?>(
-      initialValue: filter.userId,
-      isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Personel'),
-      items: <DropdownMenuItem<String?>>[
-        const DropdownMenuItem<String?>(child: Text('Tüm personel')),
-        for (final AppUser user in users)
-          DropdownMenuItem<String?>(
-            value: user.uid,
-            child: Text(user.displayName, overflow: TextOverflow.ellipsis),
-          ),
-      ],
+    final Widget person = _FilterDropdown<String?>(
+      label: 'Personel',
+      value: filter.userId,
+      values: <String?>[null, for (final AppUser user in users) user.uid],
+      labelOf: (String? uid) => uid == null
+          ? 'Tüm personel'
+          : users
+                .firstWhere((AppUser user) => user.uid == uid)
+                .displayName,
       onChanged: controller.setUser,
     );
 
-    final Widget focus = DropdownButtonFormField<ReportFocus>(
-      initialValue: filter.focus,
-      isExpanded: true,
-      decoration: const InputDecoration(labelText: 'Hangi günler'),
-      items: <DropdownMenuItem<ReportFocus>>[
-        for (final ReportFocus item in ReportFocus.values)
-          DropdownMenuItem<ReportFocus>(value: item, child: Text(item.label)),
-      ],
-      onChanged: (ReportFocus? selected) {
-        if (selected != null) controller.setFocus(selected);
-      },
+    final Widget focus = _FilterDropdown<ReportFocus>(
+      label: 'Hangi günler',
+      value: filter.focus,
+      values: ReportFocus.values,
+      labelOf: (ReportFocus item) => item.label,
+      onChanged: controller.setFocus,
     );
 
     return AppCard(
@@ -320,6 +299,74 @@ class _Filters extends ConsumerWidget {
             style: AppTypography.small(context.colors.onSurfaceVariant),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Süzgeç açılır listesi — üçü de aynı biçimde.
+///
+/// `DropdownButtonFormField` yerine `DropdownButton` kullanılır çünkü ilki
+/// seçili değeri **kendi içinde** tutar: dışarıdan gelen bir değişimi
+/// yansıtmaz. Somut sonucu şuydu — kullanıcı "Tarih seç…"e basıp takvimi
+/// kapatsa (iptal etse) bile liste "Tarih seç…"te takılı kalırdı, oysa
+/// aralık hiç değişmemişti. Burada gösterilen değer her zaman süzgecin
+/// gerçek hâlidir.
+class _FilterDropdown<T> extends StatelessWidget {
+  const _FilterDropdown({
+    required this.label,
+    required this.value,
+    required this.values,
+    required this.labelOf,
+    required this.onChanged,
+    this.selectedLabelOf,
+  });
+
+  final String label;
+  final T value;
+  final List<T> values;
+
+  /// Listedeki satırın metni.
+  final String Function(T) labelOf;
+
+  /// Liste kapalıyken görünen metin. Verilmezse [labelOf] kullanılır.
+  final String Function(T)? selectedLabelOf;
+
+  final void Function(T) onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final String Function(T) closed = selectedLabelOf ?? labelOf;
+
+    return InputDecorator(
+      decoration: InputDecoration(labelText: label),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          isExpanded: true,
+          isDense: true,
+          selectedItemBuilder: (BuildContext context) => <Widget>[
+            for (final T item in values)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  closed(item),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+          ],
+          items: <DropdownMenuItem<T>>[
+            for (final T item in values)
+              DropdownMenuItem<T>(
+                value: item,
+                child: Text(labelOf(item), overflow: TextOverflow.ellipsis),
+              ),
+          ],
+          onChanged: (T? selected) {
+            if (selected != null || null is T) onChanged(selected as T);
+          },
+        ),
       ),
     );
   }

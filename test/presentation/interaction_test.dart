@@ -443,6 +443,48 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('süzgeçler birbirini sıfırlamaz', (WidgetTester tester) async {
+      // Açılır listeler kontrollüdür: gösterilen değer her zaman süzgecin
+      // gerçek hâlidir. Kendi içlerinde durum tutsalardı, bir listedeki
+      // seçim diğerinin gösterdiğini eskitirdi.
+      final TestScope scope = await reportScope();
+      addTearDown(scope.dispose);
+
+      await tester.pumpWidget(
+        wrapPage(
+          const ReportPage(),
+          container: scope.container,
+          size: const Size(1000, 1600),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Son 7 gün'), findsOneWidget);
+      expect(find.text('Tüm personel'), findsOneWidget);
+      expect(find.text('Tümü'), findsOneWidget);
+
+      // Açılır menü kendi yolunda (route) açılıp kapanır; kapanma
+      // canlandırması `settle`'ın dört karesinden uzun sürer.
+      Future<void> choose(String open, String pick) async {
+        await tester.ensureVisible(find.text(open));
+        await tester.tap(find.text(open));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(pick).last);
+        await tester.pumpAndSettle();
+      }
+
+      // Aralığı değiştir.
+      await choose('Son 7 gün', 'Son 30 gün');
+      expect(find.text('Son 30 gün'), findsOneWidget);
+
+      // Sonra personeli değiştir — aralık seçimi yerinde kalmalı.
+      await choose('Tüm personel', 'Ahmet Yılmaz');
+
+      expect(find.text('Son 30 gün'), findsOneWidget);
+      expect(find.text('Tümü'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('geç giriş süzgeci yalnız o günleri bırakır', (
       WidgetTester tester,
     ) async {
@@ -462,11 +504,12 @@ void main() {
       expect(find.textContaining(' gün geldi'), findsNWidgets(3));
 
       // Süzgeç açılır listedir: önce açılır, sonra seçenek seçilir.
+      // Menü kendi yolunda açıldığı için `pumpAndSettle` gerekir.
       await tester.ensureVisible(find.text('Tümü'));
       await tester.tap(find.text('Tümü'));
-      await settle(tester);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Geç giriş').last);
-      await settle(tester);
+      await tester.pumpAndSettle();
 
       // Geç gelinmiş tek gün var; geri kalan personel rapordan düşer.
       expect(find.textContaining(' gün geldi'), findsOneWidget);

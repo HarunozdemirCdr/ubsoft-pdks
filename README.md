@@ -389,7 +389,7 @@ flutter analyze
 flutter test
 ```
 
-220 test beş katmanda:
+221 test beş katmanda:
 
 | Dosya | Neyi korur |
 |---|---|
