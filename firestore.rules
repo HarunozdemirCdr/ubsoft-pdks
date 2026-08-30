@@ -304,8 +304,28 @@ service cloud.firestore {
 
       match /attendanceDays/{dayId} {
 
-        allow get, list: if request.auth.uid == resource.data.userId ||
-                            can(tid, 'attendance.viewAll');
+        // GET ile LIST ayrı yazılmak ZORUNDA.
+        //
+        // Gün özeti ancak ilk okutmayla oluşur. O âna kadar belge yoktur ve
+        // olmayan bir belgede `resource` boştur: `resource.data.userId`
+        // okumaya çalışan kural değerlendirme hatası verir ve erişimi
+        // reddeder. Sonucu şuydu — personel sabah uygulamayı açtığında kendi
+        // okutma ekranında "Bu işlem için yetkiniz yok" görüyordu, hem de
+        // tam ilk okutmasını yapacağı anda. Yönetici görmüyordu, çünkü onda
+        // `attendance.viewAll` şartı daha önce doğru dönüyordu.
+        //
+        // Çözüm belgeyi okumadan sahibini bilmek: doküman kimliği
+        // `{uid}_{gün}` biçimindedir (`AttendanceDay.buildId`). Firebase
+        // kimlikleri alfanümeriktir, alt çizgi içermez; ilk parça sahibidir.
+        // Bu, olmayan belge için de çalışır.
+        allow get: if dayId.split('_')[0] == request.auth.uid ||
+                      can(tid, 'attendance.viewAll');
+
+        // Sorguda her aday belge zaten vardır; orada alana bakmak hem
+        // güvenlidir hem gereklidir — sorgu kimlik desenine göre
+        // filtrelenemez.
+        allow list: if request.auth.uid == resource.data.userId ||
+                       can(tid, 'attendance.viewAll');
 
         allow create, update: if writable(tid) && (
                                  (can(tid, 'punch.create') &&

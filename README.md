@@ -413,6 +413,23 @@ için patlar. Öncesinde:
 Remove-Item -Recurse -Force build\unit_test_assets -ErrorAction SilentlyContinue
 ```
 
+### Güvenlik kuralları: canlı doğrulama
+
+`flutter test`, `fake_cloud_firestore` üzerinde çalışır ve o sahte Firestore
+**güvenlik kurallarını hiç çalıştırmaz**. Yani 221 testin tamamı yeşilken
+yayındaki kurallar bozuk olabilir — nitekim oldu (aşağıdaki tuzağa bakınız).
+
+O katmanı `tool/verify_live.py` sınar: gerçek hesaplarla giriş yapar ve
+Firestore'a o kullanıcının kimliğiyle sorar.
+
+```bash
+python tool/verify_live.py     # 15 kontrol; yalnız okur, veri değiştirmez
+```
+
+Kurallara her dokunuşta **deploy'dan sonra** çalıştırın. Kontroller iki yönlü:
+personelin görebilmesi gerekenler görünüyor mu *ve* görmemesi gerekenler
+kapalı mı. İkincisi olmadan bir kural gevşetmesi fark edilmezdi.
+
 ---
 
 ## Okuma maliyeti
@@ -463,3 +480,35 @@ ekranında görünen pazarlama sürümü ayrıdır:
 `web_plugin_registrant.dart` dosyasını eski hâliyle yeniden kullanır ve yeni
 eklentinin kaydı hiç yapılmaz; hata tarayıcıda izin sorunu gibi görünür ama
 tümüyle derleme kaynaklıdır.
+
+---
+
+## Tuzak: kuralda olmayan belgenin alanına bakmak
+
+Bir güvenlik kuralı `resource.data.<alan>` yazdığında **belgenin var olduğunu
+varsayar**. Belge yoksa `resource` boştur, değerlendirme hata verir ve
+Firestore erişimi reddeder — kullanıcıya `permission-denied` döner, yani
+uygulamada "Bu işlem için yetkiniz yok".
+
+Bu, `attendanceDays` üzerinde gerçekten yaşandı ve en kötü yerde vurdu: gün
+özeti ancak **ilk okutmayla** oluştuğu için, personel sabah uygulamayı
+açtığında kendi okutma ekranında yetki hatası görüyordu — tam okutma yapacağı
+anda. Yöneticide görünmüyordu, çünkü onda `attendance.viewAll` şartı daha
+önce doğru dönüp kısa devre yapıyordu. `flutter test` de yakalamıyordu:
+kurallar orada hiç çalışmıyor.
+
+Çözüm, belgeyi okumadan sahibini bilmek. Doküman kimliği `{uid}_{gün}`
+biçimindedir, dolayısıyla `get` için kimlik yeter; `list` için ise alana
+bakmak hem güvenli (her aday belge vardır) hem zorunludur:
+
+```
+allow get:  if dayId.split('_')[0] == request.auth.uid ||
+               can(tid, 'attendance.viewAll');
+
+allow list: if request.auth.uid == resource.data.userId ||
+               can(tid, 'attendance.viewAll');
+```
+
+**Genel kural:** `get` ile `list`'i aynı satırda birleştirmeden önce
+"bu belge hiç var olmayabilir mi?" diye sorun. Cevap evetse ikisi ayrılmalı.
+Gerileme koruması `tool/verify_live.py` içindedir.
