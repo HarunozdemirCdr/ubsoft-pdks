@@ -172,7 +172,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Giriş / çıkış QR kodunu okut'), findsOneWidget);
-      expect(find.text('Durumu bilinmiyor'), findsOneWidget);
+      expect(find.text('Başlangıç kaydı yok'), findsOneWidget);
       expect(find.text('Bugünkü hareketlerim'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

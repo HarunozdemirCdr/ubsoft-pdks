@@ -57,7 +57,7 @@ void main() {
         wrapPage(const StudentHomePage(), container: scope.container),
       );
       await settle(tester);
-      expect(find.text('Durumu bilinmiyor'), findsOneWidget);
+      expect(find.text('Başlangıç kaydı yok'), findsOneWidget);
       expect(find.text('Bugünkü hareketlerim'), findsOneWidget);
       expect(find.textContaining('çalışma'), findsNothing);
       expect(find.text('Tamamlandı'), findsNothing);

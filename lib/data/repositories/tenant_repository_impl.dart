@@ -133,6 +133,10 @@ final class TenantRepositoryImpl extends FirestoreRepositoryBase
       FsPaths.qrIndex,
       FsPaths.attendance,
       FsPaths.attendanceDays,
+      'presence',
+      'presenceAudit',
+      'leaves',
+      'leaveLocks',
     ]) {
       await _deleteCollection(subcollection(tenantId, collection));
     }

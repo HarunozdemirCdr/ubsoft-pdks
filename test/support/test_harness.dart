@@ -509,12 +509,17 @@ Widget wrapPage(
   required ProviderContainer container,
   Size size = const Size(400, 900),
   bool dark = false,
+  double textScale = 1,
 }) {
   return UncontrolledProviderScope(
     container: container,
     child: MediaQuery(
-      data: MediaQueryData(size: size),
+      data: MediaQueryData(
+        size: size,
+        textScaler: TextScaler.linear(textScale),
+      ),
       child: MaterialApp(
+        debugShowCheckedModeBanner: false,
         theme: dark ? AppTheme.dark : AppTheme.light,
         locale: const Locale('tr'),
         supportedLocales: const <Locale>[Locale('tr')],

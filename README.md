@@ -30,6 +30,14 @@ Yurt Durumu paneli aktif öğrencilerden kurulur; yöneticiler öğrenci sayıs�
 
 Başlangıç saatleri 06.00/22.30 örnek değerlerdir, kurum politikası değildir. Yönetici yurdun kendi kurallarını ayarlamalıdır.
 
+## Arayüz 2.1
+
+Panel metrikleri eşit boyutludur; dışarıda ve dönüşü geciken sayıları toplanmaz, gecikenler dışarıdakilerin alt kümesidir.
+Başlangıç kaydı olmayan öğrenciler ayrı açıklama ve inceleme bağlantısıyla gösterilir.
+Durum/inceleme filtreleri, arama ve sıfırlama ayrı yönetilir. Öğrenci seçimi isimle aranabilir.
+Rapor ve geçmişte öğrenci → gün → hareket açılımı vardır; giriş yeşil, çıkış kırmızıdır. Günlük özet yalnız ilk giriş/son çıkışı gösterir; diğer okutmalar açılımda korunur.
+Satışa hazırlık bulguları ve yüksek öncelikli işler [SATISA_HAZIRLIK.md](SATISA_HAZIRLIK.md) belgesindedir.
+
 ## Veri modeli
 
 ```text

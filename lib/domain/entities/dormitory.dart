@@ -209,7 +209,7 @@ class Presence {
   final bool earlyEntry;
   final bool permitted;
   String get label => inside == null
-      ? 'Durumu bilinmiyor'
+      ? 'Başlangıç kaydı yok'
       : inside!
       ? 'İçeride'
       : 'Dışarıda';
