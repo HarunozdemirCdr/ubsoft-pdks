@@ -33,11 +33,12 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
     final now = ref.watch(dormNowProvider);
     final students = ref.watch(studentsProvider);
     final tenant = ref.watch(currentTenantProvider);
-    if (tenant == null)
+    if (tenant == null) {
       return const AppScaffold(
         title: 'Yurt Durumu',
         body: Center(child: CircularProgressIndicator()),
       );
+    }
     final policy = tenant.settings.dormPolicy;
     return AppScaffold(
       title: 'Yurt Durumu',
@@ -315,11 +316,12 @@ class StudentHomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final now = ref.watch(dormNowProvider);
     final user = ref.watch(currentUserProvider);
-    if (user == null)
+    if (user == null) {
       return const AppScaffold(
         title: 'Yurdum',
         body: Center(child: CircularProgressIndicator()),
       );
+    }
     return AppScaffold(
       title: 'Yurdum',
       scrollable: true,
@@ -774,11 +776,12 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider);
-    if (user == null)
+    if (user == null) {
       return const AppScaffold(
         title: 'İzinler',
         body: Center(child: CircularProgressIndicator()),
       );
+    }
     final now = ref.watch(dormNowProvider);
     final students = ref.watch(studentsProvider);
     return AppScaffold(

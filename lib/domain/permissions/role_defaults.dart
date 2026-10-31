@@ -40,9 +40,7 @@ abstract final class RoleDefaults {
 
         // Öğrenci: yalnız okutma ve kendi geçmişi.
         //
-        // Kendi kayıtlarını görmesi bilinçlidir: "bu ay kaç saat çalıştım"
-        // sorusunun cevabını her seferinde yöneticiye sordurmak, sistemin
-        // güvenilirliğini de zedeler.
+        // Öğrenci yalnız kendi hareketleri ve izinlerine ulaşır.
         UserRole.staff: <AppPermission>{
           AppPermission.punchCreate,
           AppPermission.attendanceViewOwn,

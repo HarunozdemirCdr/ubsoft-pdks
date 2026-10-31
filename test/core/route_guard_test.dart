@@ -140,17 +140,14 @@ void main() {
       }
     });
 
-    test('geçmiş ekranı kapalıdır', () {
-      expect(
-        RouteGuard.resolve(staff, _FakeState(AppRoutes.history)),
-        AppRoutes.punch,
-      );
+    test('öğrenci kendi geçmişine erişebilir', () {
+      expect(RouteGuard.resolve(staff, _FakeState(AppRoutes.history)), isNull);
       expect(
         RouteGuard.resolve(
           staff,
           _FakeState(AppRoutes.personHistoryPath('staff-uid')),
         ),
-        AppRoutes.punch,
+        isNull,
       );
     });
 
@@ -173,7 +170,7 @@ void main() {
         _FakeState(AppRoutes.root),
       );
       expect(home, isNot(AppRoutes.punch));
-      expect(home, AppRoutes.profile);
+      expect(home, AppRoutes.history);
     });
 
     test('hiçbir yetkisi kalmayan kullanıcı profile düşer', () {

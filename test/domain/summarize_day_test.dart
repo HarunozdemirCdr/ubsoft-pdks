@@ -106,12 +106,12 @@ void main() {
       expect(day.open, isFalse);
     });
 
-    test('ilk giriş geç ise gün geç işaretlenir', () {
+    test('son giriş sınırından sonraki giriş günü işaretler', () {
       final AttendanceDay day = SummarizeDay.applyPunch(
         day: _empty(),
         type: PunchType.entry,
-        // Mesai 08:30, tolerans 15 dk → 08:45'ten sonrası geç.
-        at: _at(9, 5),
+        // Eski günlük özet şeması: son giriş sınırı 23.00.
+        at: _at(23, 5),
         verdict: LocationVerdict.verified,
         userName: 'Ahmet Yılmaz',
         settings: _settings,

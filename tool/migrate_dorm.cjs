@@ -33,8 +33,16 @@ async function main(){
  for(const tenant of tenants){
   const tid=tenant.name.split('/').at(-1);if(tid==='_system')continue;totals.dorms++;
   const prefix=`tenants/${tid}`;
-  const [users,events,points,indexes,states]=await Promise.all(['users','attendance','checkpoints','qrIndex','presence'].map(c=>list(`${prefix}/${c}`)));
-  snapshot.push(tenant,...users,...events,...points,...indexes,...states);
+  const [users,events,points,indexes,states,defaults]=await Promise.all(['users','attendance','checkpoints','qrIndex','presence','roleDefaults'].map(c=>list(`${prefix}/${c}`)));
+  snapshot.push(tenant,...users,...events,...points,...indexes,...states,...defaults);
+  for (const role of ['staff','admin']) {
+   const doc=defaults.find(d=>d.name.endsWith('/'+role));
+   const old=doc?.fields.permissions?.mapValue?.fields??{};
+   const permissions={...old,'punch.create':value(role==='staff'),'attendance.viewOwn':value(true)};
+   if(old['punch.create']?.booleanValue===(role==='staff')&&old['attendance.viewOwn']?.booleanValue===true)continue;
+   if(doc)writes.push(update(doc,{permissions:{mapValue:{fields:permissions}}}));
+   else writes.push({update:{name:name+`${prefix}/roleDefaults/${role}`,fields:{permissions:{mapValue:{fields:permissions}}}},currentDocument:{exists:false}});
+  }
   const existing=new Set(states.map(d=>d.name.split('/').at(-1)));
   const valid=events.filter(d=>d.fields.voided?.booleanValue!==true&&d.fields.at?.timestampValue)
     .sort((a,b)=>a.fields.at.timestampValue.localeCompare(b.fields.at.timestampValue));

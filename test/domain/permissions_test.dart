@@ -99,7 +99,7 @@ void main() {
           AppPermission.attendanceViewOwn,
           AppPermission.attendanceViewAll,
         ]),
-        isFalse,
+        isTrue,
       );
       expect(
         permissions.canAll(<AppPermission>[

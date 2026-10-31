@@ -461,7 +461,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Son 7 gün'), findsOneWidget);
-      expect(find.text('Tüm öğrenci'), findsOneWidget);
+      expect(find.text('Tüm öğrenciler'), findsOneWidget);
       expect(find.text('Tümü'), findsOneWidget);
 
       // Açılır menü kendi yolunda (route) açılıp kapanır; kapanma
@@ -479,7 +479,7 @@ void main() {
       expect(find.text('Son 30 gün'), findsOneWidget);
 
       // Sonra öğrenciyi değiştir — aralık seçimi yerinde kalmalı.
-      await choose('Tüm öğrenci', 'Ahmet Yılmaz');
+      await choose('Tüm öğrenciler', 'Ahmet Yılmaz');
 
       expect(find.text('Son 30 gün'), findsOneWidget);
       expect(find.text('Tümü'), findsOneWidget);
@@ -502,7 +502,7 @@ void main() {
       await settle(tester);
 
       // Süzgeçsiz hâlde kadronun tamamı satırını korur.
-      expect(find.textContaining(' gün geldi'), findsNWidgets(3));
+      expect(find.textContaining(' kayıtlı gün'), findsNWidgets(3));
 
       // Süzgeç açılır listedir: önce açılır, sonra seçenek seçilir.
       // Menü kendi yolunda açıldığı için `pumpAndSettle` gerekir.
@@ -513,8 +513,8 @@ void main() {
       await tester.pumpAndSettle();
 
       // Geç gelinmiş tek gün var; geri kalan öğrenci rapordan düşer.
-      expect(find.textContaining(' gün geldi'), findsOneWidget);
-      expect(find.textContaining('1 gün geç giriş'), findsOneWidget);
+      expect(find.textContaining(' kayıtlı gün'), findsOneWidget);
+      expect(find.textContaining('1 son giriş saati aşımı'), findsOneWidget);
 
       await tester.ensureVisible(find.text('Ahmet Yılmaz').first);
       await tester.tap(find.text('Ahmet Yılmaz').first);
@@ -755,7 +755,7 @@ void main() {
       await settle(tester);
 
       // Kaydın kendisi görünür…
-      expect(find.text('09:40'), findsWidgets);
+      expect(find.textContaining('09:40'), findsWidgets);
       expect(find.text('Ana Giriş'), findsOneWidget);
 
       // …ama yargılar görünmez.
