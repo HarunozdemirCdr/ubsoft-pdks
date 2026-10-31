@@ -78,8 +78,11 @@ class ProfilePage extends ConsumerWidget {
           AppCard(
             child: Column(
               children: <Widget>[
-                if (tenant != null)
-                  _InfoRow(label: 'Şirket', value: tenant.name),
+                if (tenant != null) _InfoRow(label: 'Yurt', value: tenant.name),
+                if (user.studentNumber.isNotEmpty)
+                  _InfoRow(label: 'Öğrenci no', value: user.studentNumber),
+                if (user.room.isNotEmpty)
+                  _InfoRow(label: 'Oda', value: user.room),
                 if ((user.note ?? '').isNotEmpty)
                   _InfoRow(label: 'Açıklama', value: user.note!),
                 if ((user.phone ?? '').isNotEmpty)

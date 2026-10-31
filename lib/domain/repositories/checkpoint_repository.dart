@@ -3,7 +3,7 @@ import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 
 /// QR noktaları — `tenants/{tid}/checkpoints/{id}`.
 abstract interface class CheckpointRepository {
-  /// Müşterinin tüm noktaları, sıraya göre.
+  /// Yurdun tüm noktaları, sıraya göre.
   Stream<List<Checkpoint>> watchCheckpoints(String tenantId);
 
   Stream<Checkpoint?> watchCheckpoint(String tenantId, String id);

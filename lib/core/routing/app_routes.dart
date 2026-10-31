@@ -21,7 +21,7 @@ abstract final class AppRoutes {
   static const String root = '/';
   static const String rootName = 'root';
 
-  /// Personelin okutma ekranı.
+  /// Öğrencinin okutma ekranı.
   static const String punch = '/okut';
   static const String punchName = 'punch';
 
@@ -34,11 +34,11 @@ abstract final class AppRoutes {
   static const String today = '/bugun';
   static const String todayName = 'today';
 
-  /// Geçmiş — gün seç, personel listesi.
+  /// Geçmiş — gün seç, öğrenci listesi.
   static const String history = '/gecmis';
   static const String historyName = 'history';
 
-  /// Bir personelin geçmişi.
+  /// Bir öğrencinin geçmişi.
   static const String personHistory = ':userId';
   static const String personHistoryName = 'personHistory';
 
@@ -67,6 +67,7 @@ abstract final class AppRoutes {
   static const String userEdit = ':userId';
   static const String userEditName = 'userEdit';
 
+  static const String leaves = '/izinler';
   static const String reports = '/raporlar';
   static const String reportsName = 'reports';
 

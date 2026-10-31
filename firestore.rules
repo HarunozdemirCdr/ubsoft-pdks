@@ -110,7 +110,7 @@ service cloud.firestore {
     // durdurmak içindir, yazılımın sahibini değil.
     function writable(tid) {
       let t = get(/databases/$(database)/documents/tenants/$(tid)).data;
-      return (t.status != 'suspended' &&
+      return (t.status == 'active' &&
               'subscription' in t &&
               'expiresAt' in t.subscription &&
               t.subscription.expiresAt > request.time) ||
@@ -122,6 +122,31 @@ service cloud.firestore {
     // telefonun saatini geri alıp erken giriş yazdırmak aksi hâlde mümkündü.
     function serverTime(field) {
       return request.resource.data[field] == request.time;
+    }
+
+    function validMovement(tid, eventId) {
+      let e = request.resource.data;
+      let point = get(/databases/$(database)/documents/tenants/$(tid)/checkpoints/$(e.checkpointId)).data;
+      let state = getAfter(/databases/$(database)/documents/tenants/$(tid)/presence/$(request.auth.uid)).data;
+      return memberOf(tid) && roleIn(tid) == 'staff' && can(tid, 'punch.create') && writable(tid) &&
+        e.userId == request.auth.uid && e.tenantId == tid && e.schemaVersion == 2 &&
+        e.type in ['in', 'out'] && e.type == point.kind && point.active == true &&
+        e.checkpointCode == point.code && e.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        e.verdict in ['verified', 'borderline', 'outside', 'unavailable'] &&
+        e.voided == false && serverTime('at') &&
+        state.eventId == eventId && state.at == request.time && state.inside == (e.type == 'in');
+    }
+    function validPresence(tid, uid) {
+      let n = request.resource.data;
+      let path = /databases/$(database)/documents/tenants/$(tid)/presence/$(uid);
+      let e = getAfter(/databases/$(database)/documents/tenants/$(tid)/attendance/$(n.eventId)).data;
+      return memberOf(tid) && roleIn(tid) == 'staff' && uid == request.auth.uid &&
+        n.userId == uid && n.at == request.time && e.at == request.time && e.userId == uid &&
+        n.inside == (e.type == 'in') &&
+        (!exists(path) ? n.revision == 1 :
+          (n.revision == get(path).data.revision + 1 &&
+           (get(path).data.inside == null || n.inside != get(path).data.inside) &&
+           (get(path).data.at == null || request.time - get(path).data.at >= duration.value(60, 's'))));
     }
 
     function touchesOnly(fields) {
@@ -154,14 +179,14 @@ service cloud.firestore {
                       // Müşteri kendi şirket bilgilerini ve devam ayarlarını
                       // düzenleyebilir; abonelik, plan, durum ve sayaçlara
                       // dokunamaz.
-                      memberOf(tid) &&
+                      memberOf(tid) && writable(tid) &&
                       can(tid, 'settings.edit') &&
                       touchesOnly(['name', 'timezone', 'locale', 'settings',
                                    'updatedAt'])
                     ) || (
                       // Sayaç güncellemeleri kayıt ekleyen/silen işlemlerin
                       // parçasıdır (kullanıcı, QR noktası).
-                      memberOf(tid) &&
+                      isAdminOf(tid) && writable(tid) &&
                       touchesOnly(['counters', 'updatedAt'])
                     );
 
@@ -199,7 +224,7 @@ service cloud.firestore {
                       ) || (
                         can(tid, 'user.edit') && writable(tid) &&
                         touchesOnly(['displayName', 'phone', 'note',
-                                     'title', 'status', 'deletedAt',
+                                     'title', 'status', 'deletedAt', 'studentNumber', 'room',
                                      'updatedAt'])
                       ) || (
                         can(tid, 'user.assignRole') && writable(tid) &&
@@ -240,11 +265,13 @@ service cloud.firestore {
         allow list: if can(tid, 'checkpoint.view');
 
         allow create: if can(tid, 'checkpoint.create') && writable(tid) &&
+                         request.resource.data.kind in ['in', 'out'] &&
                          request.resource.data.code is string &&
                          request.resource.data.code.matches('^[0-9]{1,10}$') &&
                          serverTime('createdAt');
 
         allow update: if can(tid, 'checkpoint.edit') && writable(tid) &&
+                         request.resource.data.kind in ['in', 'out'] &&
                          request.resource.data.code.matches('^[0-9]{1,10}$');
 
         allow delete: if can(tid, 'checkpoint.delete') && writable(tid);
@@ -277,21 +304,23 @@ service cloud.firestore {
 
       match /attendance/{eventId} {
 
-        allow get, list: if request.auth.uid == resource.data.userId ||
+        allow get, list: if (memberOf(tid) && request.auth.uid == resource.data.userId) ||
                             can(tid, 'attendance.viewAll');
 
-        allow create: if can(tid, 'punch.create') && writable(tid) &&
-                         request.resource.data.userId == request.auth.uid &&
-                         request.resource.data.tenantId == tid &&
-                         request.resource.data.type in ['in', 'out'] &&
-                         request.resource.data.verdict in
-                           ['verified', 'borderline', 'outside', 'unavailable'] &&
-                         request.resource.data.dateKey is string &&
-                         serverTime('at');
+        allow create: if validMovement(tid, eventId);
 
-        allow update: if false;
+        // Asıl hareket değişmez. Yanlış kayıt gerekçeyle geçersiz kılınır.
+        allow update: if isAdminOf(tid) && writable(tid) &&
+          resource.data.get('voided', false) == false &&
+          request.resource.data.voided == true &&
+          request.resource.data.voidedBy == request.auth.uid &&
+          request.resource.data.voidReason is string &&
+          request.resource.data.voidReason.size() > 0 &&
+          request.resource.data.voidReason.size() <= 500 &&
+          serverTime('voidedAt') &&
+          touchesOnly(['voided', 'voidedBy', 'voidReason', 'voidedAt']);
+        allow delete: if isSuperAdmin();
 
-        allow delete: if can(tid, 'attendance.delete') && writable(tid);
       }
 
 
@@ -318,23 +347,59 @@ service cloud.firestore {
         // `{uid}_{gün}` biçimindedir (`AttendanceDay.buildId`). Firebase
         // kimlikleri alfanümeriktir, alt çizgi içermez; ilk parça sahibidir.
         // Bu, olmayan belge için de çalışır.
-        allow get: if dayId.split('_')[0] == request.auth.uid ||
+        allow get: if (memberOf(tid) && dayId.matches('^' + request.auth.uid + '_[0-9]{4}-[0-9]{2}-[0-9]{2}$')) ||
                       can(tid, 'attendance.viewAll');
 
         // Sorguda her aday belge zaten vardır; orada alana bakmak hem
         // güvenlidir hem gereklidir — sorgu kimlik desenine göre
         // filtrelenemez.
-        allow list: if request.auth.uid == resource.data.userId ||
+        allow list: if (memberOf(tid) && request.auth.uid == resource.data.userId) ||
                        can(tid, 'attendance.viewAll');
 
-        allow create, update: if writable(tid) && (
-                                 (can(tid, 'punch.create') &&
-                                  request.resource.data.userId == request.auth.uid) ||
-                                 can(tid, 'attendance.delete')
-                               ) &&
-                               request.resource.data.tenantId == tid;
+        allow create, update: if writable(tid) &&
+          request.resource.data.tenantId == tid && (
+            isAdminOf(tid) || isSuperAdmin() ||
+            (memberOf(tid) && roleIn(tid) == 'staff' &&
+              request.resource.data.userId == request.auth.uid &&
+              dayId == request.auth.uid + '_' + request.resource.data.dateKey &&
+              getAfter(/databases/$(database)/documents/tenants/$(tid)/presence/$(request.auth.uid)).data.at == request.time)
+          );
+        allow delete: if isSuperAdmin();
 
-        allow delete: if can(tid, 'attendance.delete') && writable(tid);
+      }
+
+      match /presence/{uid} {
+        allow get: if memberOf(tid) && (request.auth.uid == uid || can(tid, 'attendance.viewAll')) || isSuperAdmin();
+        allow list: if can(tid, 'attendance.viewAll');
+        allow create, update: if writable(tid) && (isAdminOf(tid) || isSuperAdmin() || validPresence(tid, uid));
+        allow delete: if isSuperAdmin();
+      }
+      match /leaves/{id} {
+        allow read: if memberOf(tid) && (resource.data.userId == request.auth.uid || can(tid, 'attendance.viewAll')) || isSuperAdmin();
+        allow create: if isAdminOf(tid) && writable(tid) &&
+          request.resource.data.actor == request.auth.uid &&
+          request.resource.data.userId is string &&
+          request.resource.data.from is timestamp && request.resource.data.until is timestamp &&
+          request.resource.data.until > request.resource.data.from &&
+          request.resource.data.reason is string && request.resource.data.reason.size() > 0 &&
+          request.resource.data.reason.size() <= 500 && request.resource.data.revoked == false &&
+          serverTime('createdAt') && serverTime('updatedAt');
+        allow update: if isAdminOf(tid) && writable(tid) &&
+          request.resource.data.revoked == true && request.resource.data.revokedBy == request.auth.uid &&
+          touchesOnly(['revoked', 'revokedBy', 'updatedAt']) && serverTime('updatedAt');
+        allow delete: if isSuperAdmin();
+      }
+      match /leaveLocks/{uid} {
+        allow get: if memberOf(tid) && (request.auth.uid == uid || isAdminOf(tid)) || isSuperAdmin();
+        allow list: if isAdminOf(tid) || isSuperAdmin();
+        allow write: if isAdminOf(tid) && writable(tid) || isSuperAdmin();
+      }
+      match /presenceAudit/{id} {
+        allow read: if can(tid, 'attendance.viewAll');
+        allow create: if isAdminOf(tid) && writable(tid) &&
+          request.resource.data.actor == request.auth.uid && serverTime('at');
+        allow update: if false;
+        allow delete: if isSuperAdmin();
       }
     }
 

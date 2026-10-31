@@ -51,7 +51,7 @@ void main() {
       day('2026-08-25', late: true),
       day('2026-08-26', open: true),
     ],
-    roster: <AppUser>[TestData.user(uid: 'u1', note: 'Gece vardiyası')],
+    roster: <AppUser>[TestData.user(uid: 'u1', note: 'Oda / öğrenim notu')],
     now: DateTime(2026, 8, 27, 10),
   );
 
@@ -98,7 +98,7 @@ void main() {
     );
   });
 
-  test('dosya adı şirket ve aralıktan üretilir', () {
+  test('dosya adı yurt ve aralıktan üretilir', () {
     final String name = PdfReportService.fileName(
       'Beyaz Yapı A.Ş.',
       ReportFilter(from: DateTime(2026, 8, 24), to: DateTime(2026, 8, 26)),

@@ -69,7 +69,7 @@ void main() {
       expect(ahmet.absentDays, 1);
       expect(ahmet.workedMinutes, 960);
 
-      // Hiç kaydı olmayan personel raporda SIFIR satırıyla görünür; yoksa
+      // Hiç kaydı olmayan öğrenci raporda SIFIR satırıyla görünür; yoksa
       // hiç gelmeyen kişi görünmez olurdu.
       final ReportRow mehmet = report.rows.firstWhere(
         (ReportRow row) => row.userId == 'u2',
@@ -127,7 +127,7 @@ void main() {
       expect(row.hasProblem, isTrue);
     });
 
-    test('kadrodan çıkmış personelin geçmişi raporda kalır', () {
+    test('kadrodan çıkmış öğrencinin geçmişi raporda kalır', () {
       // İşten ayrılan biri raporun kapsadığı günlerde çalışmışsa, o günler
       // rapordan silinmemeli.
       final ReportResult report = buildReport(
@@ -142,7 +142,7 @@ void main() {
       expect(report.rows.any((ReportRow row) => row.userId == 'eski'), isTrue);
     });
 
-    test('gün süzgeci eşleşmeyen personeli tümüyle eler', () {
+    test('gün süzgeci eşleşmeyen öğrenciyi tümüyle eler', () {
       final ReportResult report = buildReport(
         filter: ReportFilter(
           from: DateTime(2026, 8, 24),
@@ -212,7 +212,7 @@ void main() {
     );
 
     final List<AppUser> roster = <AppUser>[
-      TestData.user(uid: 'u1', note: 'Gece vardiyası'),
+      TestData.user(uid: 'u1', note: 'Oda / öğrenim notu'),
     ];
 
     test('günler eskiden yeniye sıralanır', () {
@@ -231,14 +231,14 @@ void main() {
       );
     });
 
-    test('personelin açıklaması satıra taşınır', () {
+    test('öğrencinin açıklaması satıra taşınır', () {
       final ReportResult report = buildReport(
         filter: range,
         days: const <AttendanceDay>[],
         roster: roster,
       );
 
-      expect(report.rows.single.userNote, 'Gece vardiyası');
+      expect(report.rows.single.userNote, 'Oda / öğrenim notu');
     });
 
     test('süzgeç günleri eler ama toplamlar aralığın tamamından gelir', () {

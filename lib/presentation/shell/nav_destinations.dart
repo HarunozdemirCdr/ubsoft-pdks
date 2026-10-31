@@ -45,7 +45,7 @@ class NavDestination {
 abstract final class AppNavigation {
   static const List<NavDestination> all = <NavDestination>[
     NavDestination(
-      label: 'Bugün',
+      label: 'Yurt Durumu',
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard_rounded,
       path: AppRoutes.today,
@@ -79,6 +79,16 @@ abstract final class AppNavigation {
       requires: <AppPermission>[AppPermission.checkpointView],
     ),
     NavDestination(
+      label: 'İzinler',
+      icon: Icons.event_available_outlined,
+      selectedIcon: Icons.event_available,
+      path: AppRoutes.leaves,
+      requires: <AppPermission>[
+        AppPermission.attendanceViewOwn,
+        AppPermission.attendanceViewAll,
+      ],
+    ),
+    NavDestination(
       label: 'Raporlar',
       icon: Icons.bar_chart_rounded,
       selectedIcon: Icons.bar_chart_rounded,
@@ -107,10 +117,10 @@ abstract final class AppNavigation {
     ),
   ];
 
-  /// Süper admin için ayrı menü — müşteri yönetimi.
+  /// Süper admin için ayrı menü — yurt yönetimi.
   static const List<NavDestination> superAdmin = <NavDestination>[
     NavDestination(
-      label: 'Müşteriler',
+      label: 'Yurtlar',
       icon: Icons.business_outlined,
       selectedIcon: Icons.business_rounded,
       path: AppRoutes.tenants,

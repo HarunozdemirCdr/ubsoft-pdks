@@ -21,7 +21,7 @@ import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
-/// Bir müşterinin süper admin görünümü: abonelik, durum, kullanıcılar.
+/// Bir yurdun süper admin görünümü: abonelik, durum, kullanıcılar.
 class TenantDetailPage extends ConsumerWidget {
   const TenantDetailPage({required this.tenantId, super.key});
 
@@ -30,14 +30,14 @@ class TenantDetailPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AppScaffold(
-      title: 'Müşteri',
+      title: 'Yurt',
       showBackButton: true,
       maxContentWidth: AppWidths.wide,
       scrollable: true,
       body: AsyncValueView<Tenant?>(
         value: ref.watch(tenantProvider(tenantId)),
         builder: (Tenant? tenant) => tenant == null
-            ? const Center(child: Text('Müşteri bulunamadı.'))
+            ? const Center(child: Text('Yurt bulunamadı.'))
             : _Body(tenant: tenant),
       ),
     );
@@ -160,7 +160,7 @@ class _Body extends ConsumerWidget {
               children: <Widget>[
                 if (users.isEmpty)
                   Text(
-                    'Bu müşteride kullanıcı yok.',
+                    'Bu yurtta kullanıcı yok.',
                     style: AppTypography.small(context.colors.onSurfaceVariant),
                   )
                 else
@@ -194,7 +194,7 @@ class _Body extends ConsumerWidget {
                 leading: const Icon(Icons.rule_rounded),
                 title: const Text('Rol varsayılanlarını tazele'),
                 subtitle: const Text(
-                  'İzin kataloğu genişlediğinde eski müşterilerde yeni '
+                  'İzin kataloğu genişlediğinde eski yurtlarda yeni '
                   'izinler kapalı kalır; bu düğme farkı kapatır.',
                 ),
                 onTap: () async {
@@ -208,7 +208,7 @@ class _Body extends ConsumerWidget {
               ),
               const Divider(),
               AppButton(
-                label: 'Müşteriyi ve tüm verisini sil',
+                label: 'Yurtyi ve tüm verisini sil',
                 icon: Icons.delete_forever_rounded,
                 variant: AppButtonVariant.danger,
                 expand: true,
@@ -248,9 +248,9 @@ class _Body extends ConsumerWidget {
   ) async {
     final bool ok = await ConfirmDialog.show(
       context,
-      title: 'Müşteri silinsin mi?',
+      title: 'Yurt silinsin mi?',
       message:
-          '${tenant.name} ve tüm verisi (personel, QR noktaları, devam '
+          '${tenant.name} ve tüm verisi (öğrenci, QR noktaları, devam '
           'kayıtları) kalıcı olarak silinecek. Bu işlem geri alınamaz.',
       confirmLabel: 'Kalıcı olarak sil',
       isDestructive: true,
@@ -260,7 +260,7 @@ class _Body extends ConsumerWidget {
     final Result<void> result = await controller.deleteTenant(tenant.id);
     if (!context.mounted) return;
 
-    Toast.result(result, successMessage: 'Müşteri silindi.');
+    Toast.result(result, successMessage: 'Yurt silindi.');
     if (result.isOk) context.go(AppRoutes.tenants);
   }
 }

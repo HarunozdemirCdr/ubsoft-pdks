@@ -12,7 +12,7 @@ import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
-/// Bir personelin bir gündeki okutmaları.
+/// Bir öğrencinin bir gündeki okutmaları.
 ///
 /// Geçmiş tablosunda, rapor ayrıntısında ve kişi geçmişinde aynı liste
 /// kullanılır: okutmanın kanıt değeri (saat, nokta, konum rozeti) her üç

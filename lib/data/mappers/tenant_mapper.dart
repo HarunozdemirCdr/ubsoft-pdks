@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/data/mappers/firestore_converters.dart';
+import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/enums/tenant_status.dart';
 
@@ -40,6 +41,7 @@ abstract final class TenantMapper {
         ),
       ),
       settings: TenantSettings(
+        dormPolicy: DormPolicy.fromMap(settings.nested('dormPolicy')),
         defaultRadiusMeters: settings.integer(
           'defaultRadiusMeters',
           fallback: AppConfig.defaultRadiusMeters,
@@ -94,6 +96,7 @@ abstract final class TenantMapper {
 
   static Map<String, Object?> settingsMap(TenantSettings value) =>
       <String, Object?>{
+        'dormPolicy': value.dormPolicy.toMap(),
         'defaultRadiusMeters': value.defaultRadiusMeters,
         'requireLocation': value.requireLocation,
         'blockOutsideScans': value.blockOutsideScans,

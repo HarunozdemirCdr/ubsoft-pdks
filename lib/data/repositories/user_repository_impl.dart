@@ -17,7 +17,7 @@ final class UserRepositoryImpl extends FirestoreRepositoryBase
 
   @override
   Future<Result<AppUser>> findByUid(String uid) => guard(() async {
-    // Kullanıcı hangi müşteride olduğunu bilmez; koleksiyon grubu üzerinde
+    // Kullanıcı hangi yurtta olduğunu bilmez; koleksiyon grubu üzerinde
     // tek seferlik arama yapılır. Güvenlik kuralı bu sorguyu yalnız kişinin
     // KENDİ kaydı için açar.
     final QuerySnapshot<Map<String, dynamic>> snapshot = await allUsersQuery
@@ -84,11 +84,15 @@ final class UserRepositoryImpl extends FirestoreRepositoryBase
     required String uid,
     required String displayName,
     String? phone,
+    String studentNumber = '',
+    String room = '',
     String? note,
   }) => guardVoid(
     () => usersRef(tenantId).doc(uid).update(<String, Object?>{
       'displayName': displayName.trim(),
       'phone': phone?.trim() ?? '',
+      'studentNumber': studentNumber.trim(),
+      'room': room.trim(),
       'note': note?.trim() ?? '',
       // Eski "Görev" alanı her kayıtta temizlenir. Eşleyici `note` boşken
       // `title`'a düşüyor; silinmeseydi kullanıcı açıklamayı boşalttığında

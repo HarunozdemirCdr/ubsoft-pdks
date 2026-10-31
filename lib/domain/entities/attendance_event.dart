@@ -11,8 +11,8 @@ import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 /// tarafından silinir, düzeltilmez. Düzeltilebilen bir devam kaydı, devam
 /// kaydı olmaktan çıkar.
 ///
-/// Personel ve nokta adları kaydın içine kopyalanır (denormalizasyon):
-/// personel işten ayrılıp kaydı silinse ya da noktanın adı değişse bile
+/// Öğrenci ve nokta adları kaydın içine kopyalanır (denormalizasyon):
+/// öğrenci işten ayrılıp kaydı silinse ya da noktanın adı değişse bile
 /// geçmiş rapor o günkü hâliyle okunabilir kalır.
 class AttendanceEvent extends Equatable {
   const AttendanceEvent({
@@ -28,16 +28,24 @@ class AttendanceEvent extends Equatable {
     required this.checkpointCode,
     required this.verdict,
     this.location,
+    this.lateMinutes = 0,
+    this.earlyExit = false,
+    this.earlyEntry = false,
+    this.permitted = false,
     this.distanceMeters,
     this.radiusMeters,
   });
 
+  final int lateMinutes;
+  final bool earlyExit;
+  final bool earlyEntry;
+  final bool permitted;
   final String id;
   final String tenantId;
 
   final String userId;
 
-  /// Okutma anındaki personel adı.
+  /// Okutma anındaki öğrenci adı.
   final String userName;
 
   final PunchType type;
@@ -85,6 +93,10 @@ class AttendanceEvent extends Equatable {
     location,
     distanceMeters,
     radiusMeters,
+    lateMinutes,
+    earlyExit,
+    earlyEntry,
+    permitted,
     verdict,
   ];
 }

@@ -17,6 +17,8 @@ class AppUser extends Equatable {
     required this.createdAt,
     required this.tenantId,
     this.phone,
+    this.studentNumber = '',
+    this.room = '',
     this.note,
     this.permissionOverrides = const <String, bool>{},
     this.updatedAt,
@@ -31,18 +33,20 @@ class AppUser extends Equatable {
   final String email;
   final String displayName;
   final String? phone;
+  final String studentNumber;
+  final String room;
 
-  /// Personel hakkında serbest not — "Gece vardiyası", "Yarı zamanlı".
+  /// Öğrenci hakkında serbest not — "Oda / öğrenim notu", "Yarı zamanlı".
   ///
   /// Bilinçli olarak biçimsizdir: unvan ya da sicil numarası gibi ayrı
-  /// alanlar, hiçbir şirketin kendi kayıtlarıyla birebir uyuşmuyordu ve
-  /// çoğunlukla boş kalıyordu. Raporun personel başlığında bu not yazar.
+  /// alanlar, hiçbir yurdun kendi kayıtlarıyla birebir uyuşmuyordu ve
+  /// çoğunlukla boş kalıyordu. Raporun öğrenci başlığında bu not yazar.
   final String? note;
 
-  /// Kullanıcının bulunduğu müşteri (doküman yolundaki `tenantId`).
+  /// Kullanıcının bulunduğu yurt (doküman yolundaki `tenantId`).
   ///
-  /// Süper adminler gerçek bir müşteriye ait değildir; onlar sistem
-  /// müşterisinde (`_system`) yaşar.
+  /// Süper adminler gerçek bir yurda ait değildir; onlar sistem
+  /// yurdunda (`_system`) yaşar.
   final String tenantId;
 
   final UserRole role;
@@ -63,7 +67,7 @@ class AppUser extends Equatable {
   /// Giriş yapıp veri görebilir mi?
   bool get canSignIn => status.isActive;
 
-  /// Gerçek bir müşteriye mi bağlı? (Sistem müşterisi sayılmaz.)
+  /// Gerçek bir yurda mi bağlı? (Sistem yurtsi sayılmaz.)
   bool get hasRealTenant =>
       tenantId.isNotEmpty && tenantId != FsPaths.systemTenantId;
 
@@ -80,12 +84,19 @@ class AppUser extends Equatable {
   }
 
   /// Listelerde ad altında gösterilen ikinci satır.
-  String get subtitle => (note ?? '').isEmpty ? email : note!;
+  String get subtitle => <String>[
+    if (studentNumber.isNotEmpty) 'No: $studentNumber',
+    if (room.isNotEmpty) 'Oda: $room',
+    if ((note ?? '').isNotEmpty) note!,
+    if (studentNumber.isEmpty && room.isEmpty && (note ?? '').isEmpty) email,
+  ].join(' · ');
 
   AppUser copyWith({
     String? email,
     String? displayName,
     String? phone,
+    String? studentNumber,
+    String? room,
     String? note,
     String? tenantId,
     UserRole? role,
@@ -99,6 +110,8 @@ class AppUser extends Equatable {
     email: email ?? this.email,
     displayName: displayName ?? this.displayName,
     phone: phone ?? this.phone,
+    studentNumber: studentNumber ?? this.studentNumber,
+    room: room ?? this.room,
     note: note ?? this.note,
     tenantId: tenantId ?? this.tenantId,
     role: role ?? this.role,
@@ -117,6 +130,8 @@ class AppUser extends Equatable {
     email,
     displayName,
     phone,
+    studentNumber,
+    room,
     note,
     tenantId,
     role,

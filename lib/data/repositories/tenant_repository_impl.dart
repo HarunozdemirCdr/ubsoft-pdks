@@ -9,7 +9,7 @@ import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/enums/tenant_status.dart';
 import 'package:ubsoft_pdks/domain/repositories/tenant_repository.dart';
 
-/// Firestore tabanlı müşteri kayıtları.
+/// Firestore tabanlı yurt kayıtları.
 final class TenantRepositoryImpl extends FirestoreRepositoryBase
     implements TenantRepository {
   const TenantRepositoryImpl(super.firestore);
@@ -29,8 +29,8 @@ final class TenantRepositoryImpl extends FirestoreRepositoryBase
         .snapshots()
         .map(
           (QuerySnapshot<Map<String, dynamic>> snapshot) => snapshot.docs
-              // Sistem müşterisi süper adminlerin barınağıdır, gerçek bir
-              // müşteri değildir; listede yer almaz.
+              // Sistem yurtsi süper adminlerin barınağıdır, gerçek bir
+              // yurt değildir; listede yer almaz.
               .where((doc) => doc.id != FsPaths.systemTenantId)
               .map(TenantMapper.fromDoc)
               .toList(growable: false),
@@ -43,7 +43,7 @@ final class TenantRepositoryImpl extends FirestoreRepositoryBase
       tenantId,
     ).get();
     if (!doc.exists) {
-      throw const NotFoundFailure(message: 'Müşteri kaydı bulunamadı.');
+      throw const NotFoundFailure(message: 'Yurt kaydı bulunamadı.');
     }
     return TenantMapper.fromDoc(doc);
   });
@@ -118,7 +118,7 @@ final class TenantRepositoryImpl extends FirestoreRepositoryBase
   Future<Result<void>> deleteTenant(String tenantId) => guardVoid(() async {
     if (tenantId == FsPaths.systemTenantId) {
       throw const PermissionFailure(
-        message: 'Sistem müşterisi silinemez.',
+        message: 'Sistem yurtsi silinemez.',
         code: 'system-tenant',
       );
     }

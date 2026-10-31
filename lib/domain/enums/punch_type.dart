@@ -1,6 +1,6 @@
 /// Bir okutmanın ne anlama geldiği.
 ///
-/// Personel geldiğinde giriş QR'ını, çıkarken çıkış QR'ını okutur. Yön
+/// Öğrenci geldiğinde giriş QR'ını, çıkarken çıkış QR'ını okutur. Yön
 /// okutmanın kendisinden gelir; uygulamanın tahmin etmesine gerek yoktur.
 enum PunchType {
   entry('in', 'Giriş'),
@@ -24,7 +24,7 @@ enum PunchType {
 /// Bir QR noktasının ne için asıldığı.
 ///
 /// [both] tek bir etiketin hem giriş hem çıkış için kullanıldığı küçük
-/// işyerleri içindir: o noktada yön, personelin o anki durumundan çözülür
+/// işyerleri içindir: o noktada yön, öğrencinin o anki durumundan çözülür
 /// (içeride değilse giriş, içerideyse çıkış).
 enum CheckpointKind {
   entry('in', 'Giriş noktası'),

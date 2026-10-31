@@ -14,9 +14,9 @@ import 'package:ubsoft_pdks/domain/permissions/app_permission.dart';
 ///
 /// Konum kararı (doğrulandı / sınırda / nokta dışında), noktaya uzaklık ve
 /// geç giriş işareti yöneticiye aittir: bunlar bir konuşmanın malzemesidir,
-/// personelin ekranında her gün karşısına çıkan bir yargı değil.
+/// öğrencinin ekranında her gün karşısına çıkan bir yargı değil.
 ///
-/// Personel kendi ekranında yalnız **ne olduğunu** görür: içeride mi, giriş
+/// Öğrenci kendi ekranında yalnız **ne olduğunu** görür: içeride mi, giriş
 /// var mı, çıkış var mı, ne kadar sürdü. Okutması reddedildiğinde sebebi
 /// yine görür — aksi hâlde neden okutamadığını bilemezdi.
 ///
@@ -75,7 +75,7 @@ final StreamProvider<List<AttendanceEvent>> myTodayEventsProvider =
           );
     });
 
-/// Bir günün tüm personel özetleri (yönetici görünümü).
+/// Bir günün tüm öğrenci özetleri (yönetici görünümü).
 final daySummariesProvider = StreamProvider.family<List<AttendanceDay>, String>(
   (ref, dateKey) => ref
       .watch(attendanceRepositoryProvider)
@@ -85,7 +85,7 @@ final daySummariesProvider = StreamProvider.family<List<AttendanceDay>, String>(
       ),
 );
 
-/// Bir personelin belirli gündeki okutmaları.
+/// Bir öğrencinin belirli gündeki okutmaları.
 final personDayEventsProvider =
     StreamProvider.family<
       List<AttendanceEvent>,
@@ -100,7 +100,7 @@ final personDayEventsProvider =
           ),
     );
 
-/// Bir personelin tarih aralığındaki günleri, yeniden eskiye.
+/// Bir öğrencinin tarih aralığındaki günleri, yeniden eskiye.
 final personDaysProvider =
     StreamProvider.family<
       List<AttendanceDay>,
@@ -116,11 +116,11 @@ final personDaysProvider =
           ),
     );
 
-/// Bir günün personel bazlı tam tablosu.
+/// Bir günün öğrenci bazlı tam tablosu.
 ///
 /// **Kadrodan kurulur, kayıtlardan değil.** Yalnız o gün okutma yapmış
 /// kişileri listelemek, gelmeyenleri görünmez yapardı — oysa bir devam
-/// kontrol sisteminde asıl bakılan şey odur. Bu yüzden liste aktif personel
+/// kontrol sisteminde asıl bakılan şey odur. Bu yüzden liste aktif öğrenci
 /// kadrosuyla başlar; kaydı olmayan herkes [DayStatus.absent] olarak satırını
 /// korur.
 final dayRosterProvider = Provider.family<List<AttendanceDay>, String>((
@@ -148,7 +148,7 @@ final dayRosterProvider = Provider.family<List<AttendanceDay>, String>((
           ),
 
     // Kadroda olmayan ama o gün kaydı bulunan kişiler (işten ayrılmış
-    // personel) düşmez: geçmiş bir günün tablosu, o gün gerçekten ne
+    // öğrenci) düşmez: geçmiş bir günün tablosu, o gün gerçekten ne
     // olduğunu göstermeli.
     ...records.where(
       (AttendanceDay day) => !roster.any((AppUser u) => u.uid == day.userId),
@@ -176,7 +176,7 @@ class DayOverview {
     required this.flagged,
   });
 
-  /// Kadrodaki aktif personel sayısı.
+  /// Kadrodaki aktif öğrenci sayısı.
   final int total;
 
   /// Şu anda içeride olanlar.

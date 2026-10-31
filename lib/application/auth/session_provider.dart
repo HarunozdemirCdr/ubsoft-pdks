@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
@@ -24,15 +23,15 @@ final StreamProvider<String?> authStateProvider = StreamProvider<String?>(
 ///
 /// ```
 /// 1. Firebase oturumu (uid)
-/// 2. Koleksiyon-grubu sorgusu: hangi müşterinin altındayım?
+/// 2. Koleksiyon-grubu sorgusu: hangi yurdun altındayım?
 /// 3. tenants/{tid}/users/{uid}  → canlı izlenir
 /// 4. tenants/{tid}             → canlı izlenir
 /// 5. tenants/{tid}/roleDefaults → izinler çözülür
 /// ```
 ///
 /// İkinci adım yalnız bir kez çalışır; sonrasında yol bilindiği için doğrudan
-/// doküman dinlenir. Kullanıcı ve müşteri **canlı izlenir**: yönetici bir
-/// personeli pasifleştirdiği anda o kişinin ekranı engellenir, abonelik askıya
+/// doküman dinlenir. Kullanıcı ve yurt **canlı izlenir**: yönetici bir
+/// öğrenciyi pasifleştirdiği anda o kişinin ekranı engellenir, abonelik askıya
 /// alındığında uygulama anında salt okunur olur.
 final StreamProvider<Session> sessionProvider = StreamProvider<Session>((
   ref,
@@ -47,7 +46,7 @@ final StreamProvider<Session> sessionProvider = StreamProvider<Session>((
   final UserRepository users = ref.watch(userRepositoryProvider);
   final TenantRepository tenants = ref.watch(tenantRepositoryProvider);
 
-  // 1) Kullanıcı hangi müşterinin altında?
+  // 1) Kullanıcı hangi yurdun altında?
   final Result<AppUser> located = await users.findByUid(uid);
   if (located case Err<AppUser>()) {
     yield const Session.blocked(SessionBlockReason.profileMissing);
@@ -61,13 +60,13 @@ final StreamProvider<Session> sessionProvider = StreamProvider<Session>((
     return;
   }
 
-  // 2) Rol varsayılanları — müşteri başına, oturum başında bir kez okunur.
+  // 2) Rol varsayılanları — yurt başına, oturum başında bir kez okunur.
   final Result<Map<String, Map<String, bool>>> defaultsResult = await tenants
       .getRoleDefaults(tenantId);
   final Map<String, Map<String, bool>> defaults =
       defaultsResult.valueOrNull ?? const <String, Map<String, bool>>{};
 
-  // 3) Süper admin bir müşteriye bağlı değildir; yalnız kendi kaydı izlenir.
+  // 3) Süper admin bir yurda bağlı değildir; yalnız kendi kaydı izlenir.
   if (profile.role.isSuperAdmin) {
     yield* _quiet(users.watchUser(tenantId, uid)).map(
       (AppUser? user) => switch (user) {
@@ -81,11 +80,11 @@ final StreamProvider<Session> sessionProvider = StreamProvider<Session>((
     return;
   }
 
-  // 4) Kullanıcı ve müşteri EŞ ZAMANLI izlenir.
+  // 4) Kullanıcı ve yurt EŞ ZAMANLI izlenir.
   //
   // İkisi ayrı akıştır ve ikisi de sonsuzdur. Kullanıcı akışının içinden
-  // müşteri akışına `yield*` ile delege edilemez: `yield*` delege edilen akış
-  // bitene kadar bekler, müşteri akışı ise hiç bitmez — dış döngü orada
+  // yurt akışına `yield*` ile delege edilemez: `yield*` delege edilen akış
+  // bitene kadar bekler, yurt akışı ise hiç bitmez — dış döngü orada
   // sonsuza dek donar ve kullanıcı dokümanındaki hiçbir değişiklik (yetki
   // override'ı, rol değişimi, pasifleştirme) bir daha okunmazdı. Bu yüzden iki
   // akış birleştirilir ve her ikisinin son değerinden oturum yeniden kurulur.
@@ -96,12 +95,12 @@ final StreamProvider<Session> sessionProvider = StreamProvider<Session>((
   ).distinct();
 });
 
-/// Kullanıcı ve müşteri akışlarını tek bir oturum akışına birleştirir.
+/// Kullanıcı ve yurt akışlarını tek bir oturum akışına birleştirir.
 ///
 /// İki kaynak da bağımsız olarak yayın yapar; her yayında o anki iki değerden
 /// oturum yeniden çözülür. Her iki taraftan da en az bir değer gelmeden oturum
-/// yayınlanmaz — aksi hâlde müşteri henüz yüklenmemişken kullanıcı yanlışlıkla
-/// "müşterisi yok" sayılırdı.
+/// yayınlanmaz — aksi hâlde yurt henüz yüklenmemişken kullanıcı yanlışlıkla
+/// "yurtsi yok" sayılırdı.
 Stream<Session> _mergeSession({
   required Stream<AppUser?> users,
   required Stream<Tenant?> tenants,
@@ -137,7 +136,7 @@ Stream<Session> _mergeSession({
       return;
     }
 
-    // Abonelik süresi dolduğunda personelin yapabileceği hiçbir şey kalmaz:
+    // Abonelik süresi dolduğunda öğrencinin yapabileceği hiçbir şey kalmaz:
     // okutma yapamaz. Ona sebebi söylenmeyen, düğmeleri sessizce kaybolmuş
     // bir uygulama göstermek en kötü seçenektir — "program bozuldu" telefonu
     // gelir ve kimse aboneliğin bittiğini fark etmez.
@@ -228,14 +227,14 @@ final Provider<AppUser?> currentUserProvider = Provider<AppUser?>(
   (ref) => ref.watch(currentSessionProvider).userOrNull,
 );
 
-/// Aktif müşteri. Süper adminde `null`.
+/// Aktif yurt. Süper adminde `null`.
 final Provider<Tenant?> currentTenantProvider = Provider<Tenant?>(
   (ref) => ref.watch(currentSessionProvider).tenantOrNull,
 );
 
-/// Aktif müşteri kimliği — tenant'a bağlı tüm veri provider'ları bunu izler.
+/// Aktif yurt kimliği — tenant'a bağlı tüm veri provider'ları bunu izler.
 ///
-/// Süper admin için sistem müşterisi döner; gerçek müşteri verisine erişmesi
+/// Süper admin için sistem yurtsi döner; gerçek yurt verisine erişmesi
 /// gerektiğinde kimlik açıkça parametre olarak geçilir.
 ///
 /// Oturum yoksa hata fırlatır: tenant gerektiren bir ekran oturumsuz
@@ -263,5 +262,5 @@ final canProvider = Provider.family<bool, AppPermission>(
   (ref, permission) => ref.watch(permissionsProvider).can(permission),
 );
 
-/// Süper adminlerin barındığı sistem müşterisi kimliği.
+/// Süper adminlerin barındığı sistem yurtsi kimliği.
 const String systemTenantId = FsPaths.systemTenantId;

@@ -21,6 +21,7 @@ abstract interface class AttendanceRepository {
     required PunchType type,
     required LocationCheck check,
     required ScanLocation? location,
+    Duration cooldown = const Duration(minutes: 1),
   });
 
   /// Bir kişinin belirli gündeki özeti. Kayıt yoksa boş özet yayınlar.
@@ -31,7 +32,7 @@ abstract interface class AttendanceRepository {
     required String dateKey,
   });
 
-  /// Bir günün tüm personel özetleri.
+  /// Bir günün tüm öğrenci özetleri.
   Stream<List<AttendanceDay>> watchDaySummaries({
     required String tenantId,
     required String dateKey,

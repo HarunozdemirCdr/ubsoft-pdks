@@ -11,7 +11,7 @@ import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 // dizeyi doğrudan liste literaline yazmak, arada unutulmuş bir virgülü
 // görünmez kılar ve iki madde sessizce birleşir.
 const String _dataIdentity =
-    'Kimlik: ad soyad, e-posta adresi ve yöneticinin girdiği açıklama notu.';
+    'Kimlik: ad soyad, e-posta, telefon, öğrenci numarası, oda ve açıklama notu.';
 const String _dataAttendance =
     'Devam kaydı: her giriş ve çıkış okutmasının tarihi, saati ve okutulan '
     'QR noktası.';
@@ -19,22 +19,25 @@ const String _dataLocation =
     'Konum: okutma yapıldığı an, cihazın bildirdiği koordinat ve ölçüm '
     'hassasiyeti.';
 const String _dataSession = 'Oturum: son giriş zamanı.';
+const String _dataLeave =
+    'İzinler: izin aralığı, dönüş zamanı ve izin açıklaması; kayıt düzeltmelerinin gerekçesi ve işlemi yapan yönetici.';
 
 const List<String> _collectedData = <String>[
   _dataIdentity,
   _dataAttendance,
   _dataLocation,
   _dataSession,
+  _dataLeave,
 ];
 
 const String _locationPurpose =
-    'Amaç: okutmanın gerçekten işyerinde yapıldığını doğrulamak — etiketin '
+    'Amaç: okutmanın gerçekten yurtta yapıldığını doğrulamak — etiketin '
     'fotoğrafını çekip başka bir yerden okutmayı ayırt etmek.';
 const String _locationMeasure =
     'Ölçüm, QR noktasının koordinatına olan uzaklık hesaplanarak '
     'değerlendirilir; ham koordinat kaydın içinde kalır.';
 const String _locationConsent =
-    'Konum izni verilmezse okutma yapılamayabilir (şirket ayarına bağlıdır); '
+    'Konum izni verilmezse okutma yapılamayabilir (yurt ayarına bağlıdır); '
     'bu durumda yöneticinize başvurun.';
 
 const List<String> _locationNotes = <String>[
@@ -47,7 +50,7 @@ const List<String> _locationNotes = <String>[
 ///
 /// Bu ekran bir süs değildir: uygulama **konum verisi** işler ve 6698 sayılı
 /// kanun bunu açıkça bildirmeyi zorunlu kılar. Metin oturumdan bağımsız
-/// olarak her zaman açıktır — giriş yapamayan bir personel de neyin
+/// olarak her zaman açıktır — giriş yapamayan bir öğrenci de neyin
 /// toplandığını okuyabilmelidir.
 class PrivacyPage extends StatelessWidget {
   const PrivacyPage({super.key});
@@ -66,7 +69,7 @@ class PrivacyPage extends StatelessWidget {
             eyebrow: 'Kişisel verilerin korunması',
             title: 'Hangi veriler, neden işleniyor?',
             description:
-                'Bu uygulama yurt öğrenci giriş-çıkış takibi için gerekli en az '
+                'Bu uygulama öğrenci devam kontrolü için gerekli en az '
                 'veriyi toplar.',
           ),
           AppSpacing.vLg,
@@ -74,7 +77,7 @@ class PrivacyPage extends StatelessWidget {
           const _Section(
             title: '1. Veri sorumlusu',
             body:
-                'Uygulamayı işleten şirketiniz veri sorumlusudur. Yazılımı '
+                'Uygulamayı işleten yurt yönetimi veri sorumlusudur. Yazılımı '
                 'geliştiren ${CompanyInfo.legalName} yalnız teknik hizmet '
                 'sağlar ve verilerinizi kendi amaçları için kullanmaz.',
           ),
@@ -86,18 +89,18 @@ class PrivacyPage extends StatelessWidget {
             body:
                 'Konum yalnız QR okutulduğu anda, bir kez ölçülür ve o '
                 'okutma kaydının parçası olarak saklanır. Uygulama arka '
-                'planda çalışmaz, personeli sürekli izlemez ve iki okutma '
+                'planda çalışmaz, öğrenciyi sürekli izlemez ve iki okutma '
                 'arasında hiçbir konum bilgisi toplamaz.',
             bullets: _locationNotes,
           ),
 
           const _Section(
-            title: '4. İşleme amacı ve hukuki sebep',
+            title: '4. İşleme amacı',
             body:
-                'Veriler; yurt güvenliği, öğrenci giriş-çıkış takibi ve '
-                'güvenliği yükümlülüklerinin yerine getirilmesi amacıyla, '
-                'iş sözleşmesinin ifası ve işverenin meşru menfaati hukuki '
-                'sebeplerine dayanılarak işlenir.',
+                'Veriler; öğrencilerin yurda giriş ve çıkışlarının kaydı, '
+                'yurtta bulunma durumunun ve izinli dönüşlerin takibi amacıyla '
+                'kullanılır. Kurumun veri işleme esasları hakkında yurt '
+                'yönetiminden bilgi alabilirsiniz.',
           ),
 
           const _Section(
@@ -111,10 +114,9 @@ class PrivacyPage extends StatelessWidget {
           const _Section(
             title: '6. Saklama süresi',
             body:
-                'Devam kayıtları, ilgili mevzuatın öngördüğü saklama süreleri '
-                'boyunca tutulur. Süre dolduğunda ya da talep hâlinde '
-                'silinir. Öğrenci kaydı silindiğinde geçmiş devam kayıtları, '
-                'yasal yükümlülük gereği ad bilgisiyle birlikte korunur.',
+                'Öğrenci hesabı listeden kaldırıldığında geçmiş giriş–çıkış '
+                'kayıtları otomatik silinmez. Saklama süreleri ve silme '
+                'talepleri için yurt yönetimine başvurun.',
           ),
 
           const _Section(
@@ -123,8 +125,7 @@ class PrivacyPage extends StatelessWidget {
                 '6698 sayılı Kanun\'un 11. maddesi uyarınca; verilerinizin '
                 'işlenip işlenmediğini öğrenme, düzeltilmesini veya '
                 'silinmesini isteme ve işlemeye itiraz etme haklarına '
-                'sahipsiniz. Başvurularınızı şirketinizin insan kaynakları '
-                'birimine iletebilirsiniz.',
+                'sahipsiniz. Başvurularınızı yurt yönetimine iletebilirsiniz.',
           ),
 
           AppSpacing.vLg,

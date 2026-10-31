@@ -90,7 +90,7 @@ final class LocationFailure extends Failure {
   const LocationFailure(super.message, {super.technical, super.code});
 }
 
-/// Abonelik limiti aşıldı veya müşteri hesabı askıya alındı.
+/// Abonelik limiti aşıldı veya yurt hesabı askıya alındı.
 final class SubscriptionFailure extends Failure {
   const SubscriptionFailure(super.message, {super.technical, super.code});
 }

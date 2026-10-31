@@ -20,7 +20,7 @@ import 'package:ubsoft_pdks/services/qr/qr_scanner_service.dart';
 /// hizalama çerçevesi. Sonuç geldiğinde kamera durur ve yerini sonuç
 /// görünümüne bırakır — kullanıcı "okudu mu, okumadı mı" diye beklemez.
 ///
-/// **Elle kod girişi yoktur.** Personelin işyerinde olduğu yalnız QR ile
+/// **Elle kod girişi yoktur.** Öğrencinin yurtta olduğu yalnız QR ile
 /// kanıtlanır; klavyeden girilebilen bir kod, konum doğrulamasıyla birlikte
 /// tüm denetimi anlamsız kılardı.
 class ScanPage extends ConsumerStatefulWidget {

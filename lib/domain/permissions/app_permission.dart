@@ -17,7 +17,7 @@ enum PermissionGroup {
 /// Uygulamadaki tüm izinler.
 ///
 /// İzinler role gömülü değildir: rol yalnız bir **varsayılan küme** sunar,
-/// yönetici her izni personel bazında açıp kapatabilir. Bu yüzden kodda
+/// yönetici her izni öğrenci bazında açıp kapatabilir. Bu yüzden kodda
 /// `if (user.role.isAdmin)` yazılmaz; `permissions.can(AppPermission.x)`
 /// sorulur.
 ///
@@ -46,7 +46,7 @@ enum AppPermission {
     'attendance.viewOwn',
     'Kendi kayıtlarını görüntüle',
     PermissionGroup.attendance,
-    description: 'Eski kayıtlarla uyumluluk için saklanır; öğrenciye verilmez.',
+    description: 'Öğrenci kendi giriş–çıkış geçmişini görüntüler.',
   ),
   attendanceViewAll(
     'attendance.viewAll',
@@ -56,7 +56,7 @@ enum AppPermission {
   ),
   attendanceDelete(
     'attendance.delete',
-    'Okutma kaydını sil',
+    'Yanlış hareketi geçersiz kıl',
     PermissionGroup.attendance,
     isWrite: true,
     description:
@@ -176,7 +176,7 @@ enum AppPermission {
 
   /// Veri değiştiren bir izin mi?
   ///
-  /// Askıya alınmış müşterilerde yazma izinleri otomatik olarak kapanır.
+  /// Askıya alınmış yurtlarde yazma izinleri otomatik olarak kapanır.
   final bool isWrite;
 
   static AppPermission? fromKey(String? key) {

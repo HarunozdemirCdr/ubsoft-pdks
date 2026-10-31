@@ -7,7 +7,7 @@ import 'package:ubsoft_pdks/core/utils/qr_code.dart';
 ///
 /// Tarayıcıda kamera erişimi HTTPS ve kullanıcı izni gerektirir. İzin
 /// reddedildiğinde okutma yapılamaz — elle kod girişi bilinçli olarak
-/// **yoktur**: personelin işyerinde olduğu yalnız QR ile kanıtlanır,
+/// **yoktur**: öğrencinin yurtta olduğu yalnız QR ile kanıtlanır,
 /// elle girilebilen bir kod bu kanıtı ortadan kaldırırdı.
 final qrControllerProvider = Provider.autoDispose<MobileScannerController>((
   ref,

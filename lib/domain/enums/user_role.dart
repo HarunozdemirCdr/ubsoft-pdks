@@ -5,7 +5,7 @@
 /// override). Bu yüzden koda `if (role == admin)` yazılmaz — `can(izin)`
 /// sorulur.
 enum UserRole {
-  /// Sistem sahibi. Müşteri (tenant) açar, kapatır, abonelik yönetir.
+  /// Sistem sahibi. Yurt (tenant) açar, kapatır, abonelik yönetir.
   /// Bir tenant'a ait değildir; tüm veriye erişir.
   superAdmin('superAdmin'),
 

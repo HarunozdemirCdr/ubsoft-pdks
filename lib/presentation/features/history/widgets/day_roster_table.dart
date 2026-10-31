@@ -11,7 +11,7 @@ import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
 import 'package:ubsoft_pdks/presentation/widgets/punch_time.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 
-/// Bir günün kadro tablosu: solda personel, sağda giriş ve çıkış saatleri.
+/// Bir günün kadro tablosu: solda öğrenci, sağda giriş ve çıkış saatleri.
 ///
 /// Kart yığını yerine tek bir tablo kullanılır. Otuz kişilik bir kadroda
 /// otuz ayrı kart, aranan şeyi (bir saatin olup olmadığını) her satırda
@@ -33,7 +33,7 @@ class DayRosterTable extends StatelessWidget {
   final List<AttendanceDay> days;
   final String dateKey;
 
-  /// Okutmaları açılmış personel; `null` ise hepsi kapalı.
+  /// Okutmaları açılmış öğrenci; `null` ise hepsi kapalı.
   final String? expandedUserId;
 
   final ValueChanged<String> onToggle;

@@ -1,21 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:ubsoft_pdks/application/attendance/attendance_providers.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
 import 'package:ubsoft_pdks/core/config/app_config.dart';
+import 'package:ubsoft_pdks/core/error/error_mapper.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/core/utils/qr_code.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
-import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 import 'package:ubsoft_pdks/domain/entities/scan_location.dart';
 import 'package:ubsoft_pdks/domain/entities/session.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
-import 'package:ubsoft_pdks/domain/usecases/attendance/resolve_punch.dart';
 import 'package:ubsoft_pdks/domain/usecases/attendance/verify_location.dart';
 import 'package:ubsoft_pdks/services/location/location_service.dart';
 
@@ -100,7 +98,7 @@ class PunchController extends Notifier<PunchState> {
     if (!QrCode.isValid(code)) {
       state = const PunchState.failed(
         PunchFailure(
-          'Okunan kod bu sisteme ait değil. Lütfen şirketinizin QR '
+          'Okunan kod bu sisteme ait değil. Lütfen yurdunizin QR '
           'etiketini okutun.',
           code: 'invalid-format',
         ),
@@ -122,7 +120,7 @@ class PunchController extends Notifier<PunchState> {
     if (!tenant.isWritable) {
       state = const PunchState.failed(
         SubscriptionFailure(
-          'Şirket hesabınız şu anda kayıt kabul etmiyor. Yöneticinizle '
+          'Yurt hesabınız şu anda kayıt kabul etmiyor. Yöneticinizle '
           'görüşün.',
           code: 'tenant-readonly',
         ),
@@ -157,69 +155,59 @@ class PunchController extends Notifier<PunchState> {
     // sahiplenir; ileride `await` edilirse yine normal biçimde fırlatır.
     final Future<ScanLocation?> readingLocation = _readLocation()..ignore();
 
-    final Result<Checkpoint> found = await findingCheckpoint;
+    try {
+      final Result<Checkpoint> found = await findingCheckpoint;
 
-    if (found case Err<Checkpoint>(:final Failure failure)) {
-      state = PunchState.failed(failure);
-      return;
-    }
-    final Checkpoint checkpoint = (found as Ok<Checkpoint>).value;
+      if (found case Err<Checkpoint>(:final Failure failure)) {
+        state = PunchState.failed(failure);
+        return;
+      }
+      final Checkpoint checkpoint = (found as Ok<Checkpoint>).value;
 
-    // 2) Konum — kaydın kanıt tarafı.
-    state = const PunchState.working('Konum alınıyor…');
+      // 2) Konum — kaydın kanıt tarafı.
+      state = const PunchState.working('Konum alınıyor…');
 
-    final ScanLocation? location = checkpoint.hasLocation
-        ? await readingLocation
-        : null;
-    final LocationCheck check = VerifyLocation.call(
-      checkpoint: checkpoint,
-      location: location,
-    );
-
-    // 3) Kural motoru: yön ne, kayıt kabul edilir mi?
-    //
-    // Bugünün özeti BEKLENEREK okunur (`.future`), o anki değerine
-    // bakılarak değil. Henüz yüklenmemiş bir özet "hiç giriş yok" gibi
-    // görünür ve zaten içeride olan biri ikinci kez giriş yapardı.
-    final AttendanceDay today = await ref.read(myTodayProvider.future);
-
-    final PunchResolution resolution = ResolvePunch.call(
-      cooldown: ref.read(punchCooldownProvider),
-      checkpoint: checkpoint,
-      today: today,
-      settings: tenant.settings,
-      location: check,
-    );
-
-    if (resolution case PunchRejected(:final Failure failure)) {
-      state = PunchState.failed(failure);
-      return;
-    }
-    final PunchAccepted accepted = resolution as PunchAccepted;
-
-    // 4) Kayıt.
-    state = const PunchState.working('Kaydediliyor…');
-
-    final Result<AttendanceEvent> written = await ref
-        .read(attendanceRepositoryProvider)
-        .recordPunch(
-          tenant: tenant,
-          user: user,
-          checkpoint: checkpoint,
-          type: accepted.type,
-          check: check,
-          location: location,
-        );
-
-    state = switch (written) {
-      Ok<AttendanceEvent>(:final AttendanceEvent value) => PunchState.success(
-        event: value,
+      final ScanLocation? location = checkpoint.hasLocation
+          ? await readingLocation
+          : null;
+      final LocationCheck check = VerifyLocation.call(
         checkpoint: checkpoint,
-      ),
-      Err<AttendanceEvent>(:final Failure failure) => PunchState.failed(
-        failure,
-      ),
-    };
+        location: location,
+      );
+
+      if (checkpoint.kind.fixedType == null) {
+        state = const PunchState.failed(
+          PunchFailure('Giriş ve çıkış için ayrı QR kodları kullanın.'),
+        );
+        return;
+      }
+      // 4) Kayıt.
+      state = const PunchState.working('Kaydediliyor…');
+
+      final Result<AttendanceEvent> written = await ref
+          .read(attendanceRepositoryProvider)
+          .recordPunch(
+            tenant: tenant,
+            user: user,
+            checkpoint: checkpoint,
+            type: checkpoint.kind.fixedType!,
+            cooldown: ref.read(punchCooldownProvider),
+            check: check,
+            location: location,
+          );
+
+      state = switch (written) {
+        Ok<AttendanceEvent>(:final AttendanceEvent value) => PunchState.success(
+          event: value,
+          checkpoint: checkpoint,
+        ),
+        Err<AttendanceEvent>(:final Failure failure) => PunchState.failed(
+          failure,
+        ),
+      };
+    } catch (error, stack) {
+      state = PunchState.failed(ErrorMapper.map(error, stack));
+    }
   }
 
   /// Konumu okur; alınamazsa `null` döner.

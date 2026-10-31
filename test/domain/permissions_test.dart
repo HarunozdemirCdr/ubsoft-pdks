@@ -11,12 +11,16 @@ void main() {
         UserRole.superAdmin,
       );
       for (final AppPermission permission in AppPermission.values) {
-        expect(permissions.can(permission), isTrue, reason: permission.key);
+        expect(
+          permissions.can(permission),
+          permission != AppPermission.punchCreate,
+          reason: permission.key,
+        );
       }
     });
 
     test('yönetici tenant içinde koşulsuz yetkilidir', () {
-      // Ürün kararı: izin/override sistemi YALNIZ personel içindir.
+      // Ürün kararı: izin/override sistemi YALNIZ öğrenci içindir.
       final PermissionSet permissions = PermissionSet(
         role: UserRole.admin,
         overrides: const <String, bool>{'user.delete': false},
@@ -27,11 +31,11 @@ void main() {
       expect(permissions.can(AppPermission.settingsEdit), isTrue);
     });
 
-    test('öğrenci yalnız QR okutma iznine sahiptir', () {
+    test('öğrenci yalnız varsayılan izinlerine sahiptir', () {
       final PermissionSet permissions = PermissionSet.fromRole(UserRole.staff);
 
       expect(permissions.can(AppPermission.punchCreate), isTrue);
-      expect(permissions.can(AppPermission.attendanceViewOwn), isFalse);
+      expect(permissions.can(AppPermission.attendanceViewOwn), isTrue);
       expect(permissions.can(AppPermission.attendanceViewAll), isFalse);
       expect(permissions.can(AppPermission.userView), isFalse);
       expect(permissions.can(AppPermission.settingsEdit), isFalse);
@@ -51,7 +55,7 @@ void main() {
       expect(permissions.can(AppPermission.punchCreate), isFalse);
     });
 
-    test('askıya alınmış müşteride yazma izinleri kapanır', () {
+    test('askıya alınmış yurtta yazma izinleri kapanır', () {
       final PermissionSet permissions = PermissionSet(
         role: UserRole.staff,
         overrides: const <String, bool>{},
@@ -61,7 +65,7 @@ void main() {
 
       expect(permissions.can(AppPermission.punchCreate), isFalse);
       // Öğrencinin geçmiş okuma izni zaten yoktur.
-      expect(permissions.can(AppPermission.attendanceViewOwn), isFalse);
+      expect(permissions.can(AppPermission.attendanceViewOwn), isTrue);
     });
 
     test('askıya alma yöneticinin de yazmasını engeller', () {
@@ -140,7 +144,7 @@ void main() {
       }
     });
 
-    test('personel varsayılanı yönetim yetkisi içermez', () {
+    test('öğrenci varsayılanı yönetim yetkisi içermez', () {
       final Set<AppPermission> staff = RoleDefaults.of(UserRole.staff);
 
       expect(staff.contains(AppPermission.userCreate), isFalse);
@@ -151,7 +155,8 @@ void main() {
 
     test('yönetici varsayılanı tüm izinleri içerir', () {
       final Set<AppPermission> admin = RoleDefaults.of(UserRole.admin);
-      expect(admin.length, AppPermission.values.length);
+      expect(admin.length, AppPermission.values.length - 1);
+      expect(admin.contains(AppPermission.punchCreate), isFalse);
     });
 
     test('izin anahtarları tekildir', () {
@@ -178,7 +183,7 @@ void main() {
   });
 
   group('UserRole', () {
-    test('bilinmeyen rol personele düşer', () {
+    test('bilinmeyen rol öğrencie düşer', () {
       expect(UserRole.fromKey('sacma'), UserRole.staff);
       expect(UserRole.fromKey(null), UserRole.staff);
       expect(UserRole.fromKey('guard'), UserRole.staff);

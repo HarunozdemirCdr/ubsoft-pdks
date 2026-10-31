@@ -23,13 +23,13 @@ import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 /// tek bakışta cevaplanmalıdır. Bu yüzden satırlar kişi kartı değil, hizalı
 /// bir tablo satırıdır; gün değiştikçe gözün aradığı yer değişmez.
 ///
-/// Kişi bazlı derinlemesine inceleme (bir personelin son on dört günü, geç
+/// Kişi bazlı derinlemesine inceleme (bir öğrencinin son on dört günü, geç
 /// geldiği günlerin dökümü, yazdırılabilir belge) buraya değil **Raporlar**
 /// ekranına aittir. İki ekran birbirinin kopyası olmasın diye buradan kişi
 /// geçmişine geçiş bilinçli olarak kaldırıldı; bir satıra dokunmak o günün
 /// okutmalarını yerinde açar, günden çıkarmaz.
 ///
-/// Yalnız kendi kayıtlarını görebilen bir personel bu ekranı açtığında
+/// Yalnız kendi kayıtlarını görebilen bir öğrenci bu ekranı açtığında
 /// doğrudan kendi geçmişine yönlendirilir; ona başkalarının bulunmadığı bir
 /// tablo göstermenin anlamı yok.
 class HistoryPage extends ConsumerStatefulWidget {
@@ -105,7 +105,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
             AppSpacing.vSm,
             const InfoNote(
               message:
-                  'Bir personelin birden çok günü ya da yazdırılabilir '
+                  'Bir öğrencinin birden çok günü ya da yazdırılabilir '
                   'dökümü için Raporlar ekranını kullanın.',
             ),
           ],

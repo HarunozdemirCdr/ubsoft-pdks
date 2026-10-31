@@ -17,14 +17,14 @@ import 'package:ubsoft_pdks/presentation/widgets/empty_state.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 
-/// Süper admin müşteri listesi.
+/// Süper admin yurt listesi.
 class TenantListPage extends ConsumerWidget {
   const TenantListPage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return AppScaffold(
-      title: 'Müşteriler',
+      title: 'Yurtlar',
       maxContentWidth: AppWidths.wide,
       scrollable: true,
       body: Column(
@@ -33,7 +33,7 @@ class TenantListPage extends ConsumerWidget {
           AppSpacing.vSm,
           SectionHeader(
             eyebrow: 'Sistem yönetimi',
-            title: 'Müşteriler',
+            title: 'Yurtlar',
             description: 'Abonelik açın, uzatın ya da askıya alın.',
             trailing: AppButton(
               label: 'Yeni',
@@ -49,11 +49,11 @@ class TenantListPage extends ConsumerWidget {
             builder: (List<Tenant> tenants) => tenants.isEmpty
                 ? EmptyState(
                     icon: Icons.business_outlined,
-                    title: 'Henüz müşteri yok',
+                    title: 'Henüz yurt yok',
                     description:
-                        'İlk müşteriyi açtığınızda yöneticisi de birlikte '
+                        'İlk yurdu açtığınızda yöneticisi de birlikte '
                         'oluşturulur.',
-                    actionLabel: 'Müşteri aç',
+                    actionLabel: 'Yurt aç',
                     onAction: () => context.go(AppRoutes.tenantNewPath),
                   )
                 : Column(

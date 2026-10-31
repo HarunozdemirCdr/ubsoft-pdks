@@ -20,7 +20,7 @@ import 'package:ubsoft_pdks/presentation/widgets/empty_state.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 
-/// Personel listesi.
+/// Öğrenci listesi.
 class UserListPage extends ConsumerWidget {
   const UserListPage({super.key});
 

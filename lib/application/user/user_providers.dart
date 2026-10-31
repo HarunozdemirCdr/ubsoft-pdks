@@ -12,11 +12,11 @@ import 'package:ubsoft_pdks/domain/permissions/app_permission.dart';
 import 'package:ubsoft_pdks/domain/permissions/permission_set.dart';
 import 'package:ubsoft_pdks/domain/repositories/user_repository.dart';
 
-/// Müşterinin kullanıcıları — silinmişler hariç.
+/// Yurdun kullanıcıları — silinmişler hariç.
 ///
 /// Yetkisi olmayan kullanıcı için sorgu **hiç açılmaz**. Güvenlik kuralları
 /// zaten reddederdi; ama reddedilen bir dinleyici, kendi geçmişini açan her
-/// personelin ekranında sessiz bir "permission-denied" bırakır ve gerçek
+/// öğrencinin ekranında sessiz bir "permission-denied" bırakır ve gerçek
 /// hatalar bu gürültüde kaybolur.
 final StreamProvider<List<AppUser>> usersProvider =
     StreamProvider<List<AppUser>>((ref) {
@@ -58,7 +58,7 @@ final userProvider = Provider.family<AppUser?, String>(
   (ref, uid) => ref.watch(usersByIdProvider)[uid],
 );
 
-/// Müşterinin rol varsayılanları: `{ 'staff': {'punch.create': true, …}, … }`.
+/// Yurdun rol varsayılanları: `{ 'staff': {'punch.create': true, …}, … }`.
 ///
 /// Yetki ekranı bunu okur ki bir anahtarın "açık" görünmesi gerçekten o rolün
 /// varsayılanından mı geliyor, yoksa kullanıcıya özel mi ayarlanmış ayırt
@@ -80,7 +80,7 @@ class UserController extends AsyncNotifier<void> {
   String get _tenantId => ref.read(tenantIdProvider);
   AppUser? get _actor => ref.read(currentUserProvider);
 
-  /// Yeni personel açar: önce Auth hesabı, sonra Firestore kaydı.
+  /// Yeni öğrenci açar: önce Auth hesabı, sonra Firestore kaydı.
   ///
   /// Sıra önemlidir ve tersi mümkün değildir: Firestore kaydının doküman
   /// kimliği Auth'un verdiği `uid`'dir.
@@ -90,6 +90,8 @@ class UserController extends AsyncNotifier<void> {
     required String displayName,
     required UserRole role,
     String? phone,
+    String studentNumber = '',
+    String room = '',
     String? note,
   }) async {
     state = const AsyncValue<void>.loading();
@@ -139,6 +141,8 @@ class UserController extends AsyncNotifier<void> {
       email: email.trim().toLowerCase(),
       displayName: displayName.trim(),
       phone: phone?.trim(),
+      studentNumber: studentNumber.trim(),
+      room: room.trim(),
       note: note?.trim(),
       tenantId: _tenantId,
       role: role,
@@ -156,6 +160,8 @@ class UserController extends AsyncNotifier<void> {
     required AppUser user,
     required String displayName,
     String? phone,
+    String studentNumber = '',
+    String room = '',
     String? note,
   }) async {
     state = const AsyncValue<void>.loading();
@@ -164,6 +170,8 @@ class UserController extends AsyncNotifier<void> {
       uid: user.uid,
       displayName: displayName,
       phone: phone,
+      studentNumber: studentNumber,
+      room: room,
       note: note,
     );
     _finish(result);

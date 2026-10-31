@@ -15,7 +15,7 @@ import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 
 /// Okutmanın sonucu — kameranın üstünde yükselen panel.
 ///
-/// Başarıda saat ve nokta adı büyük yazılır: personel telefonu cebine
+/// Başarıda saat ve nokta adı büyük yazılır: öğrenci telefonu cebine
 /// koymadan önce kaydın gerçekten düştüğünü görmelidir.
 class PunchResultView extends StatelessWidget {
   const PunchResultView({
@@ -30,7 +30,7 @@ class PunchResultView extends StatelessWidget {
 
   /// Konum kararı ve noktaya uzaklık gösterilsin mi?
   ///
-  /// Personelin ekranında kapalıdır: kaydın düştüğünü görmesi yeter.
+  /// Öğrencinin ekranında kapalıdır: kaydın düştüğünü görmesi yeter.
   /// **Reddedilen** okutmanın sebebi bundan bağımsızdır ve her zaman
   /// yazılır — aksi hâlde neden okutamadığını bilemezdi.
   final bool showLocation;
@@ -116,6 +116,32 @@ class _Success extends StatelessWidget {
         ),
         AppSpacing.vMd,
 
+        if (event.lateMinutes > 0 || event.earlyExit || event.earlyEntry)
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                if (event.lateMinutes > 0)
+                  StatusChip(
+                    label: '${event.lateMinutes} dk geç giriş',
+                    tone: StatusTone.warning,
+                  ),
+                if (event.earlyExit)
+                  const StatusChip(
+                    label: 'Erken çıkış',
+                    tone: StatusTone.warning,
+                  ),
+                if (event.earlyEntry)
+                  const StatusChip(
+                    label: 'Erken giriş',
+                    tone: StatusTone.warning,
+                  ),
+              ],
+            ),
+          ),
+
         if (showLocation) ...<Widget>[
           Row(
             children: <Widget>[
@@ -129,9 +155,7 @@ class _Success extends StatelessWidget {
                   AppSpacing.hXs,
                   Text(
                     'Noktaya ${Geo.formatDistance(distance)}',
-                    style: AppTypography.small(
-                      context.colors.onSurfaceVariant,
-                    ),
+                    style: AppTypography.small(context.colors.onSurfaceVariant),
                   ),
                 ],
             ],
@@ -158,7 +182,7 @@ class _Success extends StatelessWidget {
     );
   }
 
-  /// Kayıt tutuldu ama işaretlendi — personel bunu bilmeli.
+  /// Kayıt tutuldu ama işaretlendi — öğrenci bunu bilmeli.
   ///
   /// Sessizce işaretlemek, sonradan yöneticiyle karşı karşıya gelindiğinde
   /// "bana kimse söylemedi" demeye yol açar.

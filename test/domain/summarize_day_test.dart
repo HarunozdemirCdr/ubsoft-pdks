@@ -290,7 +290,7 @@ void main() {
         settings: _settings,
       );
 
-      // Personel dün gece hâlâ içeride olamaz.
+      // Öğrenci dün gece hâlâ içeride olamaz.
       expect(
         day.statusAt(_at(9, 0).add(const Duration(hours: 20))),
         DayStatus.missingExit,
@@ -312,7 +312,7 @@ void main() {
       );
 
       // Gün "çıkış yok"a döndükten sonra süre büyümeye devam etmemeli:
-      // uygulama personelin ne zaman çıktığını bilmiyor.
+      // uygulama öğrencinin ne zaman çıktığını bilmiyor.
       expect(
         day.statusAt(_at(9, 0).add(const Duration(hours: 20))),
         DayStatus.missingExit,

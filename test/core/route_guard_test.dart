@@ -114,7 +114,7 @@ void main() {
     });
   });
 
-  group('RouteGuard — personel', () {
+  group('RouteGuard — öğrenci', () {
     final Session staff = _active(UserRole.staff);
 
     test('kök adres okutma ekranına götürür', () {
@@ -205,6 +205,7 @@ void main() {
     test('okutma dışındaki yönetim bölümleri açıktır', () {
       for (final String location in <String>[
         AppRoutes.today,
+        AppRoutes.leaves,
         AppRoutes.history,
         AppRoutes.checkpoints,
         AppRoutes.users,
@@ -234,7 +235,7 @@ void main() {
       );
     });
 
-    test('personel bir başkasının kaydını açamaz', () {
+    test('öğrenci bir başkasının kaydını açamaz', () {
       final Session staff = _active(UserRole.staff);
       expect(
         RouteGuard.resolve(staff, _FakeState(AppRoutes.userEditPath('x'))),
@@ -255,7 +256,7 @@ void main() {
       TestData.user(role: UserRole.superAdmin, tenant: '_system'),
     );
 
-    test('müşteri listesine yönlendirilir', () {
+    test('yurt listesine yönlendirilir', () {
       expect(
         RouteGuard.resolve(superAdmin, _FakeState(AppRoutes.root)),
         AppRoutes.tenants,
@@ -266,7 +267,7 @@ void main() {
       );
     });
 
-    test('müşteri ekranları ona anlamsızdır', () {
+    test('yurt ekranları ona anlamsızdır', () {
       expect(
         RouteGuard.resolve(superAdmin, _FakeState(AppRoutes.today)),
         AppRoutes.tenants,

@@ -7,7 +7,7 @@ import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 ///
 /// Yönetici noktayı oluştururken konumunu da girer (haritadan değil, o anda
 /// oradayken "Bulunduğum konumu al" ile ya da elle koordinat yazarak).
-/// Okutma sırasında personelin konumu bu noktayla karşılaştırılır.
+/// Okutma sırasında öğrencinin konumu bu noktayla karşılaştırılır.
 class Checkpoint extends Equatable {
   const Checkpoint({
     required this.id,

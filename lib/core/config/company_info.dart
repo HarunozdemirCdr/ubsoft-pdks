@@ -1,7 +1,7 @@
 /// Yazılımı geliştiren firmanın sabit iletişim bilgileri.
 ///
-/// Bu değerler müşteriye göre değişmez — hangi villada, hangi hesapta olursa
-/// olsun aynıdır. Bu yüzden Firestore'da değil kodda durur: müşteri başına
+/// Bu değerler yurda göre değişmez — hangi villada, hangi hesapta olursa
+/// olsun aynıdır. Bu yüzden Firestore'da değil kodda durur: yurt başına
 /// saklamak hem gereksiz okuma hem yanlışlıkla değiştirilebilir bir alan
 /// demekti.
 abstract final class CompanyInfo {
@@ -19,11 +19,11 @@ abstract final class CompanyInfo {
 
   /// YALNIZ giriş ekranında gösterilen sürüm.
   ///
-  /// Teknik sürümden (`AppConfig.appVersion`) ayrıdır: müşteriye gösterilen
+  /// Teknik sürümden (`AppConfig.appVersion`) ayrıdır: yurda gösterilen
   /// pazarlama sürümü ile geliştirme sürümü aynı hızda ilerlemez. Uygulamanın
   /// içinde sürüm numarası **hiçbir yerde** görünmez — bekçinin ya da site
   /// yöneticisinin işine yaramaz, yalnız ekranı kalabalıklaştırır. Bir hatayı
   /// ararken gereken gerçek sürüm, hata raporlarında zaten
   /// `AppConfig.appVersion` olarak gider.
-  static const String displayVersion = 'v1.2.1';
+  static const String displayVersion = 'v2.0.0';
 }

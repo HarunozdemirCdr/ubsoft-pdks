@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:ubsoft_pdks/core/config/app_config.dart';
+import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/enums/tenant_status.dart';
 
 /// Abonelik bilgisi.
@@ -12,7 +13,7 @@ class Subscription extends Equatable {
     required this.maxCheckpoints,
   });
 
-  /// Yeni müşteri için 14 günlük deneme aboneliği.
+  /// Yeni yurt için 14 günlük deneme aboneliği.
   factory Subscription.trial(DateTime now) => Subscription(
     plan: SubscriptionPlan.trial,
     startsAt: now,
@@ -59,9 +60,10 @@ class Subscription extends Equatable {
   ];
 }
 
-/// Müşteriye özel devam kontrol ayarları.
+/// Yurda özel devam kontrol ayarları.
 class TenantSettings extends Equatable {
   const TenantSettings({
+    this.dormPolicy = const DormPolicy(),
     this.defaultRadiusMeters = AppConfig.defaultRadiusMeters,
     this.requireLocation = true,
     this.blockOutsideScans = false,
@@ -71,6 +73,7 @@ class TenantSettings extends Equatable {
   });
 
   /// Yeni QR noktası oluşturulurken önerilen yarıçap (metre).
+  final DormPolicy dormPolicy;
   final int defaultRadiusMeters;
 
   /// Konum alınamadığında okutma reddedilsin mi?
@@ -83,7 +86,7 @@ class TenantSettings extends Equatable {
   /// Nokta yarıçapının açıkça dışındaki okutmalar reddedilsin mi?
   ///
   /// Varsayılan kapalıdır. Reddetmek ilk bakışta daha sıkı görünür ama
-  /// yanlış bir GPS ölçümü yüzünden reddedilen giriş, personelin o gün hiç
+  /// yanlış bir GPS ölçümü yüzünden reddedilen giriş, öğrencinin o gün hiç
   /// gelmemiş görünmesine yol açar — bu, uzaktan okutmadan daha büyük bir
   /// hatadır. Kapalıyken kayıt tutulur ve yöneticiye kırmızı rozetle
   /// gösterilir; kararı insan verir.
@@ -108,6 +111,7 @@ class TenantSettings extends Equatable {
   }
 
   TenantSettings copyWith({
+    DormPolicy? dormPolicy,
     int? defaultRadiusMeters,
     bool? requireLocation,
     bool? blockOutsideScans,
@@ -115,6 +119,7 @@ class TenantSettings extends Equatable {
     int? workEndMinutes,
     int? lateToleranceMinutes,
   }) => TenantSettings(
+    dormPolicy: dormPolicy ?? this.dormPolicy,
     defaultRadiusMeters: defaultRadiusMeters ?? this.defaultRadiusMeters,
     requireLocation: requireLocation ?? this.requireLocation,
     blockOutsideScans: blockOutsideScans ?? this.blockOutsideScans,
@@ -125,6 +130,7 @@ class TenantSettings extends Equatable {
 
   @override
   List<Object?> get props => <Object?>[
+    dormPolicy.toMap().toString(),
     defaultRadiusMeters,
     requireLocation,
     blockOutsideScans,
@@ -148,7 +154,7 @@ class TenantCounters extends Equatable {
   List<Object?> get props => <Object?>[userCount, checkpointCount];
 }
 
-/// Müşteri (kiracı) — sistemdeki her veri bir tenant'a aittir.
+/// Yurt (kiracı) — sistemdeki her veri bir tenant'a aittir.
 class Tenant extends Equatable {
   const Tenant({
     required this.id,

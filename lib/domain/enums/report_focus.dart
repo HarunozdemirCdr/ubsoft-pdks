@@ -3,9 +3,9 @@ import 'package:ubsoft_pdks/domain/enums/day_status.dart';
 
 /// Raporun hangi günleri listeleyeceği.
 ///
-/// Süzgeç **gün** seviyesinde çalışır, personel seviyesinde değil: "geç
+/// Süzgeç **gün** seviyesinde çalışır, öğrenci seviyesinde değil: "geç
 /// gelenler" seçildiğinde amaç geç gelen kişilerin tüm günlerini değil,
-/// tam olarak geç gelinen günleri görmektir. Bu yüzden bir personelin
+/// tam olarak geç gelinen günleri görmektir. Bu yüzden bir öğrencinin
 /// satırı, o kişiye ait eşleşen gün kalmadığında rapordan tümüyle düşer.
 ///
 /// [all] dışındaki her seçenek yazdırılan belgeye de yansır; rapor ekranda

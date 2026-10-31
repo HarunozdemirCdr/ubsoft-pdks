@@ -268,13 +268,13 @@ void main() {
 
   /// Yetkiler ürün kararıdır, ekrandan ayarlanmaz.
   ///
-  /// Roller (yönetici / personel) sabit izin kümeleriyle gelir. Kişiye özel
-  /// izin düzenleme ekranı **bilerek** kaldırıldı: müşteri "yanlışlıkla bile
+  /// Roller (yönetici / öğrenci) sabit izin kümeleriyle gelir. Kişiye özel
+  /// izin düzenleme ekranı **bilerek** kaldırıldı: yurt "yanlışlıkla bile
   /// olsa" bu kümenin değişmesini istemiyor. Aşağıdaki testler o kapının
   /// kapalı kaldığını korur — bir gün biri yeniden açmaya kalkarsa burada
   /// kırılır.
   group('Yetkiler ekrandan değiştirilemez', () {
-    testWidgets('personel kartında yetki bağlantısı yok', (
+    testWidgets('öğrenci kartında yetki bağlantısı yok', (
       WidgetTester tester,
     ) async {
       final TestScope scope = await adminScope(
@@ -293,7 +293,7 @@ void main() {
 
       // Kişinin sayfası tek sayfadır: bilgiler + işlemler. Alt sayfa yok.
       expect(find.text('Yetkiler'), findsNothing);
-      expect(find.text('Bu personelin izinlerini ayarla'), findsNothing);
+      expect(find.text('Bu öğrencinin izinlerini ayarla'), findsNothing);
 
       // Sayfanın kendisi çalışmaya devam ediyor.
       expect(find.text('Şifre sıfırlama gönder'), findsOneWidget);
@@ -302,12 +302,13 @@ void main() {
     });
 
     test('rol varsayılanları sabittir', () {
-      // Personel yalnız okutur ve kendi kaydını görür.
+      // Öğrenci yalnız okutur ve kendi kaydını görür.
       expect(RoleDefaults.of(UserRole.staff), <AppPermission>{
         AppPermission.punchCreate,
+        AppPermission.attendanceViewOwn,
       });
 
-      // Yönetici kendi müşterisinde koşulsuz yetkilidir.
+      // Yönetici kendi yurdunda koşulsuz yetkilidir.
       expect(
         RoleDefaults.of(UserRole.admin),
         contains(AppPermission.attendanceViewAll),
@@ -414,7 +415,7 @@ void main() {
       return scope;
     }
 
-    testWidgets('personele dokununca günleri yerinde açılır', (
+    testWidgets('öğrencie dokununca günleri yerinde açılır', (
       WidgetTester tester,
     ) async {
       final TestScope scope = await reportScope();
@@ -460,7 +461,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Son 7 gün'), findsOneWidget);
-      expect(find.text('Tüm öğrenciler'), findsOneWidget);
+      expect(find.text('Tüm öğrenci'), findsOneWidget);
       expect(find.text('Tümü'), findsOneWidget);
 
       // Açılır menü kendi yolunda (route) açılıp kapanır; kapanma
@@ -477,8 +478,8 @@ void main() {
       await choose('Son 7 gün', 'Son 30 gün');
       expect(find.text('Son 30 gün'), findsOneWidget);
 
-      // Sonra personeli değiştir — aralık seçimi yerinde kalmalı.
-      await choose('Tüm öğrenciler', 'Ahmet Yılmaz');
+      // Sonra öğrenciyi değiştir — aralık seçimi yerinde kalmalı.
+      await choose('Tüm öğrenci', 'Ahmet Yılmaz');
 
       expect(find.text('Son 30 gün'), findsOneWidget);
       expect(find.text('Tümü'), findsOneWidget);
@@ -511,7 +512,7 @@ void main() {
       await tester.tap(find.text('Son giriş saati aşıldı').last);
       await tester.pumpAndSettle();
 
-      // Geç gelinmiş tek gün var; geri kalan personel rapordan düşer.
+      // Geç gelinmiş tek gün var; geri kalan öğrenci rapordan düşer.
       expect(find.textContaining(' gün geldi'), findsOneWidget);
       expect(find.textContaining('1 gün geç giriş'), findsOneWidget);
 
@@ -526,14 +527,14 @@ void main() {
     });
   });
 
-  group('Personel formu', () {
-    testWidgets('yeni personel Auth hesabı ve Firestore kaydı üretir', (
+  group('Öğrenci formu', () {
+    testWidgets('yeni öğrenci Auth hesabı ve Firestore kaydı üretir', (
       WidgetTester tester,
     ) async {
       final TestScope scope = await adminScope();
       addTearDown(scope.dispose);
 
-      // Kayıt başarılı olunca ekran personel listesine gider; yönlendirme
+      // Kayıt başarılı olunca ekran öğrenci listesine gider; yönlendirme
       // için gerçek bir router gerekir.
       await tester.pumpWidget(
         wrapRouted(
@@ -546,7 +547,7 @@ void main() {
 
       // Alan etiketleri girdinin ÜSTÜNDE ayrı bir Text'tir (labelText değil);
       // bu yüzden alanlar form sırasına göre bulunur.
-      await tester.enterText(find.byType(TextField).at(0), 'Yeni Personel');
+      await tester.enterText(find.byType(TextField).at(0), 'Yeni Öğrenci');
       await tester.enterText(
         find.byType(TextField).at(1),
         'yeni@beyazyapi.com',
@@ -555,13 +556,13 @@ void main() {
       await tester.enterText(
         find.byWidgetPredicate(
           (Widget w) =>
-              w is TextField && w.decoration?.hintText == 'Gece vardiyası',
+              w is TextField && w.decoration?.hintText == 'Oda / öğrenim notu',
         ),
-        'Gece vardiyası',
+        'Oda / öğrenim notu',
       );
       await settle(tester);
 
-      final Finder save = find.widgetWithText(AppButton, 'Personeli ekle');
+      final Finder save = find.widgetWithText(AppButton, 'Öğrenciyi ekle');
       await tester.ensureVisible(save);
       await tester.tap(save);
       await settle(tester);
@@ -575,14 +576,14 @@ void main() {
 
       expect(users.docs, hasLength(1));
       final Map<String, dynamic> saved = users.docs.single.data();
-      expect(saved['displayName'], 'Yeni Personel');
+      expect(saved['displayName'], 'Yeni Öğrenci');
       expect(saved['role'], 'staff');
       expect(saved['status'], 'active');
       // Sicil no ve görev alanları kaldırıldı; yerlerine tek bir açıklama.
-      expect(saved['note'], 'Gece vardiyası');
+      expect(saved['note'], 'Oda / öğrenim notu');
       expect(saved.containsKey('employeeNo'), isFalse);
 
-      // Kaydın ardından personel listesine dönülür.
+      // Kaydın ardından öğrenci listesine dönülür.
       expect(find.text('→ /kullanicilar'), findsOneWidget);
     });
 
@@ -592,7 +593,7 @@ void main() {
       final TestScope scope = await adminScope();
       addTearDown(scope.dispose);
 
-      // Kayıt başarılı olunca ekran personel listesine gider; yönlendirme
+      // Kayıt başarılı olunca ekran öğrenci listesine gider; yönlendirme
       // için gerçek bir router gerekir.
       await tester.pumpWidget(
         wrapRouted(
@@ -610,7 +611,7 @@ void main() {
       );
       await settle(tester);
 
-      final Finder save = find.widgetWithText(AppButton, 'Personeli ekle');
+      final Finder save = find.widgetWithText(AppButton, 'Öğrenciyi ekle');
       await tester.ensureVisible(save);
       await tester.tap(save);
       await settle(tester);
@@ -630,7 +631,7 @@ void main() {
 
   /// Konum kanıtı ve geç giriş işareti **yöneticinin** bilgisidir.
   ///
-  /// Personelin kendi ekranında yalnız ne olduğu yazar: içeride mi, giriş
+  /// Öğrencinin kendi ekranında yalnız ne olduğu yazar: içeride mi, giriş
   /// var mı, çıkış var mı. Aynı satırların yönetici ekranında kanıtıyla
   /// birlikte görünmeye devam ettiği de burada kayıt altındadır.
   /// Okutma sonucu panelindeki düğmeler.
@@ -715,7 +716,7 @@ void main() {
     });
   });
 
-  group('Personel ne görür', () {
+  group('Öğrenci ne görür', () {
     Future<TestScope> staffScope() async {
       final TestScope scope = await buildScope(
         signedInAs: TestData.user(),

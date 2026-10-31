@@ -15,18 +15,14 @@ import 'package:ubsoft_pdks/presentation/features/auth/login_page.dart';
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_list_page.dart';
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_qr_page.dart';
-import 'package:ubsoft_pdks/presentation/features/history/history_page.dart';
-import 'package:ubsoft_pdks/presentation/features/history/person_history_page.dart';
+import 'package:ubsoft_pdks/presentation/features/dorm/dorm_pages.dart';
+import 'package:ubsoft_pdks/presentation/features/dorm/dorm_settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/legal/privacy_page.dart';
 import 'package:ubsoft_pdks/presentation/features/misc/not_found_page.dart';
 import 'package:ubsoft_pdks/presentation/features/misc/splash_page.dart';
 import 'package:ubsoft_pdks/presentation/features/profile/change_password_page.dart';
 import 'package:ubsoft_pdks/presentation/features/profile/profile_page.dart';
-import 'package:ubsoft_pdks/presentation/features/punch/punch_home_page.dart';
 import 'package:ubsoft_pdks/presentation/features/punch/scan_page.dart';
-import 'package:ubsoft_pdks/presentation/features/reports/report_page.dart';
-import 'package:ubsoft_pdks/presentation/features/settings/settings_page.dart';
-import 'package:ubsoft_pdks/presentation/features/today/today_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_list_page.dart';
 import 'package:ubsoft_pdks/presentation/shell/app_shell.dart';
@@ -106,26 +102,26 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.punch,
             name: AppRoutes.punchName,
             pageBuilder: (context, state) =>
-                _fade(state, const PunchHomePage()),
+                _fade(state, const StudentHomePage()),
           ),
           GoRoute(
             path: AppRoutes.today,
             name: AppRoutes.todayName,
-            pageBuilder: (context, state) => _fade(state, const TodayPage()),
+            pageBuilder: (context, state) =>
+                _fade(state, const DormDashboardPage()),
           ),
           GoRoute(
             path: AppRoutes.history,
             name: AppRoutes.historyName,
-            pageBuilder: (context, state) => _fade(state, const HistoryPage()),
+            pageBuilder: (context, state) =>
+                _fade(state, const DormHistoryPage()),
             routes: <RouteBase>[
               GoRoute(
                 path: AppRoutes.personHistory,
                 name: AppRoutes.personHistoryName,
                 pageBuilder: (context, state) => _fade(
                   state,
-                  PersonHistoryPage(
-                    userId: state.pathParameters['userId'] ?? '',
-                  ),
+                  DormHistoryPage(userId: state.pathParameters['userId'] ?? ''),
                 ),
               ),
             ],
@@ -189,14 +185,20 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((ref) {
             ],
           ),
           GoRoute(
+            path: AppRoutes.leaves,
+            builder: (context, state) => const DormLeavePage(),
+          ),
+          GoRoute(
             path: AppRoutes.reports,
             name: AppRoutes.reportsName,
-            pageBuilder: (context, state) => _fade(state, const ReportPage()),
+            pageBuilder: (context, state) =>
+                _fade(state, const DormReportPage()),
           ),
           GoRoute(
             path: AppRoutes.settings,
             name: AppRoutes.settingsName,
-            pageBuilder: (context, state) => _fade(state, const SettingsPage()),
+            pageBuilder: (context, state) =>
+                _fade(state, const DormSettingsPage()),
           ),
           GoRoute(
             path: AppRoutes.profile,

@@ -1,11 +1,11 @@
 {
-    "name": "UBSoft PDKS",
-    "short_name": "PDKS",
+    "name": "UBSoft Yurt Kontrol",
+    "short_name": "Yurt Kontrol",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FAFAF9",
     "theme_color": "#1E3A8A",
-    "description": "UBSoft PDKS - QR kodlu personel devam kontrol sistemi",
+    "description": "UBSoft Yurt Kontrol - QR kodlu öğrenci devam kontrol sistemi",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

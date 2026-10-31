@@ -11,38 +11,38 @@ import 'package:ubsoft_pdks/domain/enums/user_status.dart';
 import 'package:ubsoft_pdks/domain/permissions/role_defaults.dart';
 import 'package:ubsoft_pdks/domain/repositories/tenant_repository.dart';
 
-/// Tüm müşteriler — süper admin listesi.
+/// Tüm yurtlar — süper admin listesi.
 final StreamProvider<List<Tenant>> tenantsProvider =
     StreamProvider<List<Tenant>>(
       (ref) => ref.watch(tenantRepositoryProvider).watchTenants(),
     );
 
-/// Tek bir müşteri — süper admin detay ekranı.
+/// Tek bir yurt — süper admin detay ekranı.
 final tenantProvider = StreamProvider.family<Tenant?, String>(
   (ref, tenantId) => ref.watch(tenantRepositoryProvider).watchTenant(tenantId),
 );
 
-/// Bir müşterinin kullanıcıları — süper admin detay ekranı.
+/// Bir yurdun kullanıcıları — süper admin detay ekranı.
 final tenantUsersProvider = StreamProvider.family<List<AppUser>, String>(
   (ref, tenantId) => ref.watch(userRepositoryProvider).watchUsers(tenantId),
 );
 
-/// Müşteri açma, abonelik ve durum yönetimi. Yalnız süper admin kullanır.
+/// Yurt açma, abonelik ve durum yönetimi. Yalnız süper admin kullanır.
 class TenantController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}
 
   TenantRepository get _tenants => ref.read(tenantRepositoryProvider);
 
-  /// Yeni müşteri açar ve ilk yöneticisini oluşturur.
+  /// Yeni yurt açar ve ilk yöneticisini oluşturur.
   ///
   /// Üç adım tek bir akışta yürür ve **sırası zorunludur**:
-  /// 1. Müşteri kaydı — yöneticinin altına yazılacağı yol.
+  /// 1. Yurt kaydı — yöneticinin altına yazılacağı yol.
   /// 2. Rol varsayılanları — güvenlik kurallarının izin çözerken okuduğu
   ///    tablo. Bu yazılmadan açılan bir yönetici hiçbir şey yapamaz.
   /// 3. Yönetici hesabı — Auth + Firestore.
   ///
-  /// Araya bir hata girerse yarım kalan müşteri süper adminin listesinde
+  /// Araya bir hata girerse yarım kalan yurt süper adminin listesinde
   /// görünür ve elle silinebilir; sessizce kaybolmaz.
   Future<Result<Tenant>> createTenantWithAdmin({
     required String companyName,
@@ -154,7 +154,7 @@ class TenantController extends AsyncNotifier<void> {
     return result;
   }
 
-  /// Müşteriyi ve tüm verisini siler.
+  /// Yurtyi ve tüm verisini siler.
   ///
   /// Auth hesapları silinmez — istemci başkasının hesabını silemez. Kalan
   /// hesaplar giriş yapabilir ama Firestore kaydı olmadığı için oturum
@@ -168,7 +168,7 @@ class TenantController extends AsyncNotifier<void> {
 
   /// Rol varsayılanlarını bugünkü izin kataloğuyla tazeler.
   ///
-  /// İzin kataloğu genişlediğinde eski müşterilerin tablosunda yeni anahtar
+  /// İzin kataloğu genişlediğinde eski yurtlarin tablosunda yeni anahtar
   /// bulunmaz ve güvenlik kuralı onu "kapalı" sayar. Bu düğme farkı kapatır.
   Future<Result<void>> refreshRoleDefaults(String tenantId) async {
     state = const AsyncValue<void>.loading();

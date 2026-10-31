@@ -18,6 +18,7 @@ abstract final class RoleDefaults {
       <UserRole, Set<AppPermission>>{
         UserRole.admin: <AppPermission>{
           AppPermission.dashboardView,
+          AppPermission.attendanceViewOwn,
           AppPermission.attendanceViewAll,
           AppPermission.attendanceDelete,
           AppPermission.checkpointView,
@@ -37,9 +38,14 @@ abstract final class RoleDefaults {
           AppPermission.settingsEdit,
         },
 
-        // Öğrenci yalnız QR okutur. Kayıt ve geçmiş ekranları yöneticidedir.
+        // Öğrenci: yalnız okutma ve kendi geçmişi.
+        //
+        // Kendi kayıtlarını görmesi bilinçlidir: "bu ay kaç saat çalıştım"
+        // sorusunun cevabını her seferinde yöneticiye sordurmak, sistemin
+        // güvenilirliğini de zedeler.
         UserRole.staff: <AppPermission>{
           AppPermission.punchCreate,
+          AppPermission.attendanceViewOwn,
         },
       };
 

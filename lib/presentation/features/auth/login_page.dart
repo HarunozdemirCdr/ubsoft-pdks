@@ -82,7 +82,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               AppTextField(
                 label: 'E-posta',
                 controller: _email,
-                hint: 'ornek@sirket.com',
+                hint: 'ogrenci@ornek.com',
                 validator: Validators.email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
@@ -119,7 +119,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 isLoading: state.isSubmitting,
               ),
               // Aydınlatma metni giriş yapmadan da okunabilmeli: işten
-              // ayrılmış bir personel de haklarını görebilsin.
+              // ayrılmış bir öğrenci de haklarını görebilsin.
               AppSpacing.vSm,
               Center(
                 child: AppButton(

@@ -162,7 +162,7 @@ class _AppShellState extends ConsumerState<AppShell> {
 
 /// Abonelik süresi dolmuş hesapta içeriğin üstünde duran uyarı.
 ///
-/// Yalnız yönetici görür: personelin oturumu bu durumda hiç açılmaz, doğrudan
+/// Yalnız yönetici görür: öğrencinin oturumu bu durumda hiç açılmaz, doğrudan
 /// engelleme ekranına düşer.
 ///
 /// **Kapatma düğmesi bilinçli olarak yoktur.** Kapatılabilen bir uyarı ilk gün
@@ -216,7 +216,7 @@ class _ExpiredBanner extends StatelessWidget {
                       style: AppTypography.bodyStrong(foreground),
                     ),
                     Text(
-                      'Uygulama salt okunur. Personel giriş yapamaz, yeni '
+                      'Uygulama salt okunur. Öğrenci giriş yapamaz, yeni '
                       'okutma kaydedilemez. Geçmiş verileriniz duruyor.',
                       style: AppTypography.small(foreground),
                     ),
@@ -249,7 +249,7 @@ class _NavDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String tenantName =
-        ref.watch(currentTenantProvider)?.name ?? 'UBSoft PDKS';
+        ref.watch(currentTenantProvider)?.name ?? 'UBSoft Yurt Kontrol';
 
     return Drawer(
       backgroundColor: context.colors.surface,
@@ -403,7 +403,7 @@ class _SideRail extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final String tenantName =
-        ref.watch(currentTenantProvider)?.name ?? 'UBSoft PDKS';
+        ref.watch(currentTenantProvider)?.name ?? 'UBSoft Yurt Kontrol';
 
     return SingleChildScrollView(
       child: IntrinsicHeight(

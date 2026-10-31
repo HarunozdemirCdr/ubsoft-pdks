@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-
 import 'package:equatable/equatable.dart';
 import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
@@ -55,7 +54,7 @@ class LocationCheck extends Equatable {
 /// şuranın 40 metre çevresinde bir yerde". Kapalı alanda, yüksek binalar
 /// arasında ya da tarayıcı Wi-Fi tabanlı konum kullandığında bu hata payı
 /// yüzlerce metreye çıkar. Ham mesafeyi yarıçapla karşılaştırmak, kapının
-/// önünde duran personeli düzenli olarak "uzakta" damgalar.
+/// önünde duran öğrenciyi düzenli olarak "uzakta" damgalar.
 ///
 /// Bu yüzden üç bölge vardır:
 ///

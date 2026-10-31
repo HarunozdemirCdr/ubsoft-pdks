@@ -42,7 +42,7 @@ class BlockedPage extends ConsumerWidget {
       ),
       SessionBlockReason.tenantMissing => (
         Icons.business_outlined,
-        'Şirket kaydı bulunamadı',
+        'Yurt kaydı bulunamadı',
       ),
     };
 

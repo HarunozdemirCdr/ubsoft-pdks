@@ -98,7 +98,7 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.text('UBSoft PDKS'), findsOneWidget);
+      expect(find.text('UBSoft Yurt Kontrol'), findsOneWidget);
       expect(find.text('Öğrenci giriş-çıkış takibi'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -159,7 +159,7 @@ void main() {
     });
   });
 
-  group('Personel ekranları', () {
+  group('Öğrenci ekranları', () {
     testWidgets('okutma ekranı "giriş için okut" der', (
       WidgetTester tester,
     ) async {
@@ -319,7 +319,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('personel listesi çizilir', (WidgetTester tester) async {
+    testWidgets('öğrenci listesi çizilir', (WidgetTester tester) async {
       final TestScope scope = await adminScope();
       addTearDown(scope.dispose);
 
@@ -336,7 +336,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('personel formu ve yetki ekranı çizilir', (
+    testWidgets('öğrenci formu ve yetki ekranı çizilir', (
       WidgetTester tester,
     ) async {
       final TestScope scope = await adminScope();
@@ -393,7 +393,7 @@ void main() {
   });
 
   group('Süper admin ekranları', () {
-    testWidgets('müşteri listesi çizilir', (WidgetTester tester) async {
+    testWidgets('yurt listesi çizilir', (WidgetTester tester) async {
       final TestScope scope = await adminScope();
       addTearDown(scope.dispose);
 
@@ -406,11 +406,11 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.text('Test Şirketi'), findsOneWidget);
+      expect(find.text('Test Yurdu'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('yeni müşteri formu çizilir', (WidgetTester tester) async {
+    testWidgets('yeni yurt formu çizilir', (WidgetTester tester) async {
       final TestScope scope = await adminScope();
       addTearDown(scope.dispose);
 
@@ -427,7 +427,7 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('müşteri detayı çizilir', (WidgetTester tester) async {
+    testWidgets('yurt detayı çizilir', (WidgetTester tester) async {
       final TestScope scope = await adminScope();
       addTearDown(scope.dispose);
 
@@ -440,7 +440,7 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.text('Test Şirketi'), findsOneWidget);
+      expect(find.text('Test Yurdu'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   });

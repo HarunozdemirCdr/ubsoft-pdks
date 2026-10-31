@@ -80,7 +80,7 @@ class _CheckpointFormPageState extends ConsumerState<CheckpointFormPage> {
     _code.text = checkpoint.code;
     _description.text = checkpoint.description ?? '';
     _radius.text = '${checkpoint.radiusMeters}';
-    _kind = checkpoint.kind;
+    _kind = checkpoint.kind.isBoth ? CheckpointKind.entry : checkpoint.kind;
     _active = checkpoint.active;
 
     if (checkpoint.hasLocation) {
@@ -245,8 +245,8 @@ class _CheckpointFormPageState extends ConsumerState<CheckpointFormPage> {
                 LengthLimitingTextInputFormatter(AppConfig.qrCodeMaxLength),
               ],
               helper:
-                  'Etikete basılacak numara. Şirketiniz içinde tekil olmalı; '
-                  'başka şirketlerde aynı numara kullanılabilir.',
+                  'Etikete basılacak numara. Yurduniz içinde tekil olmalı; '
+                  'başka yurtlarda aynı numara kullanılabilir.',
               validator: Validators.qrCode,
             ),
             AppSpacing.vMd,
@@ -346,7 +346,7 @@ class _CheckpointFormPageState extends ConsumerState<CheckpointFormPage> {
                     helper:
                         'Bu mesafe içindeki okutmalar doğrulanmış sayılır. '
                         'Telefon GPS\'i şehir içinde 10–30 m yanılabilir; '
-                        '${AppConfig.defaultRadiusMeters} m çoğu işyeri için '
+                        '${AppConfig.defaultRadiusMeters} m çoğu yurt için '
                         'uygundur.',
                     validator: (String? v) => Validators.positiveInt(
                       v,
@@ -419,11 +419,6 @@ class _KindSelector extends StatelessWidget {
               label: Text('Çıkış'),
               icon: Icon(Icons.logout_rounded),
             ),
-            ButtonSegment<CheckpointKind>(
-              value: CheckpointKind.both,
-              label: Text('İkisi'),
-              icon: Icon(Icons.swap_horiz_rounded),
-            ),
           ],
           selected: <CheckpointKind>{value},
           onSelectionChanged: (Set<CheckpointKind> selection) =>
@@ -436,7 +431,7 @@ class _KindSelector extends StatelessWidget {
           CheckpointKind.exit =>
             'Bu kod okutulduğunda her zaman çıkış kaydedilir.',
           CheckpointKind.both =>
-            'Tek etiket iki iş görür: personel içeride değilse giriş, '
+            'Tek etiket iki iş görür: öğrenci içeride değilse giriş, '
                 'içerideyse çıkış kaydedilir.',
         }, style: AppTypography.small(context.colors.onSurfaceVariant)),
       ],

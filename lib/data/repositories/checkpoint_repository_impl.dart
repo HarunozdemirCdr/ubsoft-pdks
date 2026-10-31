@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ubsoft_pdks/core/config/app_config.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';

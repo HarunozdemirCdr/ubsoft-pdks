@@ -175,7 +175,7 @@ void main() {
         await renderAll(tester, size, ReportPage.new);
       });
 
-      testWidgets('personel listesi taşmadan çizilir', (
+      testWidgets('öğrenci listesi taşmadan çizilir', (
         WidgetTester tester,
       ) async {
         await renderAll(tester, size, UserListPage.new);

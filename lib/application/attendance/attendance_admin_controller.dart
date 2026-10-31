@@ -11,7 +11,7 @@ import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 ///
 /// Şu an tek bir iş yapar: yanlış bir okutmayı silmek. **Düzeltme yoktur** —
 /// bir devam kaydının saati elle değiştirilebiliyorsa o kayıt artık kanıt
-/// değildir. Yanlış okutma silinir, personel yeniden okutur.
+/// değildir. Yanlış okutma silinir, öğrenci yeniden okutur.
 class AttendanceAdminController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}

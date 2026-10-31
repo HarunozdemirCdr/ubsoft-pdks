@@ -9,7 +9,7 @@ enum UserStatus {
   /// Silinmiş sayılır. Listelerde görünmez; geçmiş devam kayıtları durur.
   ///
   /// Kayıt fiziksel olarak silinmez: silinseydi geçmiş raporlarda kimin
-  /// giriş yaptığı bilinmez, "silinmiş personel" satırları kalırdı.
+  /// giriş yaptığı bilinmez, "silinmiş öğrenci" satırları kalırdı.
   deleted('deleted', 'Silinmiş');
 
   const UserStatus(this.key, this.label);

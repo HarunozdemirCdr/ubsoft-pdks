@@ -32,7 +32,7 @@ class ReportFilterController extends Notifier<ReportFilter> {
   void preset(ReportFilter filter) => state = filter;
 }
 
-/// Bir personelin rapor aralığındaki toplamı.
+/// Bir öğrencinin rapor aralığındaki toplamı.
 ///
 /// **Kişi denklemi:** her satır yalnız o kişinin kendi günlerinden hesaplanır.
 /// Satırların toplamı ekip geneli bir "gün sayısı" vermez; farklı kişiler
@@ -54,7 +54,7 @@ class ReportRow {
   final String userId;
   final String userName;
 
-  /// Personel kaydındaki serbest açıklama. Belgede adın altında yazar.
+  /// Öğrenci kaydındaki serbest açıklama. Belgede adın altında yazar.
   final String userNote;
 
   /// Toplam çalışılan süre (dakika).
@@ -196,12 +196,12 @@ final reportProvider = FutureProvider.family<ReportResult, ReportFilter>((
   );
 });
 
-/// Günlük özetleri personel bazlı rapor satırlarına indirger.
+/// Günlük özetleri öğrenci bazlı rapor satırlarına indirger.
 ///
 /// Saf bir fonksiyondur — ağ ya da sağlayıcı bilmez, doğrudan test edilir.
 ///
 /// **Gelmediği günler kadrodan gelir, kayıtlardan değil:** yalnız var olan
-/// kayıtlara bakan bir rapor, hiç gelmeyen personeli sıfır satırıyla değil,
+/// kayıtlara bakan bir rapor, hiç gelmeyen öğrenciyi sıfır satırıyla değil,
 /// hiç göstermezdi.
 ReportResult buildReport({
   required ReportFilter filter,
@@ -226,7 +226,7 @@ ReportResult buildReport({
   }
 
   // Kadrodaki herkes + aralıkta kaydı bulunan ama kadroda olmayanlar
-  // (işten ayrılmış personel) birlikte raporlanır.
+  // (işten ayrılmış öğrenci) birlikte raporlanır.
   final Set<String> userIds = <String>{
     for (final AppUser user in roster) user.uid,
     ...byUser.keys,
@@ -240,7 +240,7 @@ ReportResult buildReport({
   final List<ReportRow> rows = <ReportRow>[];
 
   for (final String userId in userIds) {
-    final String userName = namesById[userId] ?? 'Bilinmeyen personel';
+    final String userName = namesById[userId] ?? 'Bilinmeyen öğrenci';
     final List<AttendanceDay> userDays =
         byUser[userId] ?? const <AttendanceDay>[];
 
@@ -299,7 +299,7 @@ ReportResult buildReport({
 
   rows.sort((ReportRow a, ReportRow b) => a.userName.compareTo(b.userName));
 
-  // Süzgeç açıkken eşleşen günü olmayan personel rapordan düşer: "geç
+  // Süzgeç açıkken eşleşen günü olmayan öğrenci rapordan düşer: "geç
   // gelenler" listesinde hiç geç gelmemiş birinin boş satırı gürültüdür.
   final List<ReportRow> visible = filter.focus.isAll
       ? rows

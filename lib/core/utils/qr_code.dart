@@ -2,12 +2,12 @@ import 'package:ubsoft_pdks/core/config/app_config.dart';
 
 /// QR nokta kodu yardımcıları.
 ///
-/// Kod, yöneticinin işyerine özel elle girdiği **basit sayısal** bir
+/// Kod, yöneticinin yurda özel elle girdiği **basit sayısal** bir
 /// numaradır (1, 2, 3…); URL ya da sabit uzunlukta bir dize değildir.
 /// Uygulama QR görselini üretir ve yazdırılabilir hâlde sunar; okuma
 /// tarafında görevi okunan içeriği normalize edip doğrulamaktır.
 ///
-/// Çok kiracılı olduğu için aynı numara farklı şirketlerde bulunabilir;
+/// Çok kiracılı olduğu için aynı numara farklı yurtlarda bulunabilir;
 /// tekillik yalnız tenant içinde aranır.
 abstract final class QrCode {
   /// Okunan ham QR içeriğini normalize eder.

@@ -1,4 +1,4 @@
-/// Bir personelin bir gündeki devam durumu.
+/// Bir öğrencinin bir gündeki devam durumu.
 enum DayStatus {
   /// Giriş yapıldı, henüz çıkış okutulmadı — hâlâ içeride.
   present('present', 'İçeride'),
@@ -8,7 +8,7 @@ enum DayStatus {
 
   /// Giriş var ama gün bitmiş, çıkış hiç okutulmamış.
   ///
-  /// Ayrı bir durumdur: uygulama personelin ne zaman çıktığını bilemez ve
+  /// Ayrı bir durumdur: uygulama öğrencinin ne zaman çıktığını bilemez ve
   /// bir saat uydurmaz. Yönetici bunu görüp kendisi sorar.
   missingExit('missingExit', 'Çıkış yok'),
 
@@ -27,7 +27,7 @@ enum DayStatus {
     _ => DayStatus.absent,
   };
 
-  /// Personelin **kendi** ekranında görünen ad.
+  /// Öğrencinin **kendi** ekranında görünen ad.
   ///
   /// Yöneticinin listesinde "Gelmedi" doğru özettir; kişinin kendi
   /// geçmişinde ise uygulamanın bildiği tek şey okutma olmadığıdır.

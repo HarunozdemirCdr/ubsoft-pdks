@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 
 /// Tarih ve süre biçimleme.
 ///
@@ -14,26 +15,29 @@ abstract final class AppDate {
   static final DateFormat _key = DateFormat('yyyy-MM-dd');
 
   /// `14:32`
-  static String time(DateTime value) => _time.format(value.toLocal());
+  static String time(DateTime value) => _time.format(DormClock.local(value));
 
   /// `14:32:07`
   static String timeWithSeconds(DateTime value) =>
-      _timeSec.format(value.toLocal());
+      _timeSec.format(DormClock.local(value));
 
   /// `22 Temmuz 2026`
-  static String date(DateTime value) => _date.format(value.toLocal());
+  static String date(DateTime value) => _date.format(DormClock.local(value));
 
   /// `22.07.2026`
-  static String dateShort(DateTime value) => _dateShort.format(value.toLocal());
+  static String dateShort(DateTime value) =>
+      _dateShort.format(DormClock.local(value));
 
   /// `22.07.2026 14:32`
-  static String dateTime(DateTime value) => _dateTime.format(value.toLocal());
+  static String dateTime(DateTime value) =>
+      _dateTime.format(DormClock.local(value));
 
   /// `Çarşamba`
-  static String dayName(DateTime value) => _dayName.format(value.toLocal());
+  static String dayName(DateTime value) =>
+      _dayName.format(DormClock.local(value));
 
   /// Gün bazlı sorgu anahtarı: `2026-07-22`.
-  static String dateKey(DateTime value) => _key.format(value.toLocal());
+  static String dateKey(DateTime value) => _key.format(DormClock.local(value));
 
   /// Bugünün anahtarı.
   static String todayKey() => dateKey(DateTime.now());
@@ -77,8 +81,8 @@ abstract final class AppDate {
 
   /// Göreli zaman: `az önce`, `12 dk önce`, `3 sa önce`, `dün`, `22.07.2026`.
   static String relative(DateTime value) {
-    final DateTime local = value.toLocal();
-    final Duration diff = DateTime.now().difference(local);
+    final DateTime local = DormClock.local(value);
+    final Duration diff = DateTime.now().difference(value);
 
     if (diff.inSeconds < 60) return 'az önce';
     if (diff.inMinutes < 60) return '${diff.inMinutes} dk önce';
@@ -90,8 +94,8 @@ abstract final class AppDate {
 
   /// Aynı gün mü?
   static bool isSameDay(DateTime a, DateTime b) {
-    final DateTime la = a.toLocal();
-    final DateTime lb = b.toLocal();
+    final DateTime la = DormClock.local(a);
+    final DateTime lb = DormClock.local(b);
     return la.year == lb.year && la.month == lb.month && la.day == lb.day;
   }
 

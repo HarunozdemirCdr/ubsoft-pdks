@@ -26,10 +26,10 @@ class PunchEventTile extends StatelessWidget {
 
   final AttendanceEvent event;
 
-  /// Yönetici listelerinde personel adı da yazılır.
+  /// Yönetici listelerinde öğrenci adı da yazılır.
   final bool showUser;
 
-  /// Konum rozeti ve noktaya uzaklık gösterilsin mi? Personelin kendi
+  /// Konum rozeti ve noktaya uzaklık gösterilsin mi? Öğrencinin kendi
   /// ekranında kapatılır.
   final bool showLocation;
 

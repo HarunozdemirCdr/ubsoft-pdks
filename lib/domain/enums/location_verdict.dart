@@ -3,7 +3,7 @@
 /// Amaç, "noktanın yanında mı okuttu yoksa etiketin fotoğrafını çekip evden
 /// mi okuttu" sorusuna cevap vermektir. Doğrulama okutmayı **engellemek**
 /// için değil, **işaretlemek** için kullanılır (yönetici ayarla engellemeyi
-/// açabilir): GPS yanılabilir ve yanlışlıkla reddedilen bir giriş, personelin
+/// açabilir): GPS yanılabilir ve yanlışlıkla reddedilen bir giriş, öğrencinin
 /// o gün hiç çalışmamış görünmesine yol açardı.
 enum LocationVerdict {
   /// Noktanın yarıçapı içinde.

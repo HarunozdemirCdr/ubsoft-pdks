@@ -19,9 +19,9 @@ import 'package:ubsoft_pdks/presentation/widgets/info_hint.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
-/// Yeni müşteri açma — şirket, abonelik ve ilk yönetici tek formda.
+/// Yeni yurt açma — yurt, abonelik ve ilk yönetici tek formda.
 ///
-/// Üçü birlikte sorulur çünkü yöneticisi olmayan bir müşteriye kimse
+/// Üçü birlikte sorulur çünkü yöneticisi olmayan bir yurda kimse
 /// giremez; ayrı adımlara bölmek yarım kalmış hesaplar üretirdi.
 class TenantFormPage extends ConsumerStatefulWidget {
   const TenantFormPage({super.key});
@@ -51,7 +51,7 @@ class _TenantFormPageState extends ConsumerState<TenantFormPage> {
     super.dispose();
   }
 
-  /// Şirket adından adres dostu kısa ad üretir.
+  /// Yurt adından adres dostu kısa ad üretir.
   void _syncSlug(String value) {
     _slug.text = value
         .toLowerCase()
@@ -94,7 +94,7 @@ class _TenantFormPageState extends ConsumerState<TenantFormPage> {
         );
 
     if (!mounted) return;
-    Toast.result(result, successMessage: 'Müşteri açıldı.');
+    Toast.result(result, successMessage: 'Yurt açıldı.');
     if (result.isOk) context.go(AppRoutes.tenants);
   }
 
@@ -103,11 +103,11 @@ class _TenantFormPageState extends ConsumerState<TenantFormPage> {
     final bool busy = ref.watch(tenantControllerProvider).isLoading;
 
     return AppScaffold(
-      title: 'Yeni Müşteri',
+      title: 'Yeni Yurt',
       showBackButton: true,
       scrollable: true,
       bottomBar: AppButton.primaryWide(
-        label: 'Müşteriyi aç',
+        label: 'Yurtyi aç',
         isLoading: busy,
         onPressed: _submit,
       ),
@@ -117,16 +117,16 @@ class _TenantFormPageState extends ConsumerState<TenantFormPage> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             AppSpacing.vSm,
-            const SectionHeader(title: 'Şirket', dense: true),
+            const SectionHeader(title: 'Yurt', dense: true),
             AppSpacing.vMd,
 
             AppTextField(
-              label: 'Şirket adı',
+              label: 'Yurt adı',
               controller: _company,
               isRequired: true,
               onChanged: _syncSlug,
               validator: (String? v) =>
-                  Validators.required(v, field: 'Şirket adı'),
+                  Validators.required(v, field: 'Yurt adı'),
             ),
             AppSpacing.vMd,
             AppTextField(
@@ -213,8 +213,8 @@ class _TenantFormPageState extends ConsumerState<TenantFormPage> {
             AppSpacing.vLg,
             const InfoNote(
               message:
-                  'Müşteri açıldığında rol varsayılanları da kurulur. '
-                  'Yönetici bu bilgilerle giriş yapıp kendi personelini ve '
+                  'Yurt açıldığında rol varsayılanları da kurulur. '
+                  'Yönetici bu bilgilerle giriş yapıp kendi öğrencinini ve '
                   'QR noktalarını ekleyebilir.',
             ),
             AppSpacing.vXl,

@@ -1,4 +1,4 @@
-/// Müşteri hesabının durumu.
+/// Yurt hesabının durumu.
 enum TenantStatus {
   active('active', 'Aktif'),
 

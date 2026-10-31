@@ -23,14 +23,14 @@ abstract base class FirestoreRepositoryBase {
   CollectionReference<Map<String, dynamic>> get tenantsRef =>
       firestore.collection(FsPaths.tenants);
 
-  /// Bir müşterinin kullanıcıları: `tenants/{tenantId}/users`.
+  /// Bir yurdun kullanıcıları: `tenants/{tenantId}/users`.
   @protected
   CollectionReference<Map<String, dynamic>> usersRef(String tenantId) =>
       subcollection(tenantId, FsPaths.users);
 
-  /// Tüm müşterilerdeki kullanıcılar üzerinde arama yapar.
+  /// Tüm yurtlardeki kullanıcılar üzerinde arama yapar.
   ///
-  /// Giriş yapan kullanıcı hangi müşteriye ait olduğunu bilmediği için
+  /// Giriş yapan kullanıcı hangi yurda ait olduğunu bilmediği için
   /// oturum çözümü bu sorguyla başlar.
   @protected
   Query<Map<String, dynamic>> get allUsersQuery =>

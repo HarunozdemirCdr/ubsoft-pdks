@@ -7,10 +7,10 @@ import 'package:ubsoft_pdks/domain/permissions/role_defaults.dart';
 ///
 /// Çözümleme sırası:
 /// 1. Süper admin ise her şeye izinli.
-/// 2. Müşteri askıya alınmışsa tüm **yazma** izinleri kapanır.
+/// 2. Yurt askıya alınmışsa tüm **yazma** izinleri kapanır.
 /// 3. Yönetici (admin) ise geri kalan her yetkiye koşulsuz sahiptir —
-///    izin override'ları yalnız personel içindir, yönetici zaten admindir.
-/// 4. Personelde: kullanıcının kendi override'ı varsa o geçerli; yoksa rol
+///    izin override'ları yalnız öğrenci içindir, yönetici zaten admindir.
+/// 4. Öğrencide: kullanıcının kendi override'ı varsa o geçerli; yoksa rol
 ///    varsayılanı (Firestore'daki `roleDefaults`, yoksa kod içindeki yedek
 ///    tablo).
 ///
@@ -58,7 +58,7 @@ class PermissionSet extends Equatable {
   /// Firestore'dan okunan rol varsayılanları.
   final Map<String, bool> roleDefaults;
 
-  /// Müşteri hesabı yazma işlemine açık mı?
+  /// Yurt hesabı yazma işlemine açık mı?
   final bool tenantWritable;
 
   /// Her izni koşulsuz reddet.
@@ -70,10 +70,11 @@ class PermissionSet extends Equatable {
   /// Bu izin var mı?
   bool can(AppPermission permission) {
     if (denyAll) return false;
+    if (permission == AppPermission.punchCreate && !role.isStaff) return false;
     if (role.isSuperAdmin) return true;
     if (permission.isWrite && !tenantWritable) return false;
     // Yönetici, tenant içinde her yetkiye sahiptir. İzin override'ları yalnız
-    // personel için geçerlidir; yöneticiye izin açıp kapatmak anlamsızdır.
+    // öğrenci için geçerlidir; yöneticiye izin açıp kapatmak anlamsızdır.
     if (role.isAdmin) return true;
     return _resolve(permission);
   }

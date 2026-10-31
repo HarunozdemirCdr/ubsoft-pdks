@@ -42,12 +42,16 @@ abstract final class RouteGuard {
         AppRoutes.users: <AppPermission>[AppPermission.userView],
         AppRoutes.reports: <AppPermission>[AppPermission.reportView],
         AppRoutes.settings: <AppPermission>[AppPermission.settingsView],
+        AppRoutes.leaves: <AppPermission>[
+          AppPermission.attendanceViewOwn,
+          AppPermission.attendanceViewAll,
+        ],
       };
 
   /// Bir bölümü açabilmek için gereken izinler — **hepsi** gereklidir.
   ///
   /// Günlük panel iki şeyi birden ister: paneli görme yetkisi ve panelin
-  /// gösterdiği verinin (tüm personelin kayıtları) okuma yetkisi. Yalnız
+  /// gösterdiği verinin (tüm öğrencinin kayıtları) okuma yetkisi. Yalnız
   /// birine bakmak, ekranı açıp veriyi getiremeyen bir kullanıcı yaratırdı.
   static const Map<String, List<AppPermission>> _requiredAll =
       <String, List<AppPermission>>{
@@ -113,7 +117,7 @@ abstract final class RouteGuard {
         return isBlockedPage ? null : AppRoutes.blocked;
 
       case SessionSuperAdmin():
-        // Süper admin bir tenant'a bağlı değildir; müşteri ekranları ona
+        // Süper admin bir tenant'a bağlı değildir; yurt ekranları ona
         // anlamsız gelir.
         if (isPublic || isBlockedPage) return AppRoutes.tenants;
         if (location == AppRoutes.root) return AppRoutes.tenants;

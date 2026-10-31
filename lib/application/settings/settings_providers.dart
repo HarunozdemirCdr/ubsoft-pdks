@@ -5,7 +5,7 @@ import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 
-/// Şirket bilgileri ve devam ayarları.
+/// Yurt bilgileri ve devam ayarları.
 class SettingsController extends AsyncNotifier<void> {
   @override
   Future<void> build() async {}

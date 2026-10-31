@@ -21,7 +21,7 @@ import 'package:ubsoft_pdks/presentation/widgets/info_hint.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
-/// Personel oluşturma ve düzenleme.
+/// Öğrenci oluşturma ve düzenleme.
 ///
 /// E-posta ve şifre yalnız **oluştururken** sorulur. Sonradan değiştirilemez:
 /// e-posta hesabın kimliğidir, şifreyi ise yalnız sahibi bilmelidir —
@@ -29,7 +29,7 @@ import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 class UserFormPage extends ConsumerStatefulWidget {
   const UserFormPage({this.userId, super.key});
 
-  /// `null` ise yeni personel.
+  /// `null` ise yeni öğrenci.
   final String? userId;
 
   @override
@@ -43,6 +43,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
   final TextEditingController _password = TextEditingController();
   final TextEditingController _phone = TextEditingController();
   final TextEditingController _note = TextEditingController();
+  final TextEditingController _number = TextEditingController();
+  final TextEditingController _room = TextEditingController();
 
   UserRole _role = UserRole.staff;
   bool _seeded = false;
@@ -56,6 +58,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
     _password.dispose();
     _phone.dispose();
     _note.dispose();
+    _number.dispose();
+    _room.dispose();
     super.dispose();
   }
 
@@ -67,6 +71,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
     _email.text = user.email;
     _phone.text = user.phone ?? '';
     _note.text = user.note ?? '';
+    _number.text = user.studentNumber;
+    _room.text = user.room;
     _role = user.role;
   }
 
@@ -83,6 +89,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
         displayName: _name.text,
         role: _role,
         phone: _phone.text,
+        studentNumber: _number.text,
+        room: _room.text,
         note: _note.text,
       );
 
@@ -96,6 +104,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
       user: existing,
       displayName: _name.text,
       phone: _phone.text,
+      studentNumber: _number.text,
+      room: _room.text,
       note: _note.text,
     );
 
@@ -186,14 +196,18 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
             ],
 
             AppSpacing.vLg,
-            const SectionHeader(title: 'Şirket bilgileri', dense: true),
+            const SectionHeader(title: 'Yurt bilgileri', dense: true),
             AppSpacing.vMd,
 
+            AppTextField(label: 'Öğrenci numarası', controller: _number),
+            AppSpacing.vMd,
+            AppTextField(label: 'Oda', controller: _room),
+            AppSpacing.vMd,
             AppTextField(
               label: 'Açıklama',
               controller: _note,
-              hint: 'Gece vardiyası',
-              helper: 'Listelerde ve raporun personel başlığında görünür.',
+              hint: 'Oda / öğrenim notu',
+              helper: 'Listelerde ve raporun öğrenci başlığında görünür.',
               validator: (String? v) =>
                   Validators.maxLength(v, 60, field: 'Açıklama'),
             ),
@@ -219,7 +233,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
               const InfoNote(
                 message:
                     'Kendi rolünüzü değiştiremezsiniz. Aksi hâlde son '
-                    'yönetici kendini personele düşürüp şirketi yönetimsiz '
+                    'yönetici kendini öğrenciye düşürüp yurdu yönetimsiz '
                     'bırakabilirdi.',
               ),
             ],
@@ -236,7 +250,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
   }
 }
 
-/// Rol seçimi — yalnız yönetici ve personel atanabilir.
+/// Rol seçimi — yalnız yönetici ve öğrenci atanabilir.
 class _RoleSelector extends StatelessWidget {
   const _RoleSelector({
     required this.value,
@@ -274,8 +288,10 @@ class _RoleSelector extends StatelessWidget {
         AppSpacing.vXs,
         Text(
           value.isAdmin
-              ? 'Yönetici yurt yönetimi kayıtlarını görür ve ayarları yönetir.'
-              : 'Öğrenci yalnız QR okutur; giriş-çıkış geçmişini görüntüleyemez.',
+              ? 'Yönetici yurttaki tüm yetkilere sahiptir; ayrıca izin '
+                    'ayarlanmaz.'
+              : 'Öğrenci QR okutur ve kendi kayıtlarını görür; başkasının '
+                    'kaydını göremez.',
           style: AppTypography.small(context.colors.onSurfaceVariant),
         ),
       ],

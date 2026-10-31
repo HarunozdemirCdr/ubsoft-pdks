@@ -5,8 +5,8 @@ import 'package:flutter/foundation.dart';
 /// Ortam değişkenleri `--dart-define` ile geçilir:
 /// `flutter build web --dart-define=USE_EMULATOR=true`
 abstract final class AppConfig {
-  static const String appName = 'UBSoft PDKS';
-  static const String appVersion = '1.2.1';
+  static const String appName = 'UBSoft Yurt Kontrol';
+  static const String appVersion = '2.0.0';
 
   /// Yerel Firebase emulator'a bağlan (geliştirme ve kural testleri için).
   static const bool useEmulator = bool.fromEnvironment('USE_EMULATOR');
@@ -36,9 +36,9 @@ abstract final class AppConfig {
 
   /// QR kodunun en fazla hane sayısı.
   ///
-  /// Kod sabit uzunlukta değildir: yönetici işyerine özel basit numaralar
+  /// Kod sabit uzunlukta değildir: yönetici yurda özel basit numaralar
   /// (1, 2, 3…) girer. Çok kiracılı olduğu için aynı numara farklı
-  /// şirketlerde kullanılabilir; tekillik yalnız tenant içindedir.
+  /// yurtlarda kullanılabilir; tekillik yalnız tenant içindedir.
   static const int qrCodeMaxLength = 10;
 
   /// Aynı QR'ın kazara arka arkaya okunmasını engelleyen bekleme süresi.
@@ -50,7 +50,7 @@ abstract final class AppConfig {
   ///
   /// 10 metre ilk bakışta doğru görünür ama telefon GPS'i şehir içinde
   /// tipik olarak 10–30 m hatayla ölçer; bina içinde daha da kötüdür. O
-  /// yarıçapla kapının önünde duran personel bile "uzakta" damgası yerdi.
+  /// yarıçapla kapının önünde duran öğrenci bile "uzakta" damgası yerdi.
   /// Bina ölçeğinde ayrım yapmaya yeten ama ölçüm hatasını yutan değer
   /// budur; nokta bazında değiştirilebilir.
   static const int defaultRadiusMeters = 75;
@@ -108,7 +108,7 @@ abstract final class AppConfig {
   /// Çıkış okutulmadan gün kapanırsa günlük kaydın açık kalabileceği süre.
   ///
   /// Bunu aşan açık günler raporda "çıkış yok" olarak işaretlenir; kayıt
-  /// silinmez, yalnız işaretlenir — çünkü personelin gerçekten ne zaman
+  /// silinmez, yalnız işaretlenir — çünkü öğrencinin gerçekten ne zaman
   /// çıktığını uygulama bilemez ve uydurmamalıdır.
   static const int openDayGraceHours = 16;
 

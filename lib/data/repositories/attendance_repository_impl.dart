@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
-import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/data/mappers/attendance_mapper.dart';
+import 'package:ubsoft_pdks/data/repositories/dorm_repository.dart';
 import 'package:ubsoft_pdks/data/repositories/firestore_repository_base.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
@@ -47,67 +47,15 @@ final class AttendanceRepositoryImpl extends FirestoreRepositoryBase
     required PunchType type,
     required LocationCheck check,
     required ScanLocation? location,
-  }) => guard(() async {
-    final DateTime now = DateTime.now();
-    final String dateKey = AppDate.dateKey(now);
-    final String dayId = AttendanceDay.buildId(
-      userId: user.uid,
-      dateKey: dateKey,
-    );
-
-    final DocumentReference<Map<String, dynamic>> eventDoc = _events(
-      tenant.id,
-    ).doc();
-    final DocumentReference<Map<String, dynamic>> dayDoc = _days(
-      tenant.id,
-    ).doc(dayId);
-
-    final AttendanceEvent event = AttendanceEvent(
-      id: eventDoc.id,
-      tenantId: tenant.id,
-      userId: user.uid,
-      userName: user.displayName,
-      type: type,
-      at: now,
-      dateKey: dateKey,
-      checkpointId: checkpoint.id,
-      checkpointName: checkpoint.name,
-      checkpointCode: checkpoint.code,
-      location: location,
-      distanceMeters: check.distanceMeters,
-      radiusMeters: check.radiusMeters,
-      verdict: check.verdict,
-    );
-
-    await firestore.runTransaction((Transaction transaction) async {
-      final DocumentSnapshot<Map<String, dynamic>> current = await transaction
-          .get(dayDoc);
-
-      final AttendanceDay before = current.exists
-          ? AttendanceDayMapper.fromDoc(current)
-          : AttendanceDay.empty(
-              tenantId: tenant.id,
-              userId: user.uid,
-              userName: user.displayName,
-              dateKey: dateKey,
-            );
-
-      final AttendanceDay after = SummarizeDay.applyPunch(
-        day: before,
-        type: type,
-        at: now,
-        verdict: check.verdict,
-        userName: user.displayName,
-        settings: tenant.settings,
-      );
-
-      transaction
-        ..set(eventDoc, AttendanceEventMapper.toCreateMap(event))
-        ..set(dayDoc, AttendanceDayMapper.toMap(after));
-    });
-
-    return event;
-  });
+    Duration cooldown = const Duration(minutes: 1),
+  }) => DormRepository(firestore).record(
+    tenant: tenant,
+    user: user,
+    checkpoint: checkpoint,
+    check: check,
+    location: location,
+    cooldown: cooldown,
+  );
 
   @override
   Stream<AttendanceDay> watchDay({
@@ -250,9 +198,13 @@ final class AttendanceRepositoryImpl extends FirestoreRepositoryBase
     // `at` üzerinde ek bir bileşik indeks gerektirirdi ve bir günün okutma
     // sayısı zaten onlarla ölçülür.
     final List<AttendanceEvent> events =
-        snapshot.docs.map(AttendanceEventMapper.fromDoc).toList()..sort(
-          (AttendanceEvent a, AttendanceEvent b) => a.at.compareTo(b.at),
-        );
+        snapshot.docs
+            .where((d) => d.data()['voided'] != true)
+            .map(AttendanceEventMapper.fromDoc)
+            .toList()
+          ..sort(
+            (AttendanceEvent a, AttendanceEvent b) => a.at.compareTo(b.at),
+          );
     return List<AttendanceEvent>.unmodifiable(events);
   }
 }

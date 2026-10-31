@@ -18,9 +18,9 @@ import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/empty_state.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 
-/// Bir personelin kendi geçmişi — gün gün, açılabilir satırlarla.
+/// Bir öğrencinin kendi geçmişi — gün gün, açılabilir satırlarla.
 ///
-/// Yalnız **kendi** kayıtlarını görebilen personel içindir; yönetici aynı
+/// Yalnız **kendi** kayıtlarını görebilen öğrenci içindir; yönetici aynı
 /// bilgiye Raporlar ekranından, tarih aralığı seçerek ve yazdırılabilir
 /// hâliyle ulaşır.
 ///
@@ -45,7 +45,7 @@ class _PersonHistoryPageState extends ConsumerState<PersonHistoryPage> {
     final AppUser? user = ref.watch(userProvider(widget.userId));
     final AppUser? me = ref.watch(currentUserProvider);
     final bool isSelf = me?.uid == widget.userId;
-    final String name = user?.displayName ?? me?.displayName ?? 'Personel';
+    final String name = user?.displayName ?? me?.displayName ?? 'Öğrenci';
 
     return AppScaffold(
       title: isSelf ? 'Geçmişim' : name,
@@ -132,7 +132,7 @@ class _DayList extends ConsumerWidget {
   final ReportFilter filter;
   final String userId;
 
-  /// Geç giriş ve konum rozetleri — personelin kendi geçmişinde kapalı.
+  /// Geç giriş ve konum rozetleri — öğrencinin kendi geçmişinde kapalı.
   final bool showFlags;
   final String? expandedDay;
   final ValueChanged<String> onToggle;

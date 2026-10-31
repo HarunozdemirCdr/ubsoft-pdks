@@ -2,25 +2,25 @@ import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/enums/tenant_status.dart';
 
-/// Müşteri kayıtları — `tenants/{tid}`.
+/// Yurt kayıtları — `tenants/{tid}`.
 ///
-/// Yazma işlemlerinin çoğu yalnız süper adminindir; müşteri yöneticisi
-/// yalnız kendi şirket bilgilerini ve devam ayarlarını değiştirebilir.
+/// Yazma işlemlerinin çoğu yalnız süper adminindir; yurt yöneticisi
+/// yalnız kendi yurt bilgilerini ve devam ayarlarını değiştirebilir.
 abstract interface class TenantRepository {
   Stream<Tenant?> watchTenant(String tenantId);
 
-  /// Tüm müşteriler — süper admin listesi.
+  /// Tüm yurtlar — süper admin listesi.
   Stream<List<Tenant>> watchTenants();
 
   Future<Result<Tenant>> getTenant(String tenantId);
 
-  /// Yeni müşteri açar; rol varsayılanlarını da kurar.
+  /// Yeni yurt açar; rol varsayılanlarını da kurar.
   Future<Result<Tenant>> createTenant({
     required Tenant tenant,
     String? createdBy,
   });
 
-  /// Şirket bilgileri ve devam ayarları — yönetici de yapabilir.
+  /// Yurt bilgileri ve devam ayarları — yönetici de yapabilir.
   Future<Result<void>> updateSettings({
     required String tenantId,
     required String name,

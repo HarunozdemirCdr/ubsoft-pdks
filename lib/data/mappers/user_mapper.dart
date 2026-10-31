@@ -20,6 +20,8 @@ abstract final class UserMapper {
     email: data.str('email'),
     displayName: data.str('displayName'),
     phone: data.strOrNull('phone'),
+    studentNumber: data.str('studentNumber'),
+    room: data.str('room'),
     // `title` eski alan adıdır (v1.0 "Görev"); okunmaya devam edilir ki
     // kayıtlı metin bir sürüm yükseltmesiyle kaybolmasın.
     note: data.strOrNull('note') ?? data.strOrNull('title'),
@@ -43,6 +45,8 @@ abstract final class UserMapper {
     'uid': user.uid,
     'email': user.email.trim().toLowerCase(),
     'displayName': user.displayName.trim(),
+    'studentNumber': user.studentNumber.trim(),
+    'room': user.room.trim(),
     if ((user.phone ?? '').isNotEmpty) 'phone': user.phone!.trim(),
     if ((user.note ?? '').isNotEmpty) 'note': user.note!.trim(),
     'tenantId': user.tenantId,

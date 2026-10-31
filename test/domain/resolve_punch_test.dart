@@ -277,7 +277,7 @@ void main() {
 
     test('varsayılan ayarda uzaktan okutma KAYDEDİLİR, işaretlenir', () {
       // Reddetmek daha sıkı görünür ama hatalı bir GPS ölçümü yüzünden
-      // reddedilen giriş, personeli o gün hiç gelmemiş gösterir.
+      // reddedilen giriş, öğrenciyi o gün hiç gelmemiş gösterir.
       final PunchResolution result = ResolvePunch.call(
         checkpoint: TestData.checkpoint(),
         today: _day(),

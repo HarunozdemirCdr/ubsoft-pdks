@@ -44,7 +44,7 @@ abstract final class TestData {
   static const String superAdminUid = 'super-uid';
 
   static const String adminEmail = 'yonetici@test.com';
-  static const String staffEmail = 'personel@test.com';
+  static const String staffEmail = 'ogrenci@test.com';
 
   /// QR noktasının bulunduğu örnek koordinat (İstanbul, Levent).
   static const double lat = 41.081944;
@@ -58,7 +58,7 @@ abstract final class TestData {
     final DateTime now = DateTime.now();
     return Tenant(
       id: tenantId,
-      name: 'Test Şirketi',
+      name: 'Test Yurdu',
       slug: 'test-sirketi',
       status: status,
       subscription: Subscription(
@@ -262,7 +262,7 @@ class TestScope {
 /// Testler için hazır bir bağımlılık kapsamı kurar.
 ///
 /// [signedInAs] verildiğinde o kullanıcı oturum açmış sayılır ve Firestore'a
-/// müşteri, rol varsayılanları ve kullanıcı kaydı yazılır.
+/// yurt, rol varsayılanları ve kullanıcı kaydı yazılır.
 Future<TestScope> buildScope({
   AppUser? signedInAs,
   Tenant? tenant,
@@ -311,7 +311,7 @@ Future<TestScope> buildScope({
     ],
   );
 
-  // Oturum zinciri (auth → kullanıcı → müşteri → izinler) test boyunca canlı
+  // Oturum zinciri (auth → kullanıcı → yurt → izinler) test boyunca canlı
   // tutulur; ekranların ve denetleyicilerin dayandığı temel budur.
   return TestScope._(
       firestore: firestore,

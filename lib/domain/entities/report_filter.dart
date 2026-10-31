@@ -40,7 +40,7 @@ class ReportFilter extends Equatable {
   final DateTime from;
   final DateTime to;
 
-  /// Tek bir personele daralt. `null` ise tüm personel.
+  /// Tek bir öğrencie daralt. `null` ise tüm öğrenci.
   final String? userId;
 
   /// Hangi günler listelenecek. Ayrıntı için [ReportFocus].

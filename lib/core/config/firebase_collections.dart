@@ -4,7 +4,7 @@
 /// Şema değişimi tek dosyadan yönetilir ve yazım hatası derleme zamanında
 /// yakalanır.
 abstract final class FsPaths {
-  /// Tek kök koleksiyon. Diğer her şey bir müşterinin altında yaşar:
+  /// Tek kök koleksiyon. Diğer her şey bir yurdun altında yaşar:
   /// `tenants/{tenantId}/…`
   static const String tenants = 'tenants';
 
@@ -33,10 +33,10 @@ abstract final class FsPaths {
   /// cevaplar.
   static const String attendanceDays = 'attendanceDays';
 
-  /// Süper adminlerin barındığı sistem müşterisi.
+  /// Süper adminlerin barındığı sistem yurtsi.
   ///
-  /// Süper admin gerçek bir müşteriye ait değildir, ancak tüm veri tek bir
-  /// kök altında toplandığı için ona da bir yer gerekir. Bu müşteri arayüzde
+  /// Süper admin gerçek bir yurda ait değildir, ancak tüm veri tek bir
+  /// kök altında toplandığı için ona da bir yer gerekir. Bu yurt arayüzde
   /// listelenmez ve silinemez.
   static const String systemTenantId = '_system';
 }

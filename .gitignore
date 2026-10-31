@@ -51,3 +51,6 @@ firestore-debug.log
 
 # Kural testlerinin bağımlılıkları — package.json'dan yeniden kurulur
 rules-test/node_modules/
+
+# Canlı geçiş yedeği kişisel veri içerir, depoya girmez.
+/.local-backups/

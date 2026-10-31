@@ -8,7 +8,7 @@ import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/repositories/checkpoint_repository.dart';
 
-/// Müşterinin tüm QR noktaları, sıraya göre.
+/// Yurdun tüm QR noktaları, sıraya göre.
 final StreamProvider<List<Checkpoint>> checkpointsProvider =
     StreamProvider<List<Checkpoint>>(
       (ref) => ref

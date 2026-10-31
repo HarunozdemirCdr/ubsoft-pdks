@@ -57,13 +57,13 @@ void main() {
 
   tearDown(() => scope.dispose());
 
-  test('oturum, kullanıcı ve müşteriyle birlikte çözülür', () async {
+  test('oturum, kullanıcı ve yurtla birlikte çözülür', () async {
     final Session session = scope.container.read(currentSessionProvider);
 
     expect(session, isA<SessionActive>());
     final SessionActive active = session as SessionActive;
     expect(active.user.uid, TestData.staffUid);
-    expect(active.tenant.name, 'Test Şirketi');
+    expect(active.tenant.name, 'Test Yurdu');
     expect(active.permissions.role, UserRole.staff);
   });
 
@@ -124,7 +124,10 @@ void main() {
 
     final PunchState state = scope.container.read(punchControllerProvider);
     expect(state, isA<PunchFailed>());
-    expect((state as PunchFailed).failure.message, contains('Zaten giriş'));
+    expect(
+      (state as PunchFailed).failure.message,
+      contains('Zaten içeridesiniz'),
+    );
 
     // Reddedilen okutma kayıt bırakmaz.
     await flush();
@@ -288,9 +291,7 @@ void main() {
   test('kazara ikinci okutma kaydı bozmaz', () async {
     final TestScope guarded = await buildScope(
       signedInAs: TestData.user(),
-      checkpoints: <Checkpoint>[
-        TestData.checkpoint(id: 'cp-both', code: '9', kind: CheckpointKind.both),
-      ],
+      checkpoints: <Checkpoint>[TestData.checkpoint(code: '9')],
       location: TestData.locationNorthOf(15),
       punchCooldown: const Duration(minutes: 1),
     );
@@ -302,7 +303,10 @@ void main() {
     );
 
     await controller.submit('9');
-    expect(guarded.container.read(punchControllerProvider), isA<PunchSuccess>());
+    expect(
+      guarded.container.read(punchControllerProvider),
+      isA<PunchSuccess>(),
+    );
     await flush();
 
     // Telefon hâlâ etiketin önünde: ikinci okutma.
@@ -390,7 +394,7 @@ void main() {
     expect((state as PunchSuccess).event.verdict, LocationVerdict.unavailable);
   });
 
-  test('aboneliği bitmiş müşteride okutma yapılamaz', () async {
+  test('aboneliği bitmiş yurtta okutma yapılamaz', () async {
     final TestScope expired = await buildScope(
       signedInAs: TestData.user(role: UserRole.admin, uid: TestData.adminUid),
       tenant: TestData.tenant(
@@ -401,7 +405,7 @@ void main() {
     );
     addTearDown(expired.dispose);
 
-    // Yönetici salt okunur olarak girebilir; personelin oturumu hiç açılmaz.
+    // Yönetici salt okunur olarak girebilir; öğrencinin oturumu hiç açılmaz.
     await expired.container.read(sessionProvider.future);
 
     await expired.container.read(punchControllerProvider.notifier).submit('1');
@@ -411,7 +415,7 @@ void main() {
     expect((state as PunchFailed).failure, isA<SubscriptionFailure>());
   });
 
-  test('askıya alınmış müşteride okutma yapılamaz', () async {
+  test('askıya alınmış yurtta okutma yapılamaz', () async {
     final TestScope suspended = await buildScope(
       signedInAs: TestData.user(role: UserRole.admin, uid: TestData.adminUid),
       tenant: TestData.tenant(status: TenantStatus.suspended),
@@ -444,82 +448,42 @@ void main() {
 
     final PunchState state = disabled.container.read(punchControllerProvider);
     expect(state, isA<PunchFailed>());
-    expect((state as PunchFailed).failure.message, contains('devre dışı'));
+    expect(
+      (state as PunchFailed).failure.message,
+      contains('QR noktası değişmiş'),
+    );
   });
 
-  test('yönetici yanlış okutmayı silince gün yeniden hesaplanır', () async {
-    final TestScope admin = await buildScope(
-      signedInAs: TestData.user(
-        uid: TestData.adminUid,
-        name: 'Mustafa Özdemir',
-        role: UserRole.admin,
-      ),
+  test('yönetici adına öğrenci hareketi oluşturulamaz', () async {
+    final admin = await buildScope(
+      signedInAs: TestData.user(uid: TestData.adminUid, role: UserRole.admin),
       checkpoints: checkpoints,
       location: TestData.locationNorthOf(10),
     );
     addTearDown(admin.dispose);
     await waitForSession(admin);
-
-    final PunchController controller = admin.container.read(
-      punchControllerProvider.notifier,
-    );
-    await controller.submit('1');
-    controller.reset();
-    await controller.submit('2');
-
-    await flush();
-    AttendanceDay day = admin.container.read(myTodayProvider).requireValue;
-    expect(day.exitCount, 1);
-
-    final List<AttendanceEvent> events = admin.container
-        .read(myTodayEventsProvider)
-        .requireValue;
-    final AttendanceEvent exit = events.firstWhere(
-      (AttendanceEvent event) => event.type.isExit,
-    );
-
-    await admin.container
-        .read(attendanceAdminControllerProvider.notifier)
-        .deleteEvent(exit);
-
-    await flush();
-    day = admin.container.read(myTodayProvider).requireValue;
-    expect(day.exitCount, 0);
-    expect(day.open, isTrue, reason: 'çıkış silinince gün yeniden açılmalı');
-    expect(day.workedMinutes, 0);
+    await admin.container.read(punchControllerProvider.notifier).submit('1');
+    expect(admin.container.read(punchControllerProvider), isA<PunchFailed>());
   });
 
-  test('çift yönlü nokta gidiş-gelişi kendisi çözer', () async {
-    final TestScope both = await buildScope(
+  test('ortak giriş çıkış QR kodu reddedilir', () async {
+    final both = await buildScope(
       signedInAs: TestData.user(),
-      checkpoints: <Checkpoint>[
-        TestData.checkpoint(
-          id: 'cp-both',
-          code: '5',
-          name: 'Turnike',
-          kind: CheckpointKind.both,
-        ),
-      ],
+      checkpoints: [TestData.checkpoint(code: '5', kind: CheckpointKind.both)],
       location: TestData.locationNorthOf(10),
     );
     addTearDown(both.dispose);
     await waitForSession(both);
-
-    final PunchController controller = both.container.read(
-      punchControllerProvider.notifier,
-    );
-
-    await controller.submit('5');
+    await both.container.read(punchControllerProvider.notifier).submit('5');
+    final state = both.container.read(punchControllerProvider);
+    expect(state, isA<PunchFailed>());
+    expect((state as PunchFailed).failure.message, contains('ayrı QR'));
     expect(
-      (both.container.read(punchControllerProvider) as PunchSuccess).event.type,
-      PunchType.entry,
-    );
-
-    controller.reset();
-    await controller.submit('5');
-    expect(
-      (both.container.read(punchControllerProvider) as PunchSuccess).event.type,
-      PunchType.exit,
+      (await both.firestore
+              .collection('tenants/${TestData.tenantId}/attendance')
+              .get())
+          .docs,
+      isEmpty,
     );
   });
 }

@@ -5,7 +5,7 @@ import 'package:ubsoft_pdks/domain/enums/user_status.dart';
 
 /// Kullanıcı kayıtları — `tenants/{tid}/users/{uid}`.
 abstract interface class UserRepository {
-  /// Giriş yapan kullanıcının hangi müşteride olduğunu bulur.
+  /// Giriş yapan kullanıcının hangi yurtta olduğunu bulur.
   ///
   /// Oturum çözümünün ilk adımıdır: kullanıcı kendi tenant'ını bilmez, bu
   /// yüzden koleksiyon grubu üzerinde tek seferlik bir arama yapılır.
@@ -14,7 +14,7 @@ abstract interface class UserRepository {
   /// Tek bir kullanıcıyı canlı izler.
   Stream<AppUser?> watchUser(String tenantId, String uid);
 
-  /// Müşterinin kullanıcıları — silinmişler hariç, ada göre sıralı.
+  /// Yurdun kullanıcıları — silinmişler hariç, ada göre sıralı.
   Stream<List<AppUser>> watchUsers(String tenantId);
 
   Future<Result<AppUser>> createUser(AppUser user);
@@ -24,6 +24,8 @@ abstract interface class UserRepository {
     required String uid,
     required String displayName,
     String? phone,
+    String studentNumber = '',
+    String room = '',
     String? note,
   });
 

@@ -12,22 +12,22 @@ enum SessionBlockReason {
   /// Kullanıcı pasif ya da silinmiş.
   userInactive('Hesabınız devre dışı bırakılmış. Yöneticinizle görüşün.'),
 
-  /// Müşteri hesabı askıya alınmış.
+  /// Yurt hesabı askıya alınmış.
   tenantSuspended(
-    'Şirket aboneliğiniz askıya alınmış. Lütfen yöneticinizle görüşün.',
+    'Yurt aboneliğiniz askıya alınmış. Lütfen yöneticinizle görüşün.',
   ),
 
   /// Aboneliğin süresi dolmuş.
   ///
   /// [tenantSuspended]'dan ayrı tutulur: askıya alma bilinçli bir karardır,
-  /// süre dolması ise kendiliğinden olur. Personele "askıya alındınız" demek
+  /// süre dolması ise kendiliğinden olur. Öğrencie "askıya alındınız" demek
   /// yanlış yönlendirir; yöneticisine sorduğunda kimsenin haberi olmaz.
   subscriptionExpired(
-    'Şirketinizin abonelik süresi doldu. Lütfen yöneticinizle görüşün.',
+    'Yurdunizin abonelik süresi doldu. Lütfen yöneticinizle görüşün.',
   ),
 
   /// Kullanıcının tenant'ı bulunamadı.
-  tenantMissing('Şirket kaydınıza ulaşılamadı. Yöneticinizle görüşün.');
+  tenantMissing('Yurt kaydınıza ulaşılamadı. Yöneticinizle görüşün.');
 
   const SessionBlockReason(this.message);
 

@@ -3,7 +3,7 @@ import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/enums/day_status.dart';
 import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 
-/// Bir personelin bir gündeki devam özeti.
+/// Bir öğrencinin bir gündeki devam özeti.
 ///
 /// Okutmalardan türetilir ve her okutmayla **aynı işlemde** güncellenir.
 /// Ayrı tutulmasının sebebi maliyet ve hız: "bu ay kim kaç saat çalıştı"
@@ -30,7 +30,7 @@ class AttendanceDay extends Equatable {
     this.updatedAt,
   });
 
-  /// Bir personelin verilen günü için boş özet.
+  /// Bir öğrencinin verilen günü için boş özet.
   factory AttendanceDay.empty({
     required String tenantId,
     required String userId,
@@ -88,7 +88,7 @@ class AttendanceDay extends Equatable {
 
   /// [now] anına kadar çalışılmış toplam süre.
   ///
-  /// Personel hâlâ içerideyse açık giriş süresi de eklenir; böylece "şu an
+  /// Öğrenci hâlâ içerideyse açık giriş süresi de eklenir; böylece "şu an
   /// 3 sa 12 dk" canlı olarak görünür.
   ///
   /// Açık giriş [graceHours] saati aştığında sayaç **durur**: o gün artık
@@ -122,7 +122,7 @@ class AttendanceDay extends Equatable {
   /// Günün durumu.
   ///
   /// [now] verilerek geçmiş bir gün değerlendirildiğinde, açık kalmış bir
-  /// giriş "içeride" değil "çıkış yok" sayılır — personel dün gece hâlâ
+  /// giriş "içeride" değil "çıkış yok" sayılır — öğrenci dün gece hâlâ
   /// içeride olamaz.
   DayStatus statusAt(DateTime now, {int graceHours = 16}) {
     if (isEmpty) return DayStatus.absent;
