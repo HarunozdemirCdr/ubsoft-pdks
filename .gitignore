@@ -54,3 +54,6 @@ rules-test/node_modules/
 
 # Canlı geçiş yedeği kişisel veri içerir, depoya girmez.
 /.local-backups/
+
+# Word tarafından açık belge için oluşturulan geçici kilit dosyaları.
+~$*.docx

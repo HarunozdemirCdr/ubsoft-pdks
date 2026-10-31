@@ -38,6 +38,37 @@ Durum/inceleme filtreleri, arama ve sıfırlama ayrı yönetilir. Öğrenci seç
 Rapor ve geçmişte öğrenci → gün → hareket açılımı vardır; giriş yeşil, çıkış kırmızıdır. Günlük özet yalnız ilk giriş/son çıkışı gösterir; diğer okutmalar açılımda korunur.
 Satışa hazırlık bulguları ve yüksek öncelikli işler [SATISA_HAZIRLIK.md](SATISA_HAZIRLIK.md) belgesindedir.
 
+## Sunum demosu ve görselli kullanım kılavuzu
+
+[Word kullanım kılavuzu](docs/UBSoft_Yurt_Kontrol_Kullanim_Kilavuzu.docx), yönetici ve öğrenci ekranlarını sade adımlarla açıklar.
+30 sayfalık belgede 28 konu ve çalışan uygulamadan alınmış 29 mobil ekran görüntüsü bulunur.
+Ekranlar 390 × 844 boyutunda, yayımlanmış 2.1.0 sürümünün TÜRGEV Demo oturumlarından alınmıştır; taslak arayüz veya widget testi görüntüsü değildir.
+QR tarama görüntüsü kamera açılamadı yardım durumunu gösterir; gerçek telefonla başarılı QR/GPS kabul testi yapıldığının kanıtı değildir.
+
+31 Ekim 2026 sunum hazırlığında yalnız `turgev-demo` yurduna 27 kurgusal öğrenci eklendi.
+Doğrulanan toplamlar: **30 öğrenci, 2 yönetici, 1.050 hareket belgesi, 403 günlük özet ve 5 izin**.
+Hareket belgelerinden biri gerekçeli geçersiz kayıt senaryosudur; normal hareket listesinde gösterilmez.
+Yeni verilerde 128 öğrenci gününde birden çok giriş bulunur; geç giriş, erken giriş/çıkış, gece yarısı dönüşü,
+geciken dönüş, aktif/geçmiş/gelecek/iptal izin ve başlangıç kaydı olmayan öğrenci senaryoları vardır.
+Eski 32 hareket korunmuştur. Kurgu senaryoların bulunması, tüm saha senaryolarının test edildiği anlamına gelmez.
+Demo saat kuralı: en erken çıkış 06:00, en erken giriş 07:00, son dönüş 22:30 ve 10 dakika tolerans.
+Bu saatler bir kurumun resmî uygulamasını temsil etmez. Tarihli kayıtlar otomatik olarak her gün yeniden üretilmez.
+
+```powershell
+node tool/prepare_presentation_demo.cjs           # yalnız demo planı ve yerel yedek
+node tool/prepare_presentation_demo.cjs --apply   # yalnız demo yurduna kurgusal kayıt ekler
+node tool/prepare_presentation_demo.cjs --verify  # hareket sırası, durum ve eski kayıtları doğrular
+```
+
+Betik yalnız `turgev-demo` ve `TÜRGEV Demo` hedefini kabul eder. Daha önce eklenmiş sunum verilerini yeniden yazmaz.
+Firebase CLI'ın yetkili oturumunu kullanır. İşlem öncesi yedekler ve yeni kurgusal hesapların rastgele şifreleri
+Git dışında tutulan `.local-backups/` altında kalır; şifreler kılavuza veya terminal çıktısına yazılmaz.
+`--verify` özgün hareketleri karşılaştırmak için aynı makinedeki işlem öncesi yedeği kullanır.
+
+Kılavuz kaynak görüntüleri `docs/kilavuz/ekranlar/`, üretim betiği `tool/build_user_manual.py` altındadır.
+Betik `python-docx` ile çalışır; belge değiştiğinde Word/uygun belge işleyicisiyle bütün sayfalar görsel olarak yeniden kontrol edilmelidir.
+Bu çalışma uygulama kodunu veya güvenlik kurallarını değiştirmez; mevcut 2.1.0 yayını geçerlidir.
+
 ## Veri modeli
 
 ```text
