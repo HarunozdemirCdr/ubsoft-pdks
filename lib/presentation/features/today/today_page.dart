@@ -46,7 +46,7 @@ class TodayPage extends ConsumerWidget {
 
           AppSpacing.vXl,
           SectionHeader(
-            title: 'Personel',
+            title: 'Öğrenciler',
             dense: true,
             trailing: StatusChip(
               label: '${overview.inside} içeride',
@@ -59,9 +59,9 @@ class TodayPage extends ConsumerWidget {
           if (rows.isEmpty)
             const EmptyState(
               icon: Icons.people_outline_rounded,
-              title: 'Kadroda personel yok',
+              title: 'Yurtta öğrenci yok',
               description:
-                  'Personel ekledikten sonra günlük devam tablosu burada '
+                  'Öğrenci ekledikten sonra günlük devam tablosu burada '
                   'oluşur.',
               compact: true,
             )
@@ -117,7 +117,9 @@ class _StatGrid extends StatelessWidget {
         value: '${overview.flagged}',
         icon: Icons.error_outline_rounded,
         tone: StatusTone.warning,
-        caption: overview.late > 0 ? '${overview.late} geç giriş' : null,
+        caption: overview.late > 0
+            ? '${overview.late} son giriş saati aşımı'
+            : null,
       ),
     ];
 

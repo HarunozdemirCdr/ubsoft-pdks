@@ -99,7 +99,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('UBSoft PDKS'), findsOneWidget);
-      expect(find.text('Personel giriş-çıkış takibi'), findsOneWidget);
+      expect(find.text('Öğrenci giriş-çıkış takibi'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -203,7 +203,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Ahmet Yılmaz'), findsOneWidget);
-      expect(find.text('Personel'), findsWidgets);
+      expect(find.text('Öğrenci'), findsWidgets);
       expect(tester.takeException(), isNull);
     });
 
@@ -385,7 +385,7 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.text('Mesai'), findsOneWidget);
+      expect(find.text('Yurt giriş saatleri'), findsOneWidget);
       expect(find.text('Konum kuralları'), findsOneWidget);
       expect(find.text('Nokta dışındaki okutmaları reddet'), findsOneWidget);
       expect(tester.takeException(), isNull);

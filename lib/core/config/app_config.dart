@@ -94,15 +94,15 @@ abstract final class AppConfig {
   /// Konum alınırken beklenecek en uzun süre.
   static const Duration locationTimeout = Duration(seconds: 12);
 
-  // ─────────────────────────── Mesai ───────────────────────────
+  // ───────────────────── Yurt giriş saatleri ─────────────────────
 
-  /// Varsayılan mesai başlangıcı (dakika cinsinden, gün başından itibaren).
-  static const int defaultWorkStartMinutes = 8 * 60 + 30;
+  /// Varsayılan ilk giriş saati (dakika cinsinden, gün başından itibaren).
+  static const int defaultWorkStartMinutes = 6 * 60;
 
-  /// Varsayılan mesai bitişi.
-  static const int defaultWorkEndMinutes = 18 * 60;
+  /// Varsayılan son giriş saati.
+  static const int defaultWorkEndMinutes = 23 * 60;
 
-  /// Bu kadar dakika sonrası "geç giriş" sayılır.
+  /// Geriye dönük veri uyumluluğu için saklanır; yeni kurallarda kullanılmaz.
   static const int defaultLateToleranceMinutes = 15;
 
   /// Çıkış okutulmadan gün kapanırsa günlük kaydın açık kalabileceği süre.

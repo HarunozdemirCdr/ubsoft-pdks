@@ -138,10 +138,10 @@ abstract final class RouteGuard {
 
   /// Giriş sonrası açılacak sayfa.
   ///
-  /// Personelin işi okutmaktır; onu doğrudan okutma ekranına götürmek bir
+  /// Öğrencinin işi okutmaktır; onu doğrudan okutma ekranına götürmek bir
   /// dokunuş tasarruf ettirir. Yöneticiler günlük panele düşer.
   ///
-  /// Tercih edilen sayfanın izni kapatılmış olabilir (ör. personelden "QR
+  /// Tercih edilen sayfanın izni kapatılmış olabilir (ör. öğrenciden "QR
   /// okut" alınmış). O sayfaya yönlendirmek sonsuz döngü olurdu: yönlendir →
   /// izin yok → yeniden yönlendir. Bu yüzden erişilebilir ilk bölüm seçilir;
   /// hiçbiri yoksa izin gerektirmeyen Profil'e düşülür.

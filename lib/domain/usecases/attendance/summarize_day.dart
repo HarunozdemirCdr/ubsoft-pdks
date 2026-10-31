@@ -76,7 +76,10 @@ abstract final class SummarizeDay {
       exitCount: exitCount,
       workedMinutes: worked,
       open: openSince != null,
-      late: firstEntry != null && isLate(firstEntry, settings),
+      late: sorted.any(
+        (AttendanceEvent event) =>
+            event.type.isEntry && isLate(event.at, settings),
+      ),
       worstVerdict: worst,
       updatedAt: DateTime.now(),
     );
@@ -104,7 +107,7 @@ abstract final class SummarizeDay {
         lastEntryAt: at,
         entryCount: day.entryCount + 1,
         open: true,
-        late: isLate(firstEntry, settings),
+        late: day.late || isLate(at, settings),
         worstVerdict: worst,
         updatedAt: at,
       );
@@ -124,7 +127,7 @@ abstract final class SummarizeDay {
     );
   }
 
-  /// İlk giriş, mesai başlangıcı + tolerans saatinden sonra mı yapıldı?
+  /// Giriş, yurdun yöneticice belirlenen son giriş saatinden sonra mı?
   static bool isLate(DateTime firstEntry, TenantSettings settings) {
     final DateTime local = firstEntry.toLocal();
     final int minutes = local.hour * 60 + local.minute;

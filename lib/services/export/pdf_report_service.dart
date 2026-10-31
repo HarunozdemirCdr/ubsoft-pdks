@@ -14,25 +14,16 @@ import 'package:ubsoft_pdks/domain/enums/day_status.dart';
 const String _legendTimes =
     'Giriş / Çıkış: günün ilk giriş ve son çıkış okutması. Bir günde birden '
     'çok okutma varsa satırın açıklamasında sayısı yazar.';
-const String _legendDuration =
-    'Süre: eşleşmiş giriş–çıkış çiftlerinin toplamı. Çıkışı okutulmamış '
-    'günlerde süre hesaplanmaz; uygulama personelin ne zaman çıktığını '
-    'uydurmaz.';
 const String _legendLate =
-    'Geç: ilk giriş, mesai başlangıcı + tolerans saatinden sonra yapılmış.';
+    'Son giriş saati aşıldı: öğrencinin bir girişi yurdun belirlediği son giriş saatinden sonra yapılmış.';
 const String _legendFlagged =
     'Konum uyarısı: okutma QR noktasının yarıçapı dışında ölçülmüş ya da '
     'konum hiç alınamamış.';
-const String _legendTotals =
-    'Personel başlığındaki toplamlar aralığın tamamından hesaplanır; süzgeç '
-    'açıkken bile kişinin gerçek toplam süresini gösterir.';
 
 const List<String> _legendNotes = <String>[
   _legendTimes,
-  _legendDuration,
   _legendLate,
   _legendFlagged,
-  _legendTotals,
 ];
 
 /// Rapor renkleri — uygulamanın `AppColors` paletinin PDF karşılığı.
@@ -188,7 +179,7 @@ abstract final class PdfReportService {
         ),
         pw.SizedBox(height: 6),
         pw.Text(
-          'Personel Devam Raporu',
+          'Yurt Giriş-Çıkış Raporu',
           style: pw.TextStyle(
             font: fonts.bold,
             fontSize: 22,
@@ -282,7 +273,7 @@ abstract final class PdfReportService {
     );
   }
 
-  /// Dört kutu: toplam süre, personel, geç giriş, listelenen gün.
+  /// Öğrenci, son giriş aşımı ve listelenen gün özeti.
   static pw.Widget _summary(_ReportFonts fonts, ReportResult report) {
     final int late = report.rows.fold(
       0,
@@ -291,15 +282,9 @@ abstract final class PdfReportService {
 
     return pw.Row(
       children: <pw.Widget>[
-        _summaryBox(
-          fonts,
-          'Toplam çalışma',
-          AppDate.durationHuman(Duration(minutes: report.totalMinutes)),
-        ),
+        _summaryBox(fonts, 'Öğrenci', '${report.rows.length}'),
         pw.SizedBox(width: 8),
-        _summaryBox(fonts, 'Personel', '${report.rows.length}'),
-        pw.SizedBox(width: 8),
-        _summaryBox(fonts, 'Geç giriş', '$late'),
+        _summaryBox(fonts, 'Son giriş aşımı', '$late'),
         pw.SizedBox(width: 8),
         _summaryBox(fonts, 'Listelenen gün', '${report.totalDayRows}'),
       ],
@@ -345,7 +330,7 @@ abstract final class PdfReportService {
     style: pw.TextStyle(font: fonts.regular, fontSize: 10, color: _Ink.muted),
   );
 
-  /// Tek bir personelin başlığı ve gün tablosu.
+  /// Tek bir öğrencinin başlığı ve gün tablosu.
   static pw.Widget _personSection(
     _ReportFonts fonts,
     ReportRow row,
@@ -411,8 +396,7 @@ abstract final class PdfReportService {
             ),
           ),
           pw.Text(
-            '${row.presentDays} gün geldi · ${row.absentDays} gün gelmedi · '
-            'toplam ${AppDate.durationHuman(row.workedDuration)}',
+            '${row.presentDays} kayıtlı gün · ${row.absentDays} kayıtsız gün',
             style: pw.TextStyle(
               font: fonts.medium,
               fontSize: 9,
@@ -430,7 +414,6 @@ abstract final class PdfReportService {
       'Gün',
       'Giriş',
       'Çıkış',
-      'Süre',
       'Açıklama',
     ];
 
@@ -444,8 +427,7 @@ abstract final class PdfReportService {
         1: pw.FlexColumnWidth(1.2),
         2: pw.FlexColumnWidth(0.9),
         3: pw.FlexColumnWidth(0.9),
-        4: pw.FlexColumnWidth(1.3),
-        5: pw.FlexColumnWidth(2.6),
+        4: pw.FlexColumnWidth(2.6),
       },
       children: <pw.TableRow>[
         pw.TableRow(
@@ -485,7 +467,6 @@ abstract final class PdfReportService {
                 color: day.lastExitAt == null ? _Ink.muted : _Ink.exit,
                 bold: day.lastExitAt != null,
               ),
-              _cell(fonts, _durationLabel(day)),
               _cell(fonts, _noteLabel(day, now), color: _noteColor(day, now)),
             ],
           ),
@@ -498,16 +479,12 @@ abstract final class PdfReportService {
   static DateTime _dateOf(AttendanceDay day) =>
       DateTime.tryParse(day.dateKey) ?? DateTime.now();
 
-  static String _durationLabel(AttendanceDay day) => day.workedMinutes <= 0
-      ? '—'
-      : AppDate.durationHuman(Duration(minutes: day.workedMinutes));
-
-  /// Günün açıklaması: `Geç · 2 giriş / 2 çıkış · Konum uyarısı`.
+  /// Günün açıklaması: `Son giriş saati aşıldı · 2 giriş / 2 çıkış · Konum uyarısı`.
   static String _noteLabel(AttendanceDay day, DateTime now) {
     if (day.isEmpty) return 'Gelmedi';
 
     final List<String> parts = <String>[
-      if (day.late) 'Geç',
+      if (day.late) 'Son giriş saati aşıldı',
       if (day.statusAt(now) == DayStatus.missingExit) 'Çıkış yok',
       if (day.worstVerdict.needsAttention) day.worstVerdict.label,
       if (day.entryCount > 1 || day.exitCount > 1)

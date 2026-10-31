@@ -9,10 +9,10 @@ enum UserRole {
   /// Bir tenant'a ait değildir; tüm veriye erişir.
   superAdmin('superAdmin'),
 
-  /// Şirket yöneticisi. Kendi tenant'ında her şeyi yapar.
+  /// Yurt yöneticisi. Müdire/belletmen ayrımı açıklama alanında tutulur.
   admin('admin'),
 
-  /// Personel. QR okutur, kendi devam kaydını görür.
+  /// Öğrenci. Yalnız QR ile giriş-çıkış kaydı oluşturur.
   staff('staff');
 
   const UserRole(this.key);
@@ -35,9 +35,9 @@ enum UserRole {
 
   /// Arayüzde görünen ad.
   String get label => switch (this) {
-    UserRole.superAdmin => 'Süper Admin',
+    UserRole.superAdmin => 'UBS Süper Admin',
     UserRole.admin => 'Yönetici',
-    UserRole.staff => 'Personel',
+    UserRole.staff => 'Öğrenci',
   };
 
   /// Bir yöneticinin başkasına atayabileceği roller.

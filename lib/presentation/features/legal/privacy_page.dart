@@ -66,7 +66,7 @@ class PrivacyPage extends StatelessWidget {
             eyebrow: 'Kişisel verilerin korunması',
             title: 'Hangi veriler, neden işleniyor?',
             description:
-                'Bu uygulama personel devam kontrolü için gerekli en az '
+                'Bu uygulama yurt öğrenci giriş-çıkış takibi için gerekli en az '
                 'veriyi toplar.',
           ),
           AppSpacing.vLg,
@@ -94,7 +94,7 @@ class PrivacyPage extends StatelessWidget {
           const _Section(
             title: '4. İşleme amacı ve hukuki sebep',
             body:
-                'Veriler; çalışma sürelerinin takibi, puantaj ve iş '
+                'Veriler; yurt güvenliği, öğrenci giriş-çıkış takibi ve '
                 'güvenliği yükümlülüklerinin yerine getirilmesi amacıyla, '
                 'iş sözleşmesinin ifası ve işverenin meşru menfaati hukuki '
                 'sebeplerine dayanılarak işlenir.',
@@ -113,7 +113,7 @@ class PrivacyPage extends StatelessWidget {
             body:
                 'Devam kayıtları, ilgili mevzuatın öngördüğü saklama süreleri '
                 'boyunca tutulur. Süre dolduğunda ya da talep hâlinde '
-                'silinir. Personel kaydı silindiğinde geçmiş devam kayıtları, '
+                'silinir. Öğrenci kaydı silindiğinde geçmiş devam kayıtları, '
                 'yasal yükümlülük gereği ad bilgisiyle birlikte korunur.',
           ),
 

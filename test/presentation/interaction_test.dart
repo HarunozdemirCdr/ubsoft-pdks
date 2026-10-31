@@ -303,13 +303,9 @@ void main() {
 
     test('rol varsayılanları sabittir', () {
       // Personel yalnız okutur ve kendi kaydını görür.
-      expect(
-        RoleDefaults.of(UserRole.staff),
-        <AppPermission>{
-          AppPermission.punchCreate,
-          AppPermission.attendanceViewOwn,
-        },
-      );
+      expect(RoleDefaults.of(UserRole.staff), <AppPermission>{
+        AppPermission.punchCreate,
+      });
 
       // Yönetici kendi müşterisinde koşulsuz yetkilidir.
       expect(
@@ -464,7 +460,7 @@ void main() {
       await settle(tester);
 
       expect(find.text('Son 7 gün'), findsOneWidget);
-      expect(find.text('Tüm personel'), findsOneWidget);
+      expect(find.text('Tüm öğrenciler'), findsOneWidget);
       expect(find.text('Tümü'), findsOneWidget);
 
       // Açılır menü kendi yolunda (route) açılıp kapanır; kapanma
@@ -482,7 +478,7 @@ void main() {
       expect(find.text('Son 30 gün'), findsOneWidget);
 
       // Sonra personeli değiştir — aralık seçimi yerinde kalmalı.
-      await choose('Tüm personel', 'Ahmet Yılmaz');
+      await choose('Tüm öğrenciler', 'Ahmet Yılmaz');
 
       expect(find.text('Son 30 gün'), findsOneWidget);
       expect(find.text('Tümü'), findsOneWidget);
@@ -512,7 +508,7 @@ void main() {
       await tester.ensureVisible(find.text('Tümü'));
       await tester.tap(find.text('Tümü'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Geç giriş').last);
+      await tester.tap(find.text('Son giriş saati aşıldı').last);
       await tester.pumpAndSettle();
 
       // Geç gelinmiş tek gün var; geri kalan personel rapordan düşer.
@@ -762,7 +758,7 @@ void main() {
       expect(find.text('Ana Giriş'), findsOneWidget);
 
       // …ama yargılar görünmez.
-      expect(find.text('Geç giriş'), findsNothing);
+      expect(find.text('Son giriş saati aşıldı'), findsNothing);
       expect(find.text('Nokta dışında'), findsNothing);
       expect(tester.takeException(), isNull);
     });

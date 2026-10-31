@@ -40,9 +40,8 @@ class NavDestination {
 
 /// Navigasyon öğeleri.
 ///
-/// Liste izinlere göre süzülür: bir personel "Kullanıcılar" sekmesini hiç
-/// görmez. "Okut" sekmesi role değil **izne** bağlıdır — yöneticiler de
-/// mesaiye gelir ve kendi giriş-çıkışını okutur.
+/// Öğrenci yalnız "Okut" ve "Profil" ekranlarını görür. Yönetici okutma
+/// yapmaz; öğrencilerin kayıtlarını yönetim ekranlarından izler.
 abstract final class AppNavigation {
   static const List<NavDestination> all = <NavDestination>[
     NavDestination(
@@ -87,7 +86,7 @@ abstract final class AppNavigation {
       requires: <AppPermission>[AppPermission.reportView],
     ),
     NavDestination(
-      label: 'Personel',
+      label: 'Öğrenciler',
       icon: Icons.people_outline_rounded,
       selectedIcon: Icons.people_rounded,
       path: AppRoutes.users,

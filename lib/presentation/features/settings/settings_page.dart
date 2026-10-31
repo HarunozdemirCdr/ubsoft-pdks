@@ -21,7 +21,7 @@ import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
-/// Şirket ayarları: ad, mesai saatleri, konum kuralları.
+/// Yurt ayarları: ad, giriş saatleri ve konum kuralları.
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
@@ -33,10 +33,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _name = TextEditingController();
   final TextEditingController _radius = TextEditingController();
-  final TextEditingController _tolerance = TextEditingController();
 
-  TimeOfDay _start = const TimeOfDay(hour: 8, minute: 30);
-  TimeOfDay _end = const TimeOfDay(hour: 18, minute: 0);
+  TimeOfDay _start = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay _end = const TimeOfDay(hour: 23, minute: 0);
   bool _requireLocation = true;
   bool _blockOutside = false;
   bool _seeded = false;
@@ -45,7 +44,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _name.dispose();
     _radius.dispose();
-    _tolerance.dispose();
     super.dispose();
   }
 
@@ -56,7 +54,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final TenantSettings settings = tenant.settings;
     _name.text = tenant.name;
     _radius.text = '${settings.defaultRadiusMeters}';
-    _tolerance.text = '${settings.lateToleranceMinutes}';
     _start = _toTime(settings.workStartMinutes);
     _end = _toTime(settings.workEndMinutes);
     _requireLocation = settings.requireLocation;
@@ -84,7 +81,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _save() async {
+    final Tenant? tenant = ref.read(currentTenantProvider);
+    if (tenant == null) return;
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_toMinutes(_start) >= _toMinutes(_end)) {
+      Toast.warning('İlk giriş saati, son giriş saatinden önce olmalıdır.');
+      return;
+    }
     FocusScope.of(context).unfocus();
 
     final Result<void> result = await ref
@@ -99,9 +102,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             blockOutsideScans: _blockOutside,
             workStartMinutes: _toMinutes(_start),
             workEndMinutes: _toMinutes(_end),
-            lateToleranceMinutes:
-                int.tryParse(_tolerance.text.trim()) ??
-                AppConfig.defaultLateToleranceMinutes,
+            lateToleranceMinutes: tenant.settings.lateToleranceMinutes,
           ),
         );
 
@@ -141,60 +142,41 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _SubscriptionCard(tenant: tenant),
             AppSpacing.vLg,
 
-            const SectionHeader(title: 'Şirket', dense: true),
+            const SectionHeader(title: 'Yurt', dense: true),
             AppSpacing.vMd,
             AppTextField(
-              label: 'Şirket adı',
+              label: 'Yurt adı',
               controller: _name,
               isRequired: true,
               enabled: canEdit,
               validator: (String? v) =>
-                  Validators.required(v, field: 'Şirket adı'),
+                  Validators.required(v, field: 'Yurt adı'),
             ),
 
             AppSpacing.vLg,
             const SectionHeader(
-              title: 'Mesai',
+              title: 'Yurt giriş saatleri',
               dense: true,
               description:
-                  'Geç giriş yalnız bu saate göre işaretlenir; okutmayı '
-                  'engellemez.',
+                  'Öğrenciler bu saat aralığında giriş yapar. Son giriş saati '
+                  'aşılırsa kayıt yönetici için işaretlenir.',
             ),
             AppSpacing.vMd,
             AppCard(
               child: Column(
                 children: <Widget>[
                   _TimeRow(
-                    label: 'Mesai başlangıcı',
+                    label: 'İlk giriş saati',
                     value: _start,
                     enabled: canEdit,
                     onTap: () => _pickTime(isStart: true),
                   ),
                   const Divider(height: AppSpacing.lg),
                   _TimeRow(
-                    label: 'Mesai bitişi',
+                    label: 'Son giriş saati',
                     value: _end,
                     enabled: canEdit,
                     onTap: () => _pickTime(isStart: false),
-                  ),
-                  AppSpacing.vMd,
-                  AppTextField(
-                    label: 'Geç giriş toleransı (dakika)',
-                    controller: _tolerance,
-                    enabled: canEdit,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: <TextInputFormatter>[
-                      FilteringTextInputFormatter.digitsOnly,
-                    ],
-                    helper:
-                        'Mesai başlangıcından sonraki bu süre içindeki '
-                        'girişler geç sayılmaz.',
-                    validator: (String? v) => Validators.positiveInt(
-                      v,
-                      field: 'Tolerans',
-                      min: 0,
-                      max: 240,
-                    ),
                   ),
                 ],
               ),
@@ -205,7 +187,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               title: 'Konum kuralları',
               dense: true,
               description:
-                  'Okutmanın gerçekten işyerinde yapıldığını bu ayarlar '
+                  'Okutmanın gerçekten yurtta yapıldığını bu ayarlar '
                   'belirler.',
             ),
             AppSpacing.vMd,
@@ -251,7 +233,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     title: const Text('Nokta dışındaki okutmaları reddet'),
                     subtitle: const Text(
                       'Kapalı tutmanız önerilir: hatalı bir GPS ölçümü '
-                      'yüzünden reddedilen giriş, personeli o gün hiç '
+                      'yüzünden reddedilen giriş, öğrenciyi o gün hiç '
                       'gelmemiş gösterir.',
                     ),
                     onChanged: canEdit
@@ -266,7 +248,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             const InfoNote(
               message:
                   'Konum verisi yalnız okutma anında, bir kez ölçülür ve o '
-                  'kaydın parçası olarak saklanır. Uygulama personeli sürekli '
+                  'kaydın parçası olarak saklanır. Uygulama öğrenciyi sürekli '
                   'takip etmez.',
             ),
             AppSpacing.vXl,

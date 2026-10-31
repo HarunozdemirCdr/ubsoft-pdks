@@ -30,7 +30,7 @@ class UserListPage extends ConsumerWidget {
     final Tenant? tenant = ref.watch(currentTenantProvider);
 
     return AppScaffold(
-      title: 'Personel',
+      title: 'Öğrenciler',
       maxContentWidth: AppWidths.wide,
       scrollable: true,
       body: Column(
@@ -59,11 +59,11 @@ class UserListPage extends ConsumerWidget {
             builder: (List<AppUser> users) => users.isEmpty
                 ? EmptyState(
                     icon: Icons.people_outline_rounded,
-                    title: 'Henüz personel yok',
+                    title: 'Henüz öğrenci yok',
                     description:
-                        'Personel ekleyin; e-posta ve şifresiyle giriş yapıp '
+                        'Öğrenci ekleyin; e-posta ve şifresiyle giriş yapıp '
                         'QR okutmaya başlasın.',
-                    actionLabel: canCreate ? 'Personel ekle' : null,
+                    actionLabel: canCreate ? 'Öğrenci ekle' : null,
                     onAction: () => context.go(AppRoutes.userNewPath),
                   )
                 : Column(

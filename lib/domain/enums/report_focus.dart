@@ -12,7 +12,7 @@ import 'package:ubsoft_pdks/domain/enums/day_status.dart';
 /// ne görüyorsa PDF'te de odur.
 enum ReportFocus {
   all('Tümü'),
-  lateArrival('Geç giriş'),
+  lateArrival('Son giriş saati aşıldı'),
   missingExit('Çıkış yok'),
   flagged('Konum uyarısı'),
   absent('Gelmediği gün');
@@ -36,7 +36,7 @@ enum ReportFocus {
     ReportFocus.all =>
       'Aralıkta en az bir okutma yapılan tüm günler listelenir.',
     ReportFocus.lateArrival =>
-      'Yalnız ilk girişi mesai başlangıcı + tolerans saatinden sonra olan '
+      'Yalnız bir girişi yurdun son giriş saatinden sonra olan '
           'günler listelenir.',
     ReportFocus.missingExit =>
       'Yalnız girişi olup çıkışı hiç okutulmamış günler listelenir.',

@@ -8,7 +8,6 @@ import 'package:ubsoft_pdks/application/user/user_providers.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
-import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/report_filter.dart';
@@ -21,7 +20,6 @@ import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_scaffold.dart';
 import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/empty_state.dart';
-import 'package:ubsoft_pdks/presentation/widgets/info_hint.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 import 'package:ubsoft_pdks/services/export/file_download_service.dart';
@@ -30,7 +28,7 @@ import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
 /// Devam raporu — iki tarih arası, gün gün.
 ///
-/// Bu ekran **inceleme** içindir: aralık seçilir, istenirse tek personele ya
+/// Bu ekran **inceleme** içindir: aralık seçilir, istenirse tek öğrenciye ya
 /// da yalnız geç gelinen günlere daraltılır, bir kişiye dokunulduğunda o
 /// kişinin aralıktaki günleri gün gün açılır ve aynı içerik PDF olarak
 /// indirilebilir. Günlük gözlem (dün kim kaçta geldi) Geçmiş ekranındadır.
@@ -105,7 +103,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           const SectionHeader(
             title: 'Devam raporu',
             description:
-                'İki tarih arasını seçin, personele dokunun: o kişinin gün '
+                'İki tarih arasını seçin, öğrenciye dokunun: o kişinin gün '
                 'gün giriş ve çıkış saatleri açılır. Aynı döküm PDF olarak '
                 'indirilebilir.',
           ),
@@ -158,7 +156,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
   }
 }
 
-/// Tarih aralığı, personel ve gün süzgeci.
+/// Tarih aralığı, öğrenci ve gün süzgeci.
 /// Hazır tarih aralıkları — açılır listenin seçenekleri.
 ///
 /// Kullanıcının aralık seçmek için bildiği tek yer burasıdır; [custom]
@@ -188,8 +186,7 @@ enum _RangeChoice {
     for (final _RangeChoice choice in values) {
       final ReportFilter? preset = choice.filter;
       if (preset == null) continue;
-      if (preset.fromKey == current.fromKey &&
-          preset.toKey == current.toKey) {
+      if (preset.fromKey == current.fromKey && preset.toKey == current.toKey) {
         return choice;
       }
     }
@@ -197,7 +194,7 @@ enum _RangeChoice {
   }
 }
 
-/// Rapor süzgeçleri: aralık, personel, hangi günler.
+/// Rapor süzgeçleri: aralık, öğrenci, hangi günler.
 ///
 /// Üçü de açılır listedir ve hepsi aynı biçimdedir. Önceki hâlinde aralık
 /// düğme + rozet dizisi, süzgeç ayrı bir rozet dizisiydi; aynı işi yapan üç
@@ -239,14 +236,12 @@ class _Filters extends ConsumerWidget {
     );
 
     final Widget person = _FilterDropdown<String?>(
-      label: 'Personel',
+      label: 'Öğrenci',
       value: filter.userId,
       values: <String?>[null, for (final AppUser user in users) user.uid],
       labelOf: (String? uid) => uid == null
-          ? 'Tüm personel'
-          : users
-                .firstWhere((AppUser user) => user.uid == uid)
-                .displayName,
+          ? 'Tüm öğrenciler'
+          : users.firstWhere((AppUser user) => user.uid == uid).displayName,
       onChanged: controller.setUser,
     );
 
@@ -264,7 +259,7 @@ class _Filters extends ConsumerWidget {
         children: <Widget>[
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              // Dar ekranda üç açılır liste yan yana sıkışır ve personel
+              // Dar ekranda üç açılır liste yan yana sıkışır ve öğrenci
               // adları okunmaz olur; orada alt alta dizilirler.
               if (constraints.maxWidth < 620) {
                 return Column(
@@ -372,7 +367,7 @@ class _FilterDropdown<T> extends StatelessWidget {
   }
 }
 
-/// Personel satırları. Bir satıra dokunmak o kişinin günlerini açar.
+/// Öğrenci satırları. Bir satıra dokunmak o kişinin günlerini açar.
 class _ReportList extends StatelessWidget {
   const _ReportList({
     required this.report,
@@ -416,13 +411,6 @@ class _ReportList extends StatelessWidget {
               onToggleDay: onToggleDay,
             ),
           ),
-        AppSpacing.vSm,
-        const InfoNote(
-          message:
-              'Toplam süre, eşleşmiş giriş–çıkış çiftlerinden hesaplanır. '
-              'Çıkışı okutulmamış günler bu toplama girmez; uygulama '
-              'personelin ne zaman çıktığını uydurmaz.',
-        ),
       ],
     );
   }
@@ -484,7 +472,7 @@ class _RowCard extends StatelessWidget {
                   ),
                   AppSpacing.hXs,
                   Text(
-                    AppDate.durationHuman(row.workedDuration),
+                    '${row.presentDays} gün',
                     style: AppTypography.h3(context.colors.onSurface),
                   ),
                   AppSpacing.hXxs,
@@ -510,7 +498,7 @@ class _RowCard extends StatelessWidget {
                   children: <Widget>[
                     if (row.lateDays > 0)
                       StatusChip(
-                        label: '${row.lateDays} geç giriş',
+                        label: '${row.lateDays} son giriş saati aşımı',
                         tone: StatusTone.warning,
                         compact: true,
                       ),
@@ -549,15 +537,10 @@ class _RowCard extends StatelessWidget {
     );
   }
 
-  /// `12 gün geldi · 8 gün gelmedi · günlük ort. 8 sa 40 dk`
   String _summaryLine() {
-    final String average = row.presentDays == 0
-        ? '—'
-        : AppDate.durationHuman(Duration(minutes: row.averageMinutes));
-
     final String base =
-        '${row.presentDays} gün geldi · ${row.absentDays} gün gelmedi · '
-        'günlük ort. $average';
+        '${row.presentDays} kayıtlı gün · '
+        '${row.absentDays} kayıtsız gün';
 
     return focus.isAll
         ? base
@@ -565,7 +548,7 @@ class _RowCard extends StatelessWidget {
   }
 }
 
-/// Açılan personelin gün gün dökümü.
+/// Açılan öğrencinin gün gün dökümü.
 class _DayBreakdown extends StatelessWidget {
   const _DayBreakdown({
     required this.row,

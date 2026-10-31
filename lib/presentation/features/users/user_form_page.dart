@@ -87,7 +87,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
       );
 
       if (!mounted) return;
-      Toast.result(created, successMessage: 'Personel eklendi.');
+      Toast.result(created, successMessage: 'Öğrenci eklendi.');
       if (created.isOk) context.go(AppRoutes.users);
       return;
     }
@@ -107,13 +107,13 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
         _role,
       );
       if (!mounted) return;
-      Toast.result(roleResult, successMessage: 'Personel güncellendi.');
+      Toast.result(roleResult, successMessage: 'Öğrenci güncellendi.');
       if (roleResult.isOk) context.go(AppRoutes.users);
       return;
     }
 
     if (!mounted) return;
-    Toast.result(saved, successMessage: 'Personel güncellendi.');
+    Toast.result(saved, successMessage: 'Öğrenci güncellendi.');
     if (saved.isOk) context.go(AppRoutes.users);
   }
 
@@ -132,11 +132,11 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
     );
 
     return AppScaffold(
-      title: _isNew ? 'Yeni Personel' : 'Personeli Düzenle',
+      title: _isNew ? 'Yeni Öğrenci' : 'Öğrenciyi Düzenle',
       showBackButton: true,
       scrollable: true,
       bottomBar: AppButton.primaryWide(
-        label: _isNew ? 'Personeli ekle' : 'Değişiklikleri kaydet',
+        label: _isNew ? 'Öğrenciyi ekle' : 'Değişiklikleri kaydet',
         isLoading: busy,
         onPressed: () => _submit(existing),
       ),
@@ -165,7 +165,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
               enabled: _isNew,
               keyboardType: TextInputType.emailAddress,
               helper: _isNew
-                  ? 'Personel bu adresle giriş yapacak.'
+                  ? 'Öğrenci bu adresle giriş yapacak.'
                   : 'E-posta adresi hesabın kimliğidir, değiştirilemez.',
               validator: _isNew ? Validators.email : null,
             ),
@@ -180,7 +180,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
               AppSpacing.vXs,
               const InfoNote(
                 message:
-                    'Bu şifreyi personele iletin. Kendi şifresini profil '
+                    'Bu şifreyi öğrenciye iletin. Kendi şifresini profil '
                     'ekranından değiştirebilir.',
               ),
             ],
@@ -274,10 +274,8 @@ class _RoleSelector extends StatelessWidget {
         AppSpacing.vXs,
         Text(
           value.isAdmin
-              ? 'Yönetici şirketteki tüm yetkilere sahiptir; ayrıca izin '
-                    'ayarlanmaz.'
-              : 'Personel QR okutur ve kendi kayıtlarını görür; başkasının '
-                    'kaydını göremez.',
+              ? 'Yönetici yurt yönetimi kayıtlarını görür ve ayarları yönetir.'
+              : 'Öğrenci yalnız QR okutur; giriş-çıkış geçmişini görüntüleyemez.',
           style: AppTypography.small(context.colors.onSurfaceVariant),
         ),
       ],
@@ -347,7 +345,7 @@ class _ExistingUserActions extends ConsumerWidget {
                 color: context.colors.error,
               ),
               title: Text(
-                'Personeli sil',
+                'Öğrenciyi sil',
                 style: AppTypography.bodyStrong(context.colors.error),
               ),
               subtitle: const Text(
@@ -367,7 +365,7 @@ class _ExistingUserActions extends ConsumerWidget {
   ) async {
     final bool ok = await ConfirmDialog.show(
       context,
-      title: 'Personel silinsin mi?',
+      title: 'Öğrenci silinsin mi?',
       message:
           '${user.displayName} listeden kaldırılacak ve giriş yapamayacak. '
           'Geçmiş devam kayıtları raporlarda görünmeye devam eder.',
@@ -379,7 +377,7 @@ class _ExistingUserActions extends ConsumerWidget {
     final Result<void> result = await controller.deleteUser(user);
     if (!context.mounted) return;
 
-    Toast.result(result, successMessage: 'Personel silindi.');
+    Toast.result(result, successMessage: 'Öğrenci silindi.');
     if (result.isOk) context.go(AppRoutes.users);
   }
 }

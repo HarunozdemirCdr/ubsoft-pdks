@@ -3,7 +3,7 @@
 // Ne yapar:
 //   1. Süper admin hesabını açar (`tenants/_system/users/{uid}`).
 //   2. Örnek bir müşteri kurar: rol varsayılanları, bir yönetici, on iki
-//      personel, üç QR noktası ve son bir buçuk aya ait devam kayıtları.
+//      öğrenci, üç QR noktası ve son beş güne ait devam kayıtları.
 //
 // Kullanım:
 //   dart run tool/seed.dart --token=<oauth_access_token>
@@ -31,18 +31,18 @@ const String identityBase =
     'https://identitytoolkit.googleapis.com/v1/projects/$projectId';
 
 /// Örnek müşteri — sabit kimlik, betiğin tekrar çalıştırılabilmesi için.
-const String demoTenantId = 'demo-beyaz-yapi';
+const String demoTenantId = 'turgev-demo';
 
 const String superAdminEmail = 'admin@ubselektronik.com';
-const String superAdminPassword = 'Ubs2026!';
+const String superAdminPassword = 'UbsTurgev2026!';
 
-const String demoAdminEmail = 'yonetici@beyazyapi.com';
-const String demoPassword = 'Pdks2026!';
+const String demoAdminEmail = 'mudire@turgevdemo.com';
+const String demoPassword = 'TurgevDemo2026!';
 
 /// Kaç günlük geçmiş üretilecek (yaklaşık 1,5 ay).
-const int _historyDays = 45;
+const int _historyDays = 5;
 
-/// Bir personelin devam davranışı.
+/// Bir öğrencinin devam davranışı.
 ///
 /// Demo verisinin tamamı bu profillerden doğar. Amaç "dolu görünen" bir
 /// veritabanı değil, arayüzün **her durumunu** gerçek veriyle görebilmektir:
@@ -105,7 +105,7 @@ class _DemoPerson {
   final int? leftDaysAgo;
 }
 
-/// Kimliği çözülmüş, kayıt üretmeye hazır personel.
+/// Kimliği çözülmüş, kayıt üretmeye hazır öğrenci.
 class _SeededPerson {
   const _SeededPerson({
     required this.uid,
@@ -139,88 +139,39 @@ class _Punch {
   final double distance;
 }
 
-/// Örnek müşterinin kadrosu: bir yönetici + on iki personel.
+/// Örnek müşterinin kadrosu: bir yönetici + üç öğrenci.
 const List<_DemoPerson> _demoTeam = <_DemoPerson>[
   _DemoPerson(
     email: demoAdminEmail,
-    name: 'Mustafa Özdemir',
-    note: 'İşletme müdürü',
+    name: 'Ayşe Yılmaz',
+    note: 'Müdire',
     profile: _Profile.steady,
     role: UserRole.admin,
   ),
   _DemoPerson(
-    email: 'ahmet@beyazyapi.com',
-    name: 'Ahmet Yılmaz',
-    note: 'Güvenlik · gündüz vardiyası',
+    email: 'belletmen@turgevdemo.com',
+    name: 'Zeynep Kaya',
+    note: 'Belletmen',
+    profile: _Profile.steady,
+    role: UserRole.admin,
+  ),
+  _DemoPerson(
+    email: 'ogrenci1@turgevdemo.com',
+    name: 'Elif Demir',
+    note: '101 numaralı oda',
     profile: _Profile.punctual,
   ),
   _DemoPerson(
-    email: 'mehmet@beyazyapi.com',
-    name: 'Mehmet Demir',
-    note: 'Teknisyen',
-    profile: _Profile.steady,
-  ),
-  _DemoPerson(
-    email: 'emre@beyazyapi.com',
-    name: 'Emre Kaya',
-    note: 'Depo sorumlusu',
-    profile: _Profile.oftenLate,
-  ),
-  _DemoPerson(
-    email: 'fatma@beyazyapi.com',
-    name: 'Fatma Şahin',
-    note: 'Muhasebe',
-    profile: _Profile.absentee,
-  ),
-  _DemoPerson(
-    email: 'hakan@beyazyapi.com',
-    name: 'Hakan Aydın',
-    note: 'Saha ekibi',
-    profile: _Profile.forgetsExit,
-  ),
-  _DemoPerson(
-    email: 'zeynep@beyazyapi.com',
-    name: 'Zeynep Korkmaz',
-    note: 'Saha ekibi · şantiye gezici',
-    profile: _Profile.locationIssues,
-  ),
-  _DemoPerson(
-    email: 'osman@beyazyapi.com',
-    name: 'Osman Çelik',
-    note: 'Kalite kontrol',
+    email: 'ogrenci2@turgevdemo.com',
+    name: 'Merve Şahin',
+    note: '102 numaralı oda',
     profile: _Profile.splitDay,
   ),
   _DemoPerson(
-    email: 'selim@beyazyapi.com',
-    name: 'Selim Arslan',
-    note: 'Erken vardiya · 06:30',
-    profile: _Profile.earlyShift,
-  ),
-  _DemoPerson(
-    email: 'elif@beyazyapi.com',
-    name: 'Elif Doğan',
-    note: 'Yarı zamanlı · Pzt/Çar/Cum',
-    profile: _Profile.partTime,
-  ),
-  _DemoPerson(
-    email: 'burak@beyazyapi.com',
-    name: 'Burak Yıldız',
-    note: 'Güvenlik · hafta sonu nöbeti',
-    profile: _Profile.weekendDuty,
-  ),
-  _DemoPerson(
-    email: 'ayse@beyazyapi.com',
-    name: 'Ayşe Polat',
-    note: 'İnsan kaynakları',
-    profile: _Profile.steady,
-  ),
-  _DemoPerson(
-    email: 'kerem@beyazyapi.com',
-    name: 'Kerem Yalçın',
-    note: 'Şoför · 20 gün önce ayrıldı',
-    profile: _Profile.steady,
-    active: false,
-    leftDaysAgo: 20,
+    email: 'ogrenci3@turgevdemo.com',
+    name: 'Fatma Aydın',
+    note: '103 numaralı oda',
+    profile: _Profile.oftenLate,
   ),
 ];
 
@@ -285,14 +236,14 @@ Future<void> main(List<String> args) async {
   await _wipeCollection('attendance');
   await _wipeCollection('attendanceDays');
 
-  await _seedAttendance(team);
+  await _seedAttendance(team.skip(2).toList());
 
   stdout
     ..writeln('\nTamamlandı.')
     ..writeln('  Süper admin : $superAdminEmail / $superAdminPassword')
     ..writeln('  Yönetici    : $demoAdminEmail / $demoPassword')
     ..writeln(
-      '  Personel    : ${_demoTeam.length - 1} kişi, hepsinin şifresi '
+      '  Öğrenciler  : 3 kişi, hepsinin şifresi '
       '$demoPassword',
     );
   exit(0);
@@ -303,8 +254,8 @@ Future<void> main(List<String> args) async {
 Future<void> _seedTenant() async {
   final DateTime now = DateTime.now();
   await _patch('tenants/$demoTenantId', <String, Object?>{
-    'name': _str('Beyaz Yapı A.Ş.'),
-    'slug': _str('beyaz-yapi'),
+    'name': _str('TÜRGEV Demo'),
+    'slug': _str('turgev-demo'),
     'timezone': _str('Europe/Istanbul'),
     'locale': _str('tr'),
     'status': _str('active'),
@@ -319,8 +270,8 @@ Future<void> _seedTenant() async {
       'defaultRadiusMeters': _int(75),
       'requireLocation': _bool(true),
       'blockOutsideScans': _bool(false),
-      'workStartMinutes': _int(8 * 60 + 30),
-      'workEndMinutes': _int(18 * 60),
+      'workStartMinutes': _int(6 * 60),
+      'workEndMinutes': _int(23 * 60),
       'lateToleranceMinutes': _int(15),
     }),
     'counters': _map(<String, Object?>{
@@ -330,7 +281,7 @@ Future<void> _seedTenant() async {
     'createdAt': _time(now.subtract(const Duration(days: 60))),
     'updatedAt': _time(now),
   });
-  stdout.writeln('  Müşteri hazır: Beyaz Yapı A.Ş.');
+  stdout.writeln('  Yurt hazır: TÜRGEV Demo');
 }
 
 Future<void> _seedRoleDefaults() async {
@@ -441,7 +392,7 @@ Future<void> _seedCheckpoints() async {
         ('giris', '1', 'Ana Giriş Turnikesi', _baseLat, _baseLon),
         ('cikis', '2', 'Çıkış Kapısı', _baseLat + 0.0004, _baseLon + 0.0003),
         // Tek etiketin hem giriş hem çıkış için kullanıldığı yan kapı:
-        // yön, personelin o anki durumundan çözülür.
+        // yön, öğrencinin o anki durumundan çözülür.
         ('yan', '3', 'Yan Kapı', _baseLat - 0.0003, _baseLon + 0.0005),
       ];
 
@@ -483,11 +434,11 @@ Future<void> _seedCheckpoints() async {
 
 /// Son [_historyDays] güne ait okutmalar ve gün özetleri.
 ///
-/// Veri bilinçli olarak "temiz" değildir. Her personelin bir **davranış
+/// Veri bilinçli olarak "temiz" değildir. Her öğrencinin bir **davranış
 /// profili** vardır ([_Profile]) ve profiller birlikte arayüzün karşılaşacağı
 /// bütün durumları üretir: geç giriş, unutulmuş çıkış, öğle arası dört
 /// okutma, yarım gün, uzaktan okutma, sınırda konum, hiç gelinmemiş gün ve
-/// işten ayrılmış personelin eski kayıtları.
+/// yurttan ayrılmış öğrencinin eski kayıtları.
 ///
 /// Üretim **belirlenimcidir**: rastgele üreteç gün ve kişi kimliğinden
 /// tohumlanır, böylece betik yeniden çalıştırıldığında aynı veri oluşur ve
@@ -548,7 +499,7 @@ Future<void> _seedAttendance(List<_SeededPerson> people) async {
   stdout.writeln('  Devam kayıtları hazır ($events okutma, $days gün özeti)');
 }
 
-/// Bir personelin bir gündeki okutmaları — profiline göre.
+/// Bir öğrencinin bir gündeki okutmaları — profiline göre.
 List<_Punch> _punchesFor(_SeededPerson person, DateTime day, int back) {
   final bool weekend =
       day.weekday == DateTime.saturday || day.weekday == DateTime.sunday;
@@ -739,10 +690,10 @@ Future<void> _writeDaySummary(
   }
 
   final bool open = openSince != null;
-  final bool late =
-      firstEntry != null &&
-      (firstEntry.hour * 60 + firstEntry.minute) > (8 * 60 + 45) &&
-      person.profile != _Profile.earlyShift;
+  final bool late = punches.any(
+    (_Punch punch) =>
+        punch.isEntry && (punch.at.hour * 60 + punch.at.minute) > 23 * 60,
+  );
 
   await _patch(
     'tenants/$demoTenantId/attendanceDays/${person.uid}_$dateKey',
@@ -819,7 +770,7 @@ Future<void> _writeEvent({
 
 /// Örnek müşterinin bir alt koleksiyonunu tümüyle siler.
 ///
-/// Yalnız `demo-beyaz-yapi` altında çalışır; yol dışarıdan verilmez ki
+/// Yalnız `turgev-demo` altında çalışır; yol dışarıdan verilmez ki
 /// betik yanlışlıkla gerçek bir müşterinin kayıtlarına dokunamasın.
 Future<void> _wipeCollection(String collection) async {
   int deleted = 0;
@@ -921,7 +872,7 @@ Future<Map<String, Object?>> _patch(
       ..set('x-goog-user-project', projectId);
 
     // Gövde BAYT olarak yazılır. `request.write` dizeyi latin1 ile kodlar ve
-    // "Beyaz Yapı A.Ş." gibi bir metin "Contains invalid characters" ile
+    // "TÜRGEV Demo" gibi bir metin "Contains invalid characters" ile
     // patlar.
     request.add(utf8.encode(jsonEncode(<String, Object?>{'fields': fields})));
 

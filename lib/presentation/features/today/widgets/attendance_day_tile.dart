@@ -11,7 +11,7 @@ import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
 import 'package:ubsoft_pdks/presentation/widgets/punch_time.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 
-/// Bir personelin bir gündeki satırı: ad, giriş, çıkış, süre, durum.
+/// Bir öğrencinin bir gündeki satırı: ad, giriş, çıkış ve durum.
 ///
 /// Hem günlük panelde hem raporun ayrıntısında aynı satır kullanılır; iki
 /// ekranın aynı veriyi farklı biçimde göstermesi kafa karıştırırdı.
@@ -31,15 +31,15 @@ class AttendanceDayTile extends StatelessWidget {
   final AttendanceDay day;
   final VoidCallback? onTap;
 
-  /// Personel adı yazılsın mı? (Kişinin kendi geçmişinde gereksiz.)
+  /// Öğrenci adı yazılsın mı? (Kişinin kendi geçmişinde gereksiz.)
   final bool showName;
 
   /// Başlıkta gün yazılsın mı? (Kişinin geçmiş listesinde gerekir.)
   final bool showDate;
 
-  /// Geç giriş ve konum rozetleri gösterilsin mi?
+  /// Son giriş saati ve konum rozetleri gösterilsin mi?
   ///
-  /// Personelin kendi ekranında kapatılır; orada gösterilen tek yargı günün
+  /// Öğrencinin kendi ekranında kapatılır; orada gösterilen tek yargı günün
   /// durumudur (tamamlandı / çıkış yok / giriş yok).
   final bool showFlags;
 
@@ -86,17 +86,6 @@ class AttendanceDayTile extends StatelessWidget {
                         dense: true,
                         columnWidth: 72,
                       ),
-                      if (_durationLabel() case final String label)
-                        Flexible(
-                          child: Text(
-                            label,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTypography.small(
-                              context.colors.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
               ],
@@ -115,7 +104,9 @@ class AttendanceDayTile extends StatelessWidget {
               if (showFlags && (day.late || flagged)) ...<Widget>[
                 AppSpacing.vXxs,
                 StatusChip(
-                  label: day.late ? 'Geç' : day.worstVerdict.label,
+                  label: day.late
+                      ? 'Son giriş saati aşıldı'
+                      : day.worstVerdict.label,
                   tone: day.late
                       ? StatusTone.warning
                       : EnumLabels.toneOfVerdict(day.worstVerdict),
@@ -143,13 +134,6 @@ class AttendanceDayTile extends StatelessWidget {
   /// Gün anahtarını tarihe çevirir. Bozuk anahtar bugüne düşer — satır
   /// kaybolmaktansa yanlış başlıkla görünmesi yeğdir.
   DateTime _dateOf() => DateTime.tryParse(day.dateKey) ?? DateTime.now();
-
-  /// Saatlerin yanındaki `· 8 sa 12 dk`. Süre yoksa `null`.
-  String? _durationLabel() {
-    final int minutes = day.workedMinutesAt(DateTime.now());
-    if (minutes <= 0) return null;
-    return '· ${AppDate.durationHuman(Duration(minutes: minutes))}';
-  }
 }
 
 /// Ad baş harflerini taşıyan yuvarlak kutu; rengi günün durumundan gelir.

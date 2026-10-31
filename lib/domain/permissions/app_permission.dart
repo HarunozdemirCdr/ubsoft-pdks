@@ -46,13 +46,13 @@ enum AppPermission {
     'attendance.viewOwn',
     'Kendi kayıtlarını görüntüle',
     PermissionGroup.attendance,
-    description: 'Kendi giriş-çıkış geçmişini ve çalışma sürelerini görür.',
+    description: 'Eski kayıtlarla uyumluluk için saklanır; öğrenciye verilmez.',
   ),
   attendanceViewAll(
     'attendance.viewAll',
-    'Tüm personelin kayıtlarını görüntüle',
+    'Tüm öğrencilerin kayıtlarını görüntüle',
     PermissionGroup.attendance,
-    description: 'Şirketteki bütün personelin devam kayıtlarına erişir.',
+    description: 'Yurttaki bütün öğrencilerin giriş-çıkış kayıtlarına erişir.',
   ),
   attendanceDelete(
     'attendance.delete',
@@ -132,7 +132,7 @@ enum AppPermission {
     'Yetki ata',
     PermissionGroup.user,
     isWrite: true,
-    description: 'Personel bazında izinleri açıp kapatır.',
+    description: 'Öğrenci bazında izinleri açıp kapatır.',
   ),
 
   // ─────────────────────────── Rapor ───────────────────────────
@@ -151,7 +151,8 @@ enum AppPermission {
     'Ayarları düzenle',
     PermissionGroup.settings,
     isWrite: true,
-    description: 'Şirket bilgileri, mesai saatleri ve konum kuralları.',
+    description:
+        'Yurt bilgileri, ilk ve son giriş saatleri ve konum kuralları.',
   );
 
   const AppPermission(

@@ -89,17 +89,17 @@ class TenantSettings extends Equatable {
   /// gösterilir; kararı insan verir.
   final bool blockOutsideScans;
 
-  /// Mesai başlangıcı — gün başından itibaren dakika (08:30 → 510).
+  /// Öğrenciler için ilk giriş saati — gün başından itibaren dakika.
   final int workStartMinutes;
 
-  /// Mesai bitişi.
+  /// Öğrenciler için son giriş saati. Bu saatten sonraki girişler işaretlenir.
   final int workEndMinutes;
 
   /// Mesai başlangıcından sonra bu kadar dakika tolerans tanınır.
   final int lateToleranceMinutes;
 
-  /// "Geç giriş" sınırı — gün başından itibaren dakika.
-  int get lateAfterMinutes => workStartMinutes + lateToleranceMinutes;
+  /// Son giriş sınırı — gün başından itibaren dakika.
+  int get lateAfterMinutes => workEndMinutes;
 
   /// Beklenen günlük çalışma süresi (dakika).
   int get expectedDailyMinutes {

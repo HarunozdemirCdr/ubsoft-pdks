@@ -27,11 +27,11 @@ void main() {
       expect(permissions.can(AppPermission.settingsEdit), isTrue);
     });
 
-    test('personel yalnız varsayılan izinlerine sahiptir', () {
+    test('öğrenci yalnız QR okutma iznine sahiptir', () {
       final PermissionSet permissions = PermissionSet.fromRole(UserRole.staff);
 
       expect(permissions.can(AppPermission.punchCreate), isTrue);
-      expect(permissions.can(AppPermission.attendanceViewOwn), isTrue);
+      expect(permissions.can(AppPermission.attendanceViewOwn), isFalse);
       expect(permissions.can(AppPermission.attendanceViewAll), isFalse);
       expect(permissions.can(AppPermission.userView), isFalse);
       expect(permissions.can(AppPermission.settingsEdit), isFalse);
@@ -60,8 +60,8 @@ void main() {
       );
 
       expect(permissions.can(AppPermission.punchCreate), isFalse);
-      // Okuma izinleri etkilenmez: geçmiş veri kaybolmaz.
-      expect(permissions.can(AppPermission.attendanceViewOwn), isTrue);
+      // Öğrencinin geçmiş okuma izni zaten yoktur.
+      expect(permissions.can(AppPermission.attendanceViewOwn), isFalse);
     });
 
     test('askıya alma yöneticinin de yazmasını engeller', () {
@@ -95,7 +95,7 @@ void main() {
           AppPermission.attendanceViewOwn,
           AppPermission.attendanceViewAll,
         ]),
-        isTrue,
+        isFalse,
       );
       expect(
         permissions.canAll(<AppPermission>[

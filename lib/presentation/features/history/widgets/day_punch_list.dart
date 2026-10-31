@@ -72,7 +72,7 @@ class DayPunchList extends ConsumerWidget {
       title: 'Okutma silinsin mi?',
       message:
           '${event.timeLabel} ${event.type.label.toLowerCase()} kaydı '
-          'silinecek ve günün çalışma süresi yeniden hesaplanacak. '
+          'silinecek ve günün giriş-çıkış özeti yeniden hesaplanacak. '
           'Bu işlem geri alınamaz.',
       confirmLabel: 'Sil',
       isDestructive: true,

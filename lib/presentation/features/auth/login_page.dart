@@ -52,7 +52,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     return AuthLayout(
       title: AppConfig.appName,
-      subtitle: 'Personel giriş-çıkış takibi',
+      subtitle: 'Öğrenci giriş-çıkış takibi',
       footer: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[

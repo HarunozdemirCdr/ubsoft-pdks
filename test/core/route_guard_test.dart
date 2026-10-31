@@ -140,14 +140,17 @@ void main() {
       }
     });
 
-    test('kendi geçmişi açıktır', () {
-      expect(RouteGuard.resolve(staff, _FakeState(AppRoutes.history)), isNull);
+    test('geçmiş ekranı kapalıdır', () {
+      expect(
+        RouteGuard.resolve(staff, _FakeState(AppRoutes.history)),
+        AppRoutes.punch,
+      );
       expect(
         RouteGuard.resolve(
           staff,
           _FakeState(AppRoutes.personHistoryPath('staff-uid')),
         ),
-        isNull,
+        AppRoutes.punch,
       );
     });
 
@@ -170,7 +173,7 @@ void main() {
         _FakeState(AppRoutes.root),
       );
       expect(home, isNot(AppRoutes.punch));
-      expect(home, AppRoutes.history);
+      expect(home, AppRoutes.profile);
     });
 
     test('hiçbir yetkisi kalmayan kullanıcı profile düşer', () {
@@ -199,10 +202,9 @@ void main() {
       );
     });
 
-    test('tüm yönetim bölümleri açıktır', () {
+    test('okutma dışındaki yönetim bölümleri açıktır', () {
       for (final String location in <String>[
         AppRoutes.today,
-        AppRoutes.punch,
         AppRoutes.history,
         AppRoutes.checkpoints,
         AppRoutes.users,
@@ -216,6 +218,13 @@ void main() {
           reason: location,
         );
       }
+    });
+
+    test('okutma ekranı yöneticiye kapalıdır', () {
+      expect(
+        RouteGuard.resolve(admin, _FakeState(AppRoutes.punch)),
+        AppRoutes.today,
+      );
     });
 
     test('alt sayfalar üst bölümün iznine tabidir', () {
