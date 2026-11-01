@@ -4,6 +4,12 @@
 Flutter Web, Riverpod, GoRouter, Firebase Auth, Firestore ve Firebase Hosting kullanır.
 Paket/Firebase proje kimliği (`ubsoft_pdks`, `ubsoft-pdks`) mevcut kurulumlarla uyumluluk için korunur.
 
+## 2.2.1 web bağlantısı düzeltmesi
+
+Eski Flutter derleme önbelleği, Cloud Functions eklentisini web kayıt dosyasına eklememişti. Bu nedenle kart kaydı Firebase'de mevcut olsa da uygulamadaki bağlama düğmesi sunucuya ulaşamıyordu. Derleme önbelleği yenilenerek eklenti kaydı yeniden üretildi. Eksik eklenti hatası artık internet hatası olarak gösterilmez.
+
+Her web yayını öncesinde `python tool/verify_web_bundle.py` çalıştırılmalıdır; aynı kontrol CI'a eklendi. Kontrol başarısızsa eski `.dart_tool/flutter_build` önbelleğini yedekleyip yeniden derleyin. Bu düzeltme kart yazılımı veya Wi-Fi bilgilerinin yeniden yüklenmesini gerektirmez.
+
 ## ESP32 turnike entegrasyonu — 2.2.0
 
 **Yayın durumu:** 2.2.0 web sürümü, sekiz Cloud Functions işlevi, Firestore kuralları ve ayrı Avrupa RTDB kuralları 1 Kasım 2026 tarihinde yayımlandı. Canlıda geçersiz cihaz kaydı ve yetkisiz yönetim/veritabanı erişimi reddi doğrulandı. Gerçek kartın kurulumu ve fiziksel röle kabul testi henüz yapılmadı.

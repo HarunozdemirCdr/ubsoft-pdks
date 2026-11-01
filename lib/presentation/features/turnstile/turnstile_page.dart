@@ -1,5 +1,6 @@
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/checkpoint/checkpoint_providers.dart';
@@ -49,6 +50,14 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
         setState(() {
           _error = true;
           _message = e.message ?? 'İşlem tamamlanamadı.';
+        });
+      }
+    } on MissingPluginException {
+      if (mounted) {
+        setState(() {
+          _error = true;
+          _message =
+              'Turnike bağlantı bileşeni yüklenemedi. Sayfayı Ctrl+F5 ile yenileyip yeniden deneyin.';
         });
       }
     } catch (_) {

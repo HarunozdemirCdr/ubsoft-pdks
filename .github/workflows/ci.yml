@@ -46,6 +46,9 @@ jobs:
       - name: flutter build web
         run: flutter build web --release
 
+      - name: Verify Functions web plugin
+        run: python3 tool/verify_web_bundle.py
+
   turnstile:
     name: Turnike — sunucu ve erişim kuralları
     runs-on: ubuntu-latest
