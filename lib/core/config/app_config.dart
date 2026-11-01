@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 /// `flutter build web --dart-define=USE_EMULATOR=true`
 abstract final class AppConfig {
   static const String appName = 'UBSoft Yurt Kontrol';
-  static const String appVersion = '2.2.1';
+  static const String appVersion = '2.2.3';
 
   /// Yerel Firebase emulator'a bağlan (geliştirme ve kural testleri için).
   static const bool useEmulator = bool.fromEnvironment('USE_EMULATOR');

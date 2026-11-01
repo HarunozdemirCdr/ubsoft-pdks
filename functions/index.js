@@ -1,4 +1,5 @@
 'use strict';
+const crypto = require('node:crypto');
 const {initializeApp, getApp} = require('firebase-admin/app');
 const {getAuth} = require('firebase-admin/auth');
 const {getFirestore, FieldValue} = require('firebase-admin/firestore');
@@ -8,7 +9,7 @@ const {onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {onValueCreated} = require('firebase-functions/v2/database');
 const {onSchedule} = require('firebase-functions/v2/scheduler');
 const {setGlobalOptions} = require('firebase-functions/v2');
-const {hash, validId, validateRelays, locationAllowed, commandFor, enqueue} = require('./core');
+const {hash, validId, validateRelays, locationAllowed, commandFor, waitForProbe, enqueue} = require('./core');
 initializeApp();
 setGlobalOptions({region:'europe-west1', maxInstances:3, memory:'256MiB', timeoutSeconds:30});
 const db = getFirestore();
@@ -103,8 +104,22 @@ exports.saveTurnstileRelays = onCall(async request=>{
 exports.getTurnstileStatus = onCall(async request=>{
   const tid=await administrator(request);const c=(await configRef(tid).get()).data();
   if(!c?.paired)return {paired:false,online:false};
-  const status=(await rtdb.ref(`${devicePath(tid,c.deviceId)}/status`).get()).val();
-  return {paired:true,online:c.enabled===true && !!status && status.lastSeen<=Date.now()+1000 && Date.now()-status.lastSeen<20000,lastSeen:status?.lastSeen||null,firmware:status?.firmware||''};
+  const base=devicePath(tid,c.deviceId),statusRef=rtdb.ref(`${base}/status`);
+  const status=(await statusRef.get()).val();
+  const result={paired:true,online:false,lastSeen:status?.lastSeen||null,firmware:status?.firmware||'',checkedAt:Date.now()};
+  if(c.enabled!==true)return {...result,disabled:true};
+  // Compatibility while existing boards are being flashed with 2.2.3.
+  if(status?.mode!=='on_demand')return {...result,legacy:true,online:!!status&&status.lastSeen<=Date.now()+1000&&Date.now()-status.lastSeen<20000};
+  if(!/^[a-f0-9]{32}$/.test(status.sessionId||''))return result;
+  const requestId=crypto.randomBytes(16).toString('hex'),requestedAt=Date.now();
+  const probeRef=rtdb.ref(`${base}/control/commands/_probe_${requestId}`);
+  const pending=waitForProbe(statusRef,requestId,status.sessionId,requestedAt);
+  try{
+    await probeRef.set({kind:'probe',requestId,sessionId:status.sessionId,expiresAt:requestedAt+10000});
+    const reply=await pending.promise;
+    if(reply?.error)throw new HttpsError('unavailable','Kartın yanıtı kontrol edilemedi. Yeniden deneyin.');
+    return {...result,online:!!reply,lastSeen:reply?.lastSeen||result.lastSeen,checkedAt:Date.now()};
+  }finally{pending.stop();await probeRef.remove();}
 });
 
 exports.setTurnstileEnabled = onCall(async request=>{

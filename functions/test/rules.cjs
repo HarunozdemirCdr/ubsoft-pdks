@@ -25,9 +25,15 @@ async function main(){
   await assertSucceeds(set(ref(d,'turnstiles/dorm/board/acks/event'),ack));
   await assertFails(set(ref(d,'turnstiles/dorm/board/acks/missing'),ack));
   await assertFails(set(ref(d,'registry/board/tenantId'),'elsewhere'));
+  const probeId='b'.repeat(32);
+  const reply={sessionId:'a'.repeat(32),lastSeen:Date.now(),firmware:'2.2.3',mode:'on_demand',requestId:probeId};
+  await assertFails(set(ref(d,'turnstiles/dorm/board/status'),reply));
+  await env.withSecurityRulesDisabled(ctx=>set(ref(ctx.database(),'turnstiles/dorm/board/control/commands/_probe_'+probeId),{kind:'probe',sessionId:'a'.repeat(32),expiresAt:Date.now()+10000}));
+  await assertSucceeds(set(ref(d,'turnstiles/dorm/board/status'),reply));
+  await assertFails(set(ref(d,'turnstiles/dorm/board/status'),{...reply,mode:'polling'}));
   await env.withSecurityRulesDisabled(ctx=>set(ref(ctx.database(),'registry/board/enabled'),false));
   await assertFails(get(ref(d,'turnstiles/dorm/board/control/commands')));
-  console.log('14 RTDB isolation, acknowledgement and disable checks passed.');
+  console.log('17 RTDB isolation, acknowledgement and disable checks passed.');
  }finally{await env.cleanup();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

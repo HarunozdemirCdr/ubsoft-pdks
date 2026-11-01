@@ -39,3 +39,25 @@ test('server enforces location policy independently of client verdict',()=>{
  assert.equal(locationAllowed({location:{latitude:42,longitude:29,accuracy:999999}},point,{blockOutsideScans:true}),false);
  assert.equal(locationAllowed({location:{latitude:41,longitude:29}},point,{blockOutsideScans:true}),true);
 });
+test('on-demand sessions remain addressable without periodic heartbeat writes',()=>{
+ const old={...status,lastSeen:now-86400000,mode:'on_demand'};
+ assert.equal(commandFor(event,cfg,old,now).relay,8);
+ assert.equal(commandFor(event,cfg,{...old,sessionId:'invalid'},now).skip,'offline');
+ assert.equal(commandFor({...event,at:now-10000},cfg,old,now).skip,'expired');
+});
+test('manual probe ignores unrelated/stale replies and removes its listener',async()=>{
+ const {waitForProbe}=require('../core');const at=Date.now();let listener,removed=0;
+ const ref={on:(_,fn)=>{listener=fn;},off:(_,fn)=>{assert.equal(fn,listener);removed++;}};
+ const pending=waitForProbe(ref,'requested','session',at,1000);
+ listener({val:()=>({requestId:'other',sessionId:'session',lastSeen:at})});
+ listener({val:()=>({requestId:'requested',sessionId:'session',lastSeen:at-5000})});
+ assert.equal(removed,0);
+ listener({val:()=>({requestId:'requested',sessionId:'session',lastSeen:at})});
+ assert.equal((await pending.promise).requestId,'requested');assert.equal(removed,1);pending.stop();assert.equal(removed,1);
+});
+test('manual probe timeout is bounded and stops listening',async()=>{
+ const {waitForProbe}=require('../core');let removed=0;
+ const ref={on:()=>{},off:()=>{removed++;}};
+ const pending=waitForProbe(ref,'request','session',Date.now(),15);
+ assert.equal(await pending.promise,null);assert.equal(removed,1);
+});

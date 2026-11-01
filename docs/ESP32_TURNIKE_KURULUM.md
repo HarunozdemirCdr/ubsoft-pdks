@@ -65,7 +65,7 @@ Kurulum tamamlandığında Bluetooth kapalıdır; normal çalışma belleği Wi-
 
 ## 4. QR okutulunca ne olur?
 
-Öğrencinin hareket kaydı kurallara uygun oluşturulur. Sunucu etkin yurt/öğrenci/QR, QR yönü, kayıt yaşı, mevcut konum politikası ve kart bağlantısını denetler. Uygulama doğrudan RTDB röle komutu yazamaz. Kart yakın zamanda bağlantı bildirmişse doğru röleye tekil komut gönderilir.
+Öğrencinin hareket kaydı kurallara uygun oluşturulur. Sunucu etkin yurt/öğrenci/QR, QR yönü, kayıt yaşı, mevcut konum politikası ve kart bağlantısını denetler. Uygulama doğrudan RTDB röle komutu yazamaz. 2.2.3 kartında kayıtlı oturum kimliğine doğru röle komutu gönderilir. Periyodik bağlantı bildirimi aranmaz; yanıt gelmezse arayüzde süreli bekleme sonunda uyarı çıkar. Süresi dolmuş komut sonradan açma yapmaz.
 
 Kart yeni komutun sıra numarasını kalıcı belleğe **açmadan önce** kaydeder. Komutun bu açılışa ait oturumunu ve 10 saniyelik süresini denetler. Eski, yinelenen veya yanlış oturumlu komut röleyi açmaz. Aynı rölede komutlar sıraya alınır; iki darbe arasında kısa LOW aralığı vardır. Sıra dolarsa veya süre geçerse açma yapılmaz. Firebase tekrar göndermeleri aynı hareketi yeniden etkinleştiremez.
 
@@ -80,14 +80,14 @@ Ayrı Avrupa RTDB örneği: `ubsoft-pdks-turnstile`.
 - `bindings/{deviceId}`: cihazın yalnız kendi okuyabildiği kalıcı yurt ataması.
 - `registry/{deviceId}`: sunucunun yönettiği kimlik/yurt/etkinlik denetimi; istemci yazamaz.
 - `turnstiles/{tenantId}/{deviceId}/control/commands/{eventId}`: sunucu komutları; kart yalnız kendi yolunu okur.
-- Aynı kökte `status`: 5 saniyede bir bağlantı bildirimi; `acks`: kartın komuta eşleşen yanıtı.
+- Aynı kökte `status`: yalnız açılış/yeni oturumda bir bildirim ve yönetici istediğinde tek yanıt; `acks`: kartın QR komutuna eşleşen gerekli yanıtı. 2.2.3 kartında düzenli durum yazımı yoktur.
 - Firestore `tenants/{tenantId}/turnstileConfig/controller`: yöneticiye açık, sunucudan yazılan eşleme.
 - Firestore `turnstileState/controller`: öğrencinin sonuç ekranı için sınırlı durum/eşleme; gizli parola içermez.
 - Global cihaz kayıtları yalnız sunucuya açıktır. Kullanıcının gerçek hareketine `turnstile.status` sunucu tarafından eklenir.
 
 TLS ve cihaz Firebase Auth hesabı kullanılır. MAC adresi tek başına kimlik doğrulama değildir; rastgele gizli parola kullanılır. Açık cihaz kayıt uç noktası donanımın üretici onayını kanıtlamaz. Ürünleşmede üretimden gelen cihaz envanteri/aktivasyon anahtarı, kayıt hız sınırı ve fiziksel cihaz anahtarı koruması ayrıca değerlendirilmelidir. Standart NVS fiziksel flash erişimine karşı şifreli kasa değildir.
 
-Blaze gerekir. Cloud Functions, RTDB, Firestore ve zamanlanmış temizleme tüketim bazlıdır. Kart bağlantısı RTDB'de kalır; her 5 saniyede bir Firestore yazılmaz. Komutlar için kısa son kullanma süresi vardır; sürekli veri tabanı taraması yapılmaz. Bu sürüm bağımsız çevrimdışı geçiş sağlamaz. İnternet kesintisinde kurumun görevli/acil geçiş prosedürü uygulanır.
+Blaze gerekir. Cloud Functions, RTDB, Firestore ve zamanlanmış temizleme tüketim bazlıdır. 2.2.3 kartında ne RTDB'ye ne Firestore'a periyodik durum yazılır. Kart yalnız kendi komut akışını dinler. Komutlar için kısa son kullanma süresi vardır; sürekli veri tabanı taraması yapılmaz. Bu sürüm bağımsız çevrimdışı geçiş sağlamaz. İnternet kesintisinde kurumun görevli/acil geçiş prosedürü uygulanır.
 
 ## 6. Sahada kabul kontrolü
 
@@ -104,3 +104,9 @@ Normal Wi-Fi açılışında kullanılmayan Bluetooth controller/host belleği, 
 Seri Monitör: 115200 baud ve New Line. `STATUS` gönderildiğinde Wi-Fi/Firebase durumu, UTC saati, boş RAM, son akış zamanı ve röle sıra sayaçları yazdırılır. Parola veya cihaz gizli anahtarı yazdırılmaz. Okutma sırasında `Akis`, `Komut alindi`, reddetme nedeni veya `ROLE TETIKLENDI` satırları görünür. `ROLE TETIKLENDI` yalnız GPIO yazma işlemini bildirir; röle kontağının fiziksel durumunu ölçmez.
 
 Yüklemede **Huge APP** ve **Erase All Flash Before Sketch Upload: Disabled** seçilmelidir. NVS kimliği, yurt, Wi-Fi ve sıra sayaçlarının silinmesi gerekmez. Sadece bu sürümün derlenmesi, kart üzerinde röle sorununun çözüldüğü anlamına gelmez; yeni log ile saha doğrulaması gerekir.
+
+## 2.2.3 — yalnız istendiğinde bağlantı kontrolü
+
+Her 5 saniyelik `status` yazımı kaldırıldı. Kart açılışta/yeni oturumda bir kez kimlik/oturum kaydı yazar; sonrasında yalnız yöneticinin **Bağlantıyı kontrol et** isteğine karşılık durum yanıtı yazar. Yönetici isteği röle komutu değildir; hiçbir GPIO tetiklemez. Her kontrolün benzersiz istek kimliği ve kısa süresi vardır. Eski bir yanıt çevrimiçi kabul edilmez. En fazla 8 saniye yanıt beklenir, kontrol isteği temizlenir ve dinleyici kapatılır. Kullanıcı arayüzü son kontrol sonucunu gösterir; arka planda yenilemez.
+
+QR anında komut ve gerekli açma yanıtı yazımları devam eder. Yerel `STATUS` seri komutu sadece cihaz bilgisini yazdırır, Firebase yazımı yapmaz. Periyodik yazımın gerçek kartta bitmesi için **2.2.3 kart yazılımı yüklenmelidir**. Sunucu eski kartlarla geçiş uyumluluğunu korur; eski kart yazılımı yüklenmiş kalırsa eski 5 saniyelik davranış devam eder. NVS yurt ve Wi-Fi bilgileri korunur. Rölenin önceki saha sorunu bu değişiklikle çözülmüş varsayılmaz.

@@ -4,7 +4,11 @@
 Flutter Web, Riverpod, GoRouter, Firebase Auth, Firestore ve Firebase Hosting kullanır.
 Paket/Firebase proje kimliği (`ubsoft_pdks`, `ubsoft-pdks`) mevcut kurulumlarla uyumluluk için korunur.
 
-## ESP32 kart tanısı 2.2.2
+## 2.2.3 — isteğe bağlı kart bağlantı kontrolü
+
+2.2.3 kartında 5 saniyelik `status` yazımı kaldırıldı. Açılışta/yeni oturumda bir metadata kaydı ve yönetici **Bağlantıyı kontrol et** düğmesine bastığında tek yanıt vardır. QR komutları ve gerekli röle yanıtları korunur. Yerel `STATUS` yalnız seri çıktı verir. Bağlantı kontrolü röle tetiklemez; benzersiz isteğe yanıt en fazla 8 saniye beklenir, istek ve dinleyici temizlenir. Arayüz son kontrol sonucunu gösterir; kendiliğinden sorgulamaz. Durum yazımının gerçek kartta durması yeni firmware yüklenmesini gerektirir; sunucu eski kartlarla uyumludur.
+
+## Önceki ESP32 kart tanısı 2.2.2
 
 Web sürümü 2.2.1 olarak kalır. Kart yazılımında normal açılışta kullanılmayan Bluetooth belleği serbest bırakılır; `STATUS` komutu ve komut/akış/reddetme tanı satırları eklenir. Canlıda kartın yurt ataması, bağlantı bildirimi ve komutun sunucu tarafından oluşturulması doğrulandı; karttan açma yanıtı alınmayan saha durumu henüz kesin olarak çözülmüş sayılmaz. Güncel kart yazılımı yüklenip log alınmalıdır. Kurulum ve NVS bilgileri korunur; tam flash silme kullanılmamalıdır.
 
@@ -32,7 +36,7 @@ Backend: `functions/` (Node22), `database.rules.json`, `firebase.turnstile.emula
 ### Turnike doğrulaması
 
 - Mevcut 280 Flutter testi ve 3 yeni turnike testi geçti (360 px yerleşim, öğrenci erişimi, sınırlı bekleme/geciken yanıt).
-- 5 sunucu mantık testi, 14 RTDB erişim kontrolü ve 18 Firestore güvenlik kontrolü geçti.
+- 8 sunucu mantık testi, 17 RTDB erişim kontrolü ve 18 Firestore güvenlik kontrolü geçti.
 - Yerel emulator'da cihaz kaydı → yönetici ataması → röle1/röle8 komutu → kart yanıtı → komut temizliği ve çevrimdışı durum doğrulandı.
 - ESP32 Dev Module / Huge APP, core3.3.12 ile derlendi: yaklaşık 1,84 MB flash, 69 KB statik RAM. Bu rakamlar TLS çalışma zamanı yığın tüketimi veya gerçek donanım testi değildir.
 - Canlıya cihaz kimliği, Wi-Fi parolası veya test kartı ataması eklenmedi. Fiziksel kurulum kullanıcı tarafından yapılacak.

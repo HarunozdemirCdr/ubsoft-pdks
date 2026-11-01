@@ -48,6 +48,21 @@ async function main(){
  await statusRef.update({lastSeen:Date.now()-30000});await movement('offline','in','entry');
  await waitFor(async()=> (await db.doc(`tenants/${tid}/attendance/offline`).get()).data(),v=>v?.turnstile?.status==='offline','offline result');
  assert.equal((await rtdb.ref(`turnstiles/${tid}/${did}/control/commands/offline`).get()).exists(),false);
- console.log('PASS registration, secret ownership, permanent binding, admin authorization, mapping, relay1/8 dispatch, acknowledgement cleanup and offline flow.');
+ // A stale startup record cannot be reported online without a fresh reply.
+ await statusRef.set({lastSeen:Date.now()-86400000,sessionId:'a'.repeat(32),firmware:'2.2.3',mode:'on_demand'});
+ const commandsRef=rtdb.ref(`turnstiles/${tid}/${did}/control/commands`);
+ const responder=snap=>{const p=snap.val();if(p?.kind==='probe')statusRef.set({lastSeen:Date.now(),sessionId:p.sessionId,firmware:'2.2.3',mode:'on_demand',requestId:p.requestId});};
+ commandsRef.on('child_added',responder);
+ const manual=await call('getTurnstileStatus',{tenantId:tid},admin.token);
+ commandsRef.off('child_added',responder);
+ assert.equal(manual.result.online,true);
+ const remaining=(await commandsRef.get()).val()||{};assert.equal(Object.keys(remaining).some(k=>k.startsWith('_probe_')),false);
+ const noReply=await call('getTurnstileStatus',{tenantId:tid},admin.token);assert.equal(noReply.result.online,false);
+ assert.equal(Object.keys((await commandsRef.get()).val()||{}).some(k=>k.startsWith('_probe_')),false);
+ await statusRef.set({lastSeen:Date.now()-86400000,sessionId:'a'.repeat(32),firmware:'2.2.3',mode:'on_demand'});
+ await movement('withoutHeartbeat','in','entry');
+ const idleCommand=await waitFor(async()=> (await rtdb.ref(`turnstiles/${tid}/${did}/control/commands/withoutHeartbeat`).get()).val(),v=>v?.trigger===true,'dispatch without periodic heartbeat');
+ assert.equal(idleCommand.relay,1);
+ console.log('PASS registration, secret ownership, permanent binding, admin authorization, mapping, relay1/8 dispatch, acknowledgement cleanup, legacy offline flow, manual probe reply/timeout/cleanup and dispatch without heartbeat.');
 }
 main().then(()=>process.exit(0)).catch(e=>{console.error(e);process.exit(1);});

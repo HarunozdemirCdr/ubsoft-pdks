@@ -169,6 +169,9 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
                             : (v) =>
                                   _run('setTurnstileEnabled', {'enabled': v}),
                       ),
+                      const Text(
+                        'Bağlantı yalnız bu düğmeye bastığınızda kontrol edilir.',
+                      ),
                       if (_status != null)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
@@ -182,12 +185,12 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
                           ),
                           title: Text(
                             _status!['online'] == true
-                                ? 'Kart çevrimiçi'
-                                : 'Kart çevrimdışı',
+                                ? 'Son kontrolde kart yanıt verdi'
+                                : 'Son kontrolde kart yanıt vermedi',
                           ),
                           subtitle: Text(
                             _status!['lastSeen'] is num
-                                ? 'Son bağlantı: ${DateTime.fromMillisecondsSinceEpoch((_status!['lastSeen'] as num).toInt()).toLocal()}\n${_status!['firmware']}'
+                                ? 'Son yanıt: ${DateTime.fromMillisecondsSinceEpoch((_status!['lastSeen'] as num).toInt()).toLocal()}\n${_status!['firmware']}'
                                 : 'Henüz bağlantı bilgisi yok.',
                           ),
                         ),

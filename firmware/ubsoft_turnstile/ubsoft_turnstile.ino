@@ -35,7 +35,9 @@ FirebaseApp firebase;
 RealtimeDatabase database;
 UserAuth *userAuth=nullptr;
 bool initialized=false,streaming=false,wasConnected=false;
-uint32_t lastHeartbeat=0,lastRegistration=0,lastStreamAt=0;
+uint32_t lastRegistration=0,lastStreamAt=0;
+bool startupStatusScheduled=false;
+String lastProbeId;
 bool connectionReported=false;
 uint64_t lastSeq[8]={};
 esp_timer_handle_t timers[8];
@@ -55,6 +57,14 @@ void ack(const Pending &p,const char *status){
   String json;serializeJson(d,json);
   database.set<object_t>(client,base+"/acks/"+p.id,object_t(json),quietResult,"ack");
 }
+// Only a new session or an explicit admin request writes device status.
+void publishStatus(const String &requestId){
+  JsonDocument d;d["sessionId"]=sessionId;d["lastSeen"][".sv"]="timestamp";
+  d["firmware"]="2.2.3";d["mode"]="on_demand";
+  if(!requestId.isEmpty())d["requestId"]=requestId;
+  String json;serializeJson(d,json);
+  database.set<object_t>(client,base+"/status",object_t(json),quietResult,"statusReply");
+}
 void offer(JsonObjectConst c){
   if(c["trigger"]!=true||c["pulseMs"]!=1000){Serial.println("Komut atlandi: tetik/darbe degeri uygun degil.");return;}
   Pending p;p.id=c["eventId"].as<String>();p.session=c["sessionId"].as<String>();p.relay=c["relay"]|0;p.sequence=c["sequence"]|uint64_t(0);p.expires=c["expiresAt"]|int64_t(0);
@@ -68,12 +78,28 @@ void offer(JsonObjectConst c){
   for(auto &q:pending)if(!q.used){q=p;q.used=true;return;}
   ack(p,"rejected");
 }
+void processMessage(JsonObjectConst message){
+  if(message["kind"]=="probe"){
+    const String requestId=message["requestId"].as<String>();
+    const String targetSession=message["sessionId"].as<String>();
+    const int64_t expires=message["expiresAt"]|int64_t(0);
+    if(requestId.length()!=32||!safeId(requestId)||targetSession!=sessionId||expires<=nowMs()||expires>nowMs()+11000||requestId==lastProbeId)return;
+    lastProbeId=requestId;publishStatus(requestId);return;
+  }
+  if(message["eventId"].is<String>())offer(message);
+}
 void streamResult(AsyncResult &r){
   if(r.isError()){Serial.printf("Stream error %d\n",r.error().code());return;}
   if(!r.available())return;
   auto &value=r.to<RealtimeDatabaseResult>();if(!value.isStream())return;
   if(value.event()=="keep-alive")return;
   lastStreamAt=millis();
+  // Publish a session only after the command stream has been authorized.
+  // A board booted while disabled can recover when the admin enables it.
+  const String eventType=value.event();
+  if(!tenantId.isEmpty()&&!startupStatusScheduled&&(eventType=="put"||eventType=="patch")){
+    startupStatusScheduled=true;publishStatus("");
+  }
   String payload=value.data();
   Serial.printf("Akis: olay=%s yol=%s boyut=%u RAM=%u\n",value.event().c_str(),value.dataPath().c_str(),(unsigned)payload.length(),ESP.getFreeHeap());
   JsonDocument d;const auto parseError=deserializeJson(d,payload);
@@ -82,8 +108,8 @@ void streamResult(AsyncResult &r){
     if(d["bound"]==true){String tid=d["tenantId"].as<String>();if(safeId(tid)&&prefs.putString("tenant",tid)>0){Serial.println("Yurt atamasi kaydedildi. Yeniden baslatiliyor.");ESP.restart();}}
     return;
   }
-  if(d["eventId"].is<String>())offer(d.as<JsonObjectConst>());
-  else if(d.is<JsonObject>())for(JsonPairConst kv:d.as<JsonObjectConst>())if(kv.value().is<JsonObject>())offer(kv.value().as<JsonObjectConst>());
+  if(d["eventId"].is<String>()||d["kind"]=="probe")processMessage(d.as<JsonObjectConst>());
+  else if(d.is<JsonObject>())for(JsonPairConst kv:d.as<JsonObjectConst>())if(kv.value().is<JsonObject>())processMessage(kv.value().as<JsonObjectConst>());
 }
 class SaveCallbacks:public BLECharacteristicCallbacks {void onWrite(BLECharacteristic *c)override{if(c->getValue()=="SAVE")saveWifi=true;}};
 class ServerCallbacks:public BLEServerCallbacks{void onDisconnect(BLEServer*)override{BLEDevice::startAdvertising();}};
@@ -157,16 +183,12 @@ void loop(){
     initializeApp(client,firebase,getAuth(*userAuth),quietResult,"auth");firebase.getApp<RealtimeDatabase>(database);database.url(DB_URL);initialized=true;
   }
   firebase.loop();if(!firebase.ready())return;
-  if(!connectionReported){connectionReported=true;Serial.printf("Firebase baglandi. Surum=2.2.2 UTC_ms=%lld RAM=%u\n",(long long)nowMs(),ESP.getFreeHeap());}
+  if(!connectionReported){connectionReported=true;Serial.printf("Firebase baglandi. Surum=2.2.3 UTC_ms=%lld RAM=%u\n",(long long)nowMs(),ESP.getFreeHeap());}
   if(!streaming){
     base="/turnstiles/"+tenantId+"/"+deviceId;
     database.get(streamClient,tenantId.isEmpty()?"/bindings/"+deviceId:base+"/control/commands",streamResult,true,"stream");streaming=true;Serial.println("Komut dinleme yolu: "+(tenantId.isEmpty()?"/bindings/"+deviceId:base+"/control/commands"));
   }
   if(tenantId.isEmpty())return;
-  if(!lastHeartbeat||millis()-lastHeartbeat>=5000){
-    lastHeartbeat=millis();JsonDocument d;d["sessionId"]=sessionId;d["lastSeen"][".sv"]="timestamp";d["firmware"]="2.2.2";String json;serializeJson(d,json);
-    database.set<object_t>(client,base+"/status",object_t(json),quietResult,"heartbeat");
-  }
   // Lowest sequence first per relay, with a short LOW gap between pulses.
   for(int i=0;i<8;i++){
     if(active[i]||uint32_t(millis()-stoppedAt[i])<200)continue;

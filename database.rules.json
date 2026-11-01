@@ -29,6 +29,12 @@
             },
             "$other": {
               ".validate": false
+            },
+            "mode": {
+              ".validate": "newData.val() == 'on_demand'"
+            },
+            "requestId": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-f0-9]{32}$/) && root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child('_probe_' + newData.val()).child('kind').val() == 'probe' && root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child('_probe_' + newData.val()).child('sessionId').val() == newData.parent().child('sessionId').val() && root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child('_probe_' + newData.val()).child('expiresAt').val() > now"
             }
           },
           "acks": {

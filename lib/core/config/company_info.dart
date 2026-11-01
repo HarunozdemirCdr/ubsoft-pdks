@@ -25,5 +25,5 @@ abstract final class CompanyInfo {
   /// yöneticisinin işine yaramaz, yalnız ekranı kalabalıklaştırır. Bir hatayı
   /// ararken gereken gerçek sürüm, hata raporlarında zaten
   /// `AppConfig.appVersion` olarak gider.
-  static const String displayVersion = 'v2.2.1';
+  static const String displayVersion = 'v2.2.3';
 }

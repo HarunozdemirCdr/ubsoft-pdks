@@ -37,8 +37,25 @@ function commandFor(event, config, status, now) {
   if (!relay || !/^[1-8]$/.test(relay) || !['in','out'].includes(event.type)) return {skip:'unmapped'};
   const at = typeof event.at?.toMillis === 'function' ? event.at.toMillis() : event.at;
   if (!Number.isFinite(at) || at > now + 1000 || now >= at + COMMAND_TTL_MS) return {skip:'expired'};
-  if (!status || typeof status.sessionId !== 'string' || !/^[a-f0-9]{32}$/.test(status.sessionId) || !Number.isFinite(status.lastSeen) || status.lastSeen > now + 1000 || now - status.lastSeen > HEARTBEAT_MAX_AGE_MS) return {skip:'offline'};
+  if (!status || typeof status.sessionId !== 'string' || !/^[a-f0-9]{32}$/.test(status.sessionId) || !Number.isFinite(status.lastSeen) || status.lastSeen > now + 1000 || (status.mode !== 'on_demand' && now - status.lastSeen > HEARTBEAT_MAX_AGE_MS)) return {skip:'offline'};
   return {relay:Number(relay), trigger:true, pulseMs:PULSE_MS, issuedAt:now, expiresAt:at+COMMAND_TTL_MS, sessionId:status.sessionId};
+}
+// The listener is installed before a probe is published, avoiding a fast-reply
+// race. A timestamp alone is never treated as proof that a board is online.
+function waitForProbe(ref, requestId, sessionId, requestedAt, timeoutMs=8000) {
+  let finish;
+  const promise=new Promise(resolve=>{
+    let settled=false,timer;
+    const listener=snap=>{
+      const d=snap.val();
+      if(d?.requestId===requestId && d.sessionId===sessionId && Number.isFinite(d.lastSeen) && d.lastSeen>=requestedAt-1000 && d.lastSeen<=Date.now()+1000)done(d);
+    };
+    function done(value){if(settled)return;settled=true;clearTimeout(timer);ref.off('value',listener);resolve(value);}
+    finish=()=>done(null);
+    timer=setTimeout(finish,timeoutMs);
+    ref.on('value',listener,error=>done({error}));
+  });
+  return {promise,stop:()=>finish()};
 }
 function enqueue(current, eventId, command) {
   current ||= {};
@@ -54,4 +71,4 @@ function enqueue(current, eventId, command) {
   current.issued[eventId] = command.expiresAt;
   return current;
 }
-module.exports = {PULSE_MS, COMMAND_TTL_MS, hash, validId, validateRelays, locationAllowed, commandFor, enqueue};
+module.exports = {PULSE_MS, COMMAND_TTL_MS, hash, validId, validateRelays, locationAllowed, commandFor, waitForProbe, enqueue};
