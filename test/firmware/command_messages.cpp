@@ -19,7 +19,7 @@ void check(const char *json){
 int main(){
   // The 210-byte structure observed on the physical board: RTDB wraps each
   // command in its event key. The old const-to-mutable test drops this packet.
-  const char *packet=R"json({"sampleEvent1234567890":{"eventId":"sampleEvent1234567890","expiresAt":1793568744511,"issuedAt":1793568737748,"pulseMs":1000,"relay":6,"sequence":1,"sessionId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","trigger":true}})json";
+  const char *packet=R"json({"sampleEvent123456789":{"eventId":"sampleEvent123456789","expiresAt":1793568744511,"issuedAt":1793568737748,"pulseMs":1000,"relay":6,"sequence":1,"sessionId":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","trigger":true}})json";
   assert(std::strlen(packet)==210);
   JsonDocument proof;assert(!deserializeJson(proof,packet));
   for(JsonPairConst pair:proof.as<JsonObjectConst>()){
