@@ -711,6 +711,65 @@ class DormDaySummary extends StatelessWidget {
   }
 }
 
+/// Etiketi kutunun dışında tutar; kaydırma alanının üst sınırında kesilmez.
+class DormActionField extends StatelessWidget {
+  const DormActionField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+    super.key,
+  });
+  final String label;
+  final String value;
+  final IconData icon;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: '$label $value',
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 12, bottom: 6),
+          child: Text(
+            label,
+            style: AppTypography.caption(context.colors.onSurfaceVariant),
+          ),
+        ),
+        InkWell(
+          borderRadius: AppRadius.allMd,
+          onTap: onTap,
+          child: InputDecorator(
+            decoration: const InputDecoration(
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 14,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: context.colors.primary),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.small(context.colors.onSurface),
+                  ),
+                ),
+                const Icon(Icons.expand_more_rounded, size: 20),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 class DormStudentPicker extends StatelessWidget {
   const DormStudentPicker({
     required this.names,

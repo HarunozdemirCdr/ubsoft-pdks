@@ -74,15 +74,16 @@ final class DormRepository extends FirestoreRepositoryBase {
       'attendance',
     ).where('dateKey', isGreaterThanOrEqualTo: from, isLessThanOrEqualTo: to);
     if (uid != null) q = q.where('userId', isEqualTo: uid);
-    return guardStream(
-      q.snapshots().map(
-        (s) =>
-            s.docs
-                .where((d) => d.data()['voided'] != true)
-                .map(AttendanceEventMapper.fromDoc)
-                .toList()
-              ..sort((a, b) => b.at.compareTo(a.at)),
-      ),
+    List<AttendanceEvent> events(QuerySnapshot<Map<String, dynamic>> s) =>
+        s.docs
+            .where((d) => d.data()['voided'] != true)
+            .map(AttendanceEventMapper.fromDoc)
+            .toList()
+          ..sort((a, b) => b.at.compareTo(a.at));
+    return guardLiveStream(
+      q.snapshots(includeMetadataChanges: true).map(events),
+      loadInitial: () async =>
+          events(await q.get(const GetOptions(source: Source.server))),
     );
   }
 

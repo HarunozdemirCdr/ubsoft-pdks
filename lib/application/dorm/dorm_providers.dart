@@ -29,31 +29,47 @@ final residentsProvider = StreamProvider<List<Presence>>(
       .watchResidents(ref.watch(tenantIdProvider)),
 );
 final myPresenceProvider = StreamProvider<Presence>((ref) {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return const Stream<Presence>.empty();
+  final user = ref.watch(
+    currentUserProvider.select(
+      (u) => u == null ? null : (tenantId: u.tenantId, uid: u.uid),
+    ),
+  );
+  if (user == null) return Stream.value(const Presence(userId: ''));
   return ref
       .watch(dormRepositoryProvider)
       .watchPresence(user.tenantId, user.uid);
 });
 final dormLeavesProvider = StreamProvider<List<StudentLeave>>((ref) {
-  final user = ref.watch(currentUserProvider);
-  if (user == null) return const Stream<List<StudentLeave>>.empty();
+  final user = ref.watch(
+    currentUserProvider.select(
+      (u) => u == null
+          ? null
+          : (tenantId: u.tenantId, uid: u.uid, student: u.role.isStaff),
+    ),
+  );
+  if (user == null) return Stream.value(const <StudentLeave>[]);
   return ref
       .watch(dormRepositoryProvider)
-      .watchLeaves(user.tenantId, uid: user.role.isStaff ? user.uid : null);
+      .watchLeaves(user.tenantId, uid: user.student ? user.uid : null);
 });
 typedef MovementQuery = ({String from, String to, String? uid});
 final movementsProvider =
     StreamProvider.family<List<AttendanceEvent>, MovementQuery>((ref, query) {
-      final user = ref.watch(currentUserProvider);
-      if (user == null) return const Stream<List<AttendanceEvent>>.empty();
+      final user = ref.watch(
+        currentUserProvider.select(
+          (u) => u == null
+              ? null
+              : (tenantId: u.tenantId, uid: u.uid, student: u.role.isStaff),
+        ),
+      );
+      if (user == null) return Stream.value(const <AttendanceEvent>[]);
       return ref
           .watch(dormRepositoryProvider)
           .watchEvents(
             user.tenantId,
             query.from,
             query.to,
-            uid: user.role.isStaff ? user.uid : query.uid,
+            uid: user.student ? user.uid : query.uid,
           );
     });
 StudentLeave? leaveAt(List<StudentLeave> leaves, String uid, DateTime at) {

@@ -14,8 +14,8 @@ final qrControllerProvider = Provider.autoDispose<MobileScannerController>((
 ) {
   final MobileScannerController controller = MobileScannerController(
     formats: const <BarcodeFormat>[BarcodeFormat.qrCode],
-    // Aynı kodun arka arkaya okunmasını engeller: kullanıcı kamerayı
-    // etiketten çekene kadar tek okuma sayılır.
+    // Etiket kamerada kalırken yeniden algılanabilir. Kayıt sırasında ve
+    // başarı ekranında ScanPage yeni gönderimleri engeller.
     detectionTimeoutMs: AppConfig.scanDebounce.inMilliseconds,
   );
 

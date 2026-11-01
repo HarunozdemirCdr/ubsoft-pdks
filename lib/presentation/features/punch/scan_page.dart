@@ -47,12 +47,18 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     if (_lastCode != code) return false;
     final DateTime? at = _lastCodeAt;
     if (at == null) return false;
-    return DateTime.now().difference(at) < AppConfig.punchCooldown;
+    return DateTime.now().difference(at) < AppConfig.scanDebounce;
   }
 
   void _remember(String code) {
     _lastCode = code;
     _lastCodeAt = DateTime.now();
+  }
+
+  void _retryScan() {
+    _lastCode = null;
+    _lastCodeAt = null;
+    ref.read(punchControllerProvider.notifier).reset();
   }
 
   @override
@@ -129,9 +135,9 @@ class _ScanPageState extends ConsumerState<ScanPage> {
               bottom: 0,
               child: PunchResultView(
                 state: state,
+                autoRetryAfter: const Duration(seconds: 5),
                 showLocation: ref.watch(attendanceDetailVisibleProvider),
-                onAgain: () =>
-                    ref.read(punchControllerProvider.notifier).reset(),
+                onAgain: _retryScan,
                 onClose: () => context.pop(),
               ),
             ),

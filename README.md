@@ -32,6 +32,27 @@ Başlangıç saatleri 06.00/22.30 örnek değerlerdir, kurum politikası değild
 
 ## Arayüz 2.1
 
+### 2.1.1 boş hareket ve mobil yerleşim düzeltmesi
+
+Geçmiş, rapor ve öğrencinin günlük hareketleri ortak canlı akış üzerinden yüklenir.
+Boş liste geçerli sonuçtur ve kayıt yok görünümüne geçer. İlk dinleyici cevabı 4 saniye içinde gelmezse
+sunucudan tek bir doğrulama okuması yapılır; bu istek 12 saniyede yanıt vermezse hata ve yeniden deneme sunulur.
+Bağlantı veya yetki hatası kayıt yok gibi gösterilmez. Canlı dinleyici çalışmaya devam eder;
+geciken ilk okuma daha yeni bir canlı sonucu ezmez ve normal hızlı yanıtta ek okuma yapılmaz.
+Oturum hazır değilken veri sağlayıcıları değersiz kapanan akış yerine açık bir başlangıç değeri yayınlar;
+ad veya son giriş zamanı değişmesi hareket sorgusunu gereksiz yere yeniden başlatmaz.
+Tarih alanı etiketi kutunun dışında gösterilir. Mobil alt menüde daha fazla yükseklik,
+yatay etiket boşluğu ve dar ekrana uygun yazı boyutu kullanılır.
+Kılavuzdaki ekran görüntüleri alındıkları 2.1.0 sürümünü belgelemeye devam eder.
+
+QR hiç algılanmadığında kamera taramayı sürdürür. Yanlış kod ve yeniden denenebilir hatalarda sonuç paneli
+5 saniyelik sayaçtan sonra aynı ekranda taramaya döner; `Tekrar dene` beklemeden yeniden taramayı açar.
+Aynı kodun kamera tarafındaki 1,5 saniyelik filtrelemesi ile başarılı kaydın sunucu tarafındaki 1 dakikalık
+çift kayıt koruması birbirinden ayrıdır. Hata sonrası elle tekrar deneme eski kod filtresini temizler.
+İşlem sürerken ve başarı panelinde otomatik yeni kayıt gönderilmez. Oturum/yetki/abonelik hataları ile
+`too-soon` uyarısı otomatik tekrarlanmaz; kullanıcı açıklamayı okur ve gerekli işlemi yapar.
+Kamera yeniden denemesi yazılım testlerinde sınanmıştır; gerçek telefon, kamera ve GPS kabulü ayrıca yapılmalıdır.
+
 Panel metrikleri eşit boyutludur; dışarıda ve dönüşü geciken sayıları toplanmaz, gecikenler dışarıdakilerin alt kümesidir.
 Başlangıç kaydı olmayan öğrenciler ayrı açıklama ve inceleme bağlantısıyla gösterilir.
 Durum/inceleme filtreleri, arama ve sıfırlama ayrı yönetilir. Öğrenci seçimi isimle aranabilir.

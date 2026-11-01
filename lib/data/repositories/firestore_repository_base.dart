@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:ubsoft_pdks/core/config/firebase_collections.dart';
 import 'package:ubsoft_pdks/core/error/error_mapper.dart';
+import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
 
 /// Firestore repository'leri için ortak temel.
@@ -77,6 +79,76 @@ abstract base class FirestoreRepositoryBase {
       throw ErrorMapper.map(error, stackTrace);
     });
   }
+
+  /// İlk dinleyici cevabı gelmezse sunucudan bir kez doğrular. Boş cevap da
+  /// geçerli veridir; bağlantı sorunu hiçbir zaman boş listeye çevrilmez.
+  /// Sonraki canlı değişiklikler dinlenmeye devam eder. Yeni canlı veri
+  /// geldiyse geciken ilk okumanın eski sonucu ekranın üzerine yazılmaz.
+  @protected
+  Stream<T> guardLiveStream<T>(
+    Stream<T> source, {
+    required Future<T> Function() loadInitial,
+    Duration initialWait = const Duration(seconds: 4),
+    Duration requestTimeout = const Duration(seconds: 12),
+  }) => guardStream(
+    Stream<T>.multi((controller) {
+      bool received = false;
+      bool cancelled = false;
+      Timer? timer;
+      void add(T data) {
+        if (cancelled) return;
+        received = true;
+        timer?.cancel();
+        controller.add(data);
+      }
+
+      final subscription = source.listen(
+        add,
+        onError: (Object error, StackTrace stack) {
+          if (cancelled) return;
+          received = true;
+          timer?.cancel();
+          controller.addError(error, stack);
+        },
+        onDone: () {
+          timer?.cancel();
+          if (!received && !cancelled) {
+            controller.addError(
+              const NetworkFailure(
+                message:
+                    'Kayıtlar alınamadı. Bağlantınızı kontrol edip yeniden deneyin.',
+              ),
+            );
+          }
+          controller.close();
+        },
+      );
+      timer = Timer(initialWait, () async {
+        try {
+          final data = await loadInitial().timeout(requestTimeout);
+          if (!received && !cancelled) add(data);
+        } catch (error, stack) {
+          if (!received && !cancelled) {
+            controller.addError(
+              error is TimeoutException
+                  ? const NetworkFailure(
+                      message:
+                          'Kayıtlar alınırken yanıt bekleniyor. Bağlantınızı kontrol edip yeniden deneyin.',
+                      code: 'initial-read-timeout',
+                    )
+                  : error,
+              stack,
+            );
+          }
+        }
+      });
+      controller.onCancel = () {
+        cancelled = true;
+        timer?.cancel();
+        return subscription.cancel();
+      };
+    }),
+  );
 
   void _log(Object error, StackTrace stackTrace) {
     if (kDebugMode) {

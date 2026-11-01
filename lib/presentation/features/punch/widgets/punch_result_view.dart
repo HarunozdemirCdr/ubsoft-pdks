@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:ubsoft_pdks/application/attendance/punch_controller.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
@@ -23,10 +24,12 @@ class PunchResultView extends StatelessWidget {
     required this.onAgain,
     required this.onClose,
     this.showLocation = true,
+    this.autoRetryAfter,
     super.key,
   });
 
   final PunchState state;
+  final Duration? autoRetryAfter;
 
   /// Konum kararı ve noktaya uzaklık gösterilsin mi?
   ///
@@ -59,6 +62,13 @@ class PunchResultView extends StatelessWidget {
             ),
             PunchFailed(:final Failure failure) => _Failed(
               failure: failure,
+              autoRetryAfter:
+                  failure is AuthFailure ||
+                      failure is PermissionFailure ||
+                      failure is SubscriptionFailure ||
+                      failure.code == 'too-soon'
+                  ? null
+                  : autoRetryAfter,
               onAgain: onAgain,
               onClose: onClose,
             ),
@@ -200,16 +210,69 @@ class _Success extends StatelessWidget {
   };
 }
 
-class _Failed extends StatelessWidget {
+class _Failed extends StatefulWidget {
   const _Failed({
     required this.failure,
     required this.onAgain,
     required this.onClose,
+    this.autoRetryAfter,
   });
 
   final Failure failure;
   final VoidCallback onAgain;
   final VoidCallback onClose;
+  final Duration? autoRetryAfter;
+
+  @override
+  State<_Failed> createState() => _FailedState();
+}
+
+class _FailedState extends State<_Failed> {
+  Timer? _timer;
+  int _remaining = 0;
+  bool _retried = false;
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  void _start() {
+    _timer?.cancel();
+    _retried = false;
+    _remaining = widget.autoRetryAfter?.inSeconds ?? 0;
+    if (_remaining <= 0) return;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_remaining <= 1) {
+        _again();
+        return;
+      }
+      setState(() => _remaining--);
+    });
+  }
+
+  void _again() {
+    if (_retried) return;
+    _retried = true;
+    _timer?.cancel();
+    widget.onAgain();
+  }
+
+  @override
+  void didUpdateWidget(covariant _Failed oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.failure != widget.failure ||
+        oldWidget.autoRetryAfter != widget.autoRetryAfter) {
+      _start();
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -235,17 +298,27 @@ class _Failed extends StatelessWidget {
         ),
         AppSpacing.vSm,
         Text(
-          failure.message,
+          widget.failure.message,
           style: AppTypography.body(context.colors.onSurfaceVariant),
         ),
+        if (_remaining > 0 && !_retried) ...[
+          AppSpacing.vSm,
+          Text(
+            '$_remaining saniye sonra yeniden taranacak.',
+            style: AppTypography.small(context.colors.onSurfaceVariant),
+          ),
+        ],
         AppSpacing.vLg,
-        AppButton.primaryWide(label: 'Tekrar dene', onPressed: onAgain),
+        AppButton.primaryWide(label: 'Tekrar dene', onPressed: _again),
         AppSpacing.vXs,
         AppButton(
           label: 'Vazgeç',
           variant: AppButtonVariant.text,
           expand: true,
-          onPressed: onClose,
+          onPressed: () {
+            _timer?.cancel();
+            widget.onClose();
+          },
         ),
       ],
     );

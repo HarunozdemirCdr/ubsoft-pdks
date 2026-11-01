@@ -106,31 +106,43 @@ class _AppShellState extends ConsumerState<AppShell> {
             )
           : null,
       body: body,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (i) {
-          if (overflows && i == primary.length) {
-            _scaffoldKey.currentState?.openDrawer();
-            return;
-          }
-          context.go(primary[i].path);
-        },
-        destinations: <Widget>[
-          for (final NavDestination destination in primary)
-            NavigationDestination(
-              icon: Icon(destination.icon),
-              selectedIcon: Icon(destination.selectedIcon),
-              label: destination.label,
-            ),
-          if (overflows)
-            NavigationDestination(
-              icon: Icon(
-                inOverflow ? Icons.menu_open_rounded : Icons.menu_rounded,
+      bottomNavigationBar: DefaultTextStyle.merge(
+        textAlign: TextAlign.center,
+        child: NavigationBar(
+          height: 80,
+          labelPadding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+          labelTextStyle: WidgetStateProperty.resolveWith(
+            (states) => AppTypography.caption(
+              states.contains(WidgetState.selected)
+                  ? context.colors.primary
+                  : context.colors.onSurfaceVariant,
+            ).copyWith(fontSize: 11, height: 1.3),
+          ),
+          selectedIndex: index,
+          onDestinationSelected: (i) {
+            if (overflows && i == primary.length) {
+              _scaffoldKey.currentState?.openDrawer();
+              return;
+            }
+            context.go(primary[i].path);
+          },
+          destinations: <Widget>[
+            for (final NavDestination destination in primary)
+              NavigationDestination(
+                icon: Icon(destination.icon),
+                selectedIcon: Icon(destination.selectedIcon),
+                label: destination.label,
               ),
-              selectedIcon: const Icon(Icons.menu_open_rounded),
-              label: 'Menü',
-            ),
-        ],
+            if (overflows)
+              NavigationDestination(
+                icon: Icon(
+                  inOverflow ? Icons.menu_open_rounded : Icons.menu_rounded,
+                ),
+                selectedIcon: const Icon(Icons.menu_open_rounded),
+                label: 'Menü',
+              ),
+          ],
+        ),
       ),
     );
   }

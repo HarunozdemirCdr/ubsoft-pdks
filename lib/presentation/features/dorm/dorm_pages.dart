@@ -622,6 +622,13 @@ class StudentHomePage extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           AsyncValueView<List<AttendanceEvent>>(
+            onRetry: () => ref.invalidate(
+              movementsProvider((
+                from: DormClock.key(now),
+                to: DormClock.key(now),
+                uid: user.uid,
+              )),
+            ),
             value: ref.watch(
               movementsProvider((
                 from: DormClock.key(now),
@@ -728,6 +735,9 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
           const _MovementLegend(),
           const SizedBox(height: 12),
           AsyncValueView<List<AttendanceEvent>>(
+            onRetry: () => ref.invalidate(
+              movementsProvider((from: from, to: to, uid: uid)),
+            ),
             value: ref.watch(movementsProvider((from: from, to: to, uid: uid))),
             builder: (events) => _GroupedMovements(
               key: ValueKey('history-$from-$to-$uid'),
@@ -763,34 +773,11 @@ class _DateRangeField extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => InkWell(
-    borderRadius: BorderRadius.circular(10),
+  Widget build(BuildContext context) => DormActionField(
+    label: 'Tarih aralığı',
+    value: label,
+    icon: Icons.date_range_rounded,
     onTap: onTap,
-    child: InputDecorator(
-      decoration: const InputDecoration(
-        labelText: 'Tarih aralığı',
-        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.date_range_rounded,
-            size: 18,
-            color: context.colors.primary,
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.small(context.colors.onSurface),
-            ),
-          ),
-          const Icon(Icons.expand_more_rounded, size: 20),
-        ],
-      ),
-    ),
   );
 }
 
@@ -940,6 +927,9 @@ class _DormReportState extends ConsumerState<DormReportPage> {
           ),
           const SizedBox(height: 24),
           AsyncValueView<List<AttendanceEvent>>(
+            onRetry: () => ref.invalidate(
+              movementsProvider((from: from, to: to, uid: _uid)),
+            ),
             value: movementState,
             builder: (all) {
               final events = all
