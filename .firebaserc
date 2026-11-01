@@ -1,5 +1,14 @@
 {
   "projects": {
     "default": "ubsoft-pdks"
+  },
+  "targets": {
+    "ubsoft-pdks": {
+      "database": {
+        "turnstile": [
+          "ubsoft-pdks-turnstile"
+        ]
+      }
+    }
   }
 }

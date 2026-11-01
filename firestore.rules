@@ -129,10 +129,12 @@ service cloud.firestore {
       let point = get(/databases/$(database)/documents/tenants/$(tid)/checkpoints/$(e.checkpointId)).data;
       let state = getAfter(/databases/$(database)/documents/tenants/$(tid)/presence/$(request.auth.uid)).data;
       return memberOf(tid) && roleIn(tid) == 'staff' && can(tid, 'punch.create') && writable(tid) &&
+        eventId.matches('^[A-Za-z0-9_-]{1,80}$') &&
         e.userId == request.auth.uid && e.tenantId == tid && e.schemaVersion == 2 &&
         e.type in ['in', 'out'] && e.type == point.kind && point.active == true &&
         e.checkpointCode == point.code && e.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
         e.verdict in ['verified', 'borderline', 'outside', 'unavailable'] &&
+        !e.keys().hasAny(['turnstile', 'demoSource']) &&
         e.voided == false && serverTime('at') &&
         state.eventId == eventId && state.at == request.time && state.inside == (e.type == 'in');
     }
@@ -253,6 +255,17 @@ service cloud.firestore {
 
 
       // ─────────────────────── QR noktaları ───────────────────────
+
+      // Device credentials and binding records are server-only. Public state
+      // contains only the relay mapping needed by the successful scan screen.
+      match /turnstileConfig/{id} {
+        allow read: if isAdminOf(tid) || isSuperAdmin();
+        allow write: if false;
+      }
+      match /turnstileState/{id} {
+        allow read: if memberOf(tid) || isSuperAdmin();
+        allow write: if false;
+      }
 
       match /checkpoints/{checkpointId} {
 

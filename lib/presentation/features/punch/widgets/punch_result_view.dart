@@ -10,6 +10,7 @@ import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/geo.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
+import 'package:ubsoft_pdks/presentation/features/turnstile/turnstile_feedback.dart';
 import 'package:ubsoft_pdks/presentation/formatters/enum_labels.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
@@ -187,6 +188,8 @@ class _Success extends StatelessWidget {
         // **talimat** gibi okunuyordu ("yeniden okut"). Basan kişi kamerayı
         // hâlâ aynı etiketin önünde tutuyor oluyor, kod anında yeniden
         // gönderiliyor ve reddediliyordu — sonu gelmeyen bir döngü.
+        TurnstileFeedback(event: event),
+        AppSpacing.vSm,
         AppButton.primaryWide(label: 'Tamam', onPressed: onClose),
       ],
     );

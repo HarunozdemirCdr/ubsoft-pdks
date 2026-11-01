@@ -4,6 +4,35 @@
 Flutter Web, Riverpod, GoRouter, Firebase Auth, Firestore ve Firebase Hosting kullanır.
 Paket/Firebase proje kimliği (`ubsoft_pdks`, `ubsoft-pdks`) mevcut kurulumlarla uyumluluk için korunur.
 
+## ESP32 turnike entegrasyonu — 2.2.0
+
+**Yayın durumu:** 2.2.0 web sürümü, sekiz Cloud Functions işlevi, Firestore kuralları ve ayrı Avrupa RTDB kuralları 1 Kasım 2026 tarihinde yayımlandı. Canlıda geçersiz cihaz kaydı ve yetkisiz yönetim/veritabanı erişimi reddi doğrulandı. Gerçek kartın kurulumu ve fiziksel röle kabul testi henüz yapılmadı.
+
+ESP32-WROOM kartı en fazla **8 aktif HIGH röle** destekler. Sırasıyla GPIO: **26, 27, 25, 32, 14, 12, 13, 15**.
+Yurt yöneticisi **QR Noktaları → Turnike kartı** ekranında kart kimliğini kalıcı olarak yurda bağlar ve her röleye ayrı giriş/çıkış QR noktası atar. Kullanılmayan kanallar boş kalır; bir QR yalnız bir röleye atanır.
+
+Kart Bluetooth LE üzerinden Wi-Fi kurulumu yapar, kendi rastgele kimliğiyle kaydolur ve yalnız kendi yurt atamasını dinler. Atamayı NVS'ye kaydettikten sonra doğrudan kendi RTDB komut yolunu dinler. Röle darbesi **1000 ms** süreyle kart içinde kapanır. Oturum, son kullanma ve kalıcı sıra kontrolü eski komutların tekrar açmasını engeller. Sunucu, yön ve konum politikası dahil mevcut kayıt koşullarını tekrar denetler; istemciler röle komutu yazamaz.
+
+[Kurulum, Bluetooth alanları, pinler ve saha kontrolü](docs/ESP32_TURNIKE_KURULUM.md) · [Arduino kodu](firmware/ubsoft_turnstile/ubsoft_turnstile.ino)
+
+QR hareket kaydı ile fiziksel geçiş aynı şey değildir. Röle yanıtı alınamazsa öğrenci görevliye yönlendirilir; geçiş sensörü olmadan fiziksel geçiş kanıtlanamaz. GPIO12/15 strapping davranışı özel üretim kartta ayrıca doğrulanmalıdır. Bu sürüm yurtta tek kart ve en fazla sekiz QR–röle eşlemesi içerir.
+
+Backend: `functions/` (Node22), `database.rules.json`, `firebase.turnstile.emulator.json`. Avrupa RTDB `ubsoft-pdks-turnstile` mevcut varsayılan RTDB'den ayrıdır. Fonksiyonlar `europe-west1` bölgesindedir. Dağıtım: `firebase deploy --only functions:turnstile,database:turnstile,firestore:rules,hosting --project ubsoft-pdks`. Bluetooth kurulumu ayrı GATT istemcisiyle yapılır; Flutter web içinde doğrudan Bluetooth arayüzü bulunmaz.
+
+### Turnike doğrulaması
+
+- Mevcut 280 Flutter testi ve 3 yeni turnike testi geçti (360 px yerleşim, öğrenci erişimi, sınırlı bekleme/geciken yanıt).
+- 5 sunucu mantık testi, 14 RTDB erişim kontrolü ve 18 Firestore güvenlik kontrolü geçti.
+- Yerel emulator'da cihaz kaydı → yönetici ataması → röle1/röle8 komutu → kart yanıtı → komut temizliği ve çevrimdışı durum doğrulandı.
+- ESP32 Dev Module / Huge APP, core3.3.12 ile derlendi: yaklaşık 1,84 MB flash, 69 KB statik RAM. Bu rakamlar TLS çalışma zamanı yığın tüketimi veya gerçek donanım testi değildir.
+- Canlıya cihaz kimliği, Wi-Fi parolası veya test kartı ataması eklenmedi. Fiziksel kurulum kullanıcı tarafından yapılacak.
+
+Yerel sunucu testi: `npm ci --prefix functions` ve `npm test --prefix functions`.
+Erişim testi: `firebase emulators:exec --project demo-yurt-turnstile --config firebase.turnstile.emulator.json --only database "node functions/test/rules.cjs"`.
+Uçtan uca test: aynı komutta `--only auth,firestore,database,functions "node functions/test/integration.cjs"`.
+
+Canlı ekranın tarayıcı üzerinden görsel kontrolü, otomasyonun aktif adresi doğrulayamaması nedeniyle tamamlanamadı; 360 px yerleşim widget testinde doğrulandı. Sunucu etkinlik durumu ve Hosting derleme eşleşmesi ayrıca kontrol edildi.
+
 ## Roller ve ekranlar
 
 - **Öğrenci:** kendi kalıcı durumunu, hareket geçmişini ve izinlerini görür; giriş ve çıkış için ayrı QR okutur.

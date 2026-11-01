@@ -23,6 +23,7 @@ import 'package:ubsoft_pdks/presentation/features/misc/splash_page.dart';
 import 'package:ubsoft_pdks/presentation/features/profile/change_password_page.dart';
 import 'package:ubsoft_pdks/presentation/features/profile/profile_page.dart';
 import 'package:ubsoft_pdks/presentation/features/punch/scan_page.dart';
+import 'package:ubsoft_pdks/presentation/features/turnstile/turnstile_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_form_page.dart';
 import 'package:ubsoft_pdks/presentation/features/users/user_list_page.dart';
 import 'package:ubsoft_pdks/presentation/shell/app_shell.dart';
@@ -132,6 +133,11 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 _fade(state, const CheckpointListPage()),
             routes: <RouteBase>[
+              GoRoute(
+                path: 'turnike',
+                pageBuilder: (context, state) =>
+                    _fade(state, const TurnstilePage()),
+              ),
               GoRoute(
                 path: AppRoutes.checkpointNew,
                 name: AppRoutes.checkpointNewName,

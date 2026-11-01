@@ -57,3 +57,6 @@ rules-test/node_modules/
 
 # Word tarafından açık belge için oluşturulan geçici kilit dosyaları.
 ~$*.docx
+
+functions/node_modules/
+firmware/build/

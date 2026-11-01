@@ -1,0 +1,59 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "bindings": {
+      "$deviceId": {
+        ".read": "auth != null && auth.token.turnstile == true && auth.token.deviceId == $deviceId && auth.uid == root.child('registry').child($deviceId).child('uid').val()"
+      }
+    },
+    "turnstiles": {
+      "$tenantId": {
+        "$deviceId": {
+          "control": {
+            "commands": {
+              ".read": "auth != null && auth.token.turnstile == true && auth.token.deviceId == $deviceId && auth.uid == root.child('registry').child($deviceId).child('uid').val() && root.child('registry').child($deviceId).child('tenantId').val() == $tenantId && root.child('registry').child($deviceId).child('enabled').val() == true"
+            }
+          },
+          "status": {
+            ".write": "auth != null && auth.token.turnstile == true && auth.token.deviceId == $deviceId && auth.uid == root.child('registry').child($deviceId).child('uid').val() && root.child('registry').child($deviceId).child('tenantId').val() == $tenantId && root.child('registry').child($deviceId).child('enabled').val() == true",
+            ".validate": "newData.hasChildren(['sessionId','lastSeen','firmware'])",
+            "sessionId": {
+              ".validate": "newData.isString() && newData.val().matches(/^[a-f0-9]{32}$/)"
+            },
+            "lastSeen": {
+              ".validate": "newData.isNumber() && newData.val() <= now + 1000 && newData.val() >= now - 10000"
+            },
+            "firmware": {
+              ".validate": "newData.isString() && newData.val().length <= 32"
+            },
+            "$other": {
+              ".validate": false
+            }
+          },
+          "acks": {
+            "$eventId": {
+              ".write": "auth != null && auth.token.turnstile == true && auth.token.deviceId == $deviceId && auth.uid == root.child('registry').child($deviceId).child('uid').val() && root.child('registry').child($deviceId).child('tenantId').val() == $tenantId && root.child('registry').child($deviceId).child('enabled').val() == true && !data.exists() && newData.exists()",
+              ".validate": "newData.hasChildren(['status','relay','sequence','sessionId']) && root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child($eventId).exists() && newData.child('relay').val() == root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child($eventId).child('relay').val() && newData.child('sequence').val() == root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child($eventId).child('sequence').val() && newData.child('sessionId').val() == root.child('turnstiles').child($tenantId).child($deviceId).child('control').child('commands').child($eventId).child('sessionId').val()",
+              "status": {
+                ".validate": "newData.val() == 'pulse_started' || newData.val() == 'expired' || newData.val() == 'rejected' || newData.val() == 'persistence_failed'"
+              },
+              "relay": {
+                ".validate": "newData.isNumber()"
+              },
+              "sequence": {
+                ".validate": "newData.isNumber()"
+              },
+              "sessionId": {
+                ".validate": "newData.isString()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -36,6 +36,12 @@ async function main(){
     return [write(`${root}/attendance/${eid}`,{userId:who.uid,tenantId:tid,type,checkpointId:cp,checkpointCode:point,dateKey:'2026-11-01',verdict:'verified',schemaVersion:2,voided:false},['at']),
       write(`${root}/presence/${who.uid}`,{userId:who.uid,inside:type==='in',eventId:eid,revision},['at'])];
   }
+  const forgedRelay = movement(student,'in');
+  forgedRelay[0].update.fields.turnstile = val({status:'pulse_started'});
+  await check('öğrenci sahte röle onayı ekleyemez',false,student.token,forgedRelay);
+  const forgedDemo = movement(student,'in');
+  forgedDemo[0].update.fields.demoSource = val('fake');
+  await check('öğrenci sunucu demo alanı ekleyemez',false,student.token,forgedDemo);
   await check('okutma ve kalıcı durum birlikte yazılır',true,student.token,movement(student,'in'));
   await check('aynı yöne ikinci okutma reddedilir',false,student.token,movement(student,'in','in',2));
   await check('bekleme süresi sunucuda uygulanır',false,student.token,movement(student,'out','out',2));

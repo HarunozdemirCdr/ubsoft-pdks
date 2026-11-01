@@ -50,6 +50,15 @@ class CheckpointListPage extends ConsumerWidget {
                   )
                 : null,
           ),
+          if (ref.watch(currentUserProvider)?.role.isAdmin == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: OutlinedButton.icon(
+                onPressed: () => context.go('/noktalar/turnike'),
+                icon: const Icon(Icons.memory_rounded),
+                label: const Text('Turnike kartı · 8 röle'),
+              ),
+            ),
           AppSpacing.vLg,
 
           AsyncValueView<List<Checkpoint>>(
