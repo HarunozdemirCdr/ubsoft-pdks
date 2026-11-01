@@ -4,6 +4,10 @@
 Flutter Web, Riverpod, GoRouter, Firebase Auth, Firestore ve Firebase Hosting kullanır.
 Paket/Firebase proje kimliği (`ubsoft_pdks`, `ubsoft-pdks`) mevcut kurulumlarla uyumluluk için korunur.
 
+## ESP32 kart tanısı 2.2.2
+
+Web sürümü 2.2.1 olarak kalır. Kart yazılımında normal açılışta kullanılmayan Bluetooth belleği serbest bırakılır; `STATUS` komutu ve komut/akış/reddetme tanı satırları eklenir. Canlıda kartın yurt ataması, bağlantı bildirimi ve komutun sunucu tarafından oluşturulması doğrulandı; karttan açma yanıtı alınmayan saha durumu henüz kesin olarak çözülmüş sayılmaz. Güncel kart yazılımı yüklenip log alınmalıdır. Kurulum ve NVS bilgileri korunur; tam flash silme kullanılmamalıdır.
+
 ## 2.2.1 web bağlantısı düzeltmesi
 
 Eski Flutter derleme önbelleği, Cloud Functions eklentisini web kayıt dosyasına eklememişti. Bu nedenle kart kaydı Firebase'de mevcut olsa da uygulamadaki bağlama düğmesi sunucuya ulaşamıyordu. Derleme önbelleği yenilenerek eklenti kaydı yeniden üretildi. Eksik eklenti hatası artık internet hatası olarak gösterilmez.

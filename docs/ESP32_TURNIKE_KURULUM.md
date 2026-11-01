@@ -94,3 +94,13 @@ Blaze gerekir. Cloud Functions, RTDB, Firestore ve zamanlanmış temizleme tüke
 Her kullanılan röle için doğru giriş/çıkış QR'ını deneyin. Diğer yedi röle kapalı kalmalı, ilgili röle yaklaşık 1 saniye sonra internet olmasa bile kapanmalıdır. Aynı komutun tekrar gönderilmesi, bağlantı kopup gelmesi ve kartın yeniden başlatılması eski bir açmayı tekrarlamamalıdır. Yanlış/kapalı QR, devre dışı kart, yetkisiz kullanıcı, bağlantı yokluğu ve boş röle eşlemesini deneyin. Bir röle açıkken Wi-Fi'yi kesin, beslemeyi ayrı test edin. GPIO12/15 boot seviyesi ile sekiz kanalın reset davranışını ölçün.
 
 Derleme ve yazılım testleri gerçek kart, röle sürücüsü ve turnike kabul testinin yerine geçmez. Fiziksel kart bu çalışma ortamına bağlı olmadığından tezgâh testi yapılmış sayılmaz.
+
+## Kart tanı sürümü 2.2.2
+
+Yurt ataması ve bağlantı bildirimi doğrulanmasına rağmen komutun `queued` durumunda kalması için tanı çıktıları eklendi. Kesin fiziksel röle arızası veya komut reddinin nedeni henüz belirlenmiş değildir.
+
+Normal Wi-Fi açılışında kullanılmayan Bluetooth controller/host belleği, TLS ve JSON işlemlerine ayrılmak üzere serbest bırakılır. Wi-Fi kurulum açılışında BLE kullanılmaya devam eder; `WIFI_RESET` yeniden başlattığı için sonraki kurulum korunur. [Espressif bellek API'si](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/bluetooth/controller_vhci.html#_CPPv418esp_bt_mem_release13esp_bt_mode_t).
+
+Seri Monitör: 115200 baud ve New Line. `STATUS` gönderildiğinde Wi-Fi/Firebase durumu, UTC saati, boş RAM, son akış zamanı ve röle sıra sayaçları yazdırılır. Parola veya cihaz gizli anahtarı yazdırılmaz. Okutma sırasında `Akis`, `Komut alindi`, reddetme nedeni veya `ROLE TETIKLENDI` satırları görünür. `ROLE TETIKLENDI` yalnız GPIO yazma işlemini bildirir; röle kontağının fiziksel durumunu ölçmez.
+
+Yüklemede **Huge APP** ve **Erase All Flash Before Sketch Upload: Disabled** seçilmelidir. NVS kimliği, yurt, Wi-Fi ve sıra sayaçlarının silinmesi gerekmez. Sadece bu sürümün derlenmesi, kart üzerinde röle sorununun çözüldüğü anlamına gelmez; yeni log ile saha doğrulaması gerekir.
