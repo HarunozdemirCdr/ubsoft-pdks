@@ -1,0 +1,27 @@
+name: ESP32 command decoder
+on:
+  push:
+    branches: [main, 'codex/**']
+    paths:
+      - 'firmware/**'
+      - 'test/firmware/**'
+      - 'tool/test_firmware_commands.py'
+      - '.github/workflows/firmware-json.yml'
+  pull_request:
+    paths:
+      - 'firmware/**'
+      - 'test/firmware/**'
+      - 'tool/test_firmware_commands.py'
+      - '.github/workflows/firmware-json.yml'
+jobs:
+  decoder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: bblanchon/ArduinoJson
+          ref: v7.4.3
+          path: build/ArduinoJson
+      - name: Exercise actual firmware decoder with real ArduinoJson
+        run: python3 tool/test_firmware_commands.py --include build/ArduinoJson/src

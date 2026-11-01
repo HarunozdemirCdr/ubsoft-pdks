@@ -4,6 +4,12 @@
 Flutter Web, Riverpod, GoRouter, Firebase Auth, Firestore ve Firebase Hosting kullanır.
 Paket/Firebase proje kimliği (`ubsoft_pdks`, `ubsoft-pdks`) mevcut kurulumlarla uyumluluk için korunur.
 
+## Kart 2.2.4 — gelen röle komutunun işlenmesi
+
+Sahada görülen 210 baytlık gerçek çıkış komutu, RTDB tarafından hareket kimliğinin altında nesne olarak gönderilmişti. Kod `JsonPairConst` değerini `is<JsonObject>()` ile denetliyordu; ArduinoJson bu salt okunur → değiştirilebilir dönüşüm için daima `false` döndürür. Bu nedenle paket karta gelse bile komut işleyicisine ulaşmıyordu. Ortak çözümleyici `JsonObjectConst` kullanacak şekilde düzeltildi. Tek komut, hareket kimliğiyle sarılı komut, çoklu komut ve bağlantı kontrolü aynı çözümleyiciden geçer; boş/silinen kayıtlar yok sayılır.
+
+Gerçek firmware fonksiyonunu kaynak dosyadan çıkarıp ArduinoJson 7.4.3 ile çalıştıran C++ regresyon testi eklendi: `python tool/test_firmware_commands.py --include <ArduinoJson/src>`. Linux CI bu testi otomatik çalıştırır. ESP32 derlemesi ayrıca yapılır. Fiziksel röle kontağının açılması, kullanıcı kartı yükleyip tekrar QR okuttuğunda doğrulanabilir. Periyodik status yazımı geri eklenmemiştir. Web/sunucu sürümü 2.2.3 olarak kalır.
+
 ## 2.2.3 — isteğe bağlı kart bağlantı kontrolü
 
 2.2.3 kartında 5 saniyelik `status` yazımı kaldırıldı. Açılışta/yeni oturumda bir metadata kaydı ve yönetici **Bağlantıyı kontrol et** düğmesine bastığında tek yanıt vardır. QR komutları ve gerekli röle yanıtları korunur. Yerel `STATUS` yalnız seri çıktı verir. Bağlantı kontrolü röle tetiklemez; benzersiz isteğe yanıt en fazla 8 saniye beklenir, istek ve dinleyici temizlenir. Arayüz son kontrol sonucunu gösterir; kendiliğinden sorgulamaz. Durum yazımının gerçek kartta durması yeni firmware yüklenmesini gerektirir; sunucu eski kartlarla uyumludur.

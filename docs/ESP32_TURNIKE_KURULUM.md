@@ -110,3 +110,9 @@ Yüklemede **Huge APP** ve **Erase All Flash Before Sketch Upload: Disabled** se
 Her 5 saniyelik `status` yazımı kaldırıldı. Kart açılışta/yeni oturumda bir kez kimlik/oturum kaydı yazar; sonrasında yalnız yöneticinin **Bağlantıyı kontrol et** isteğine karşılık durum yanıtı yazar. Yönetici isteği röle komutu değildir; hiçbir GPIO tetiklemez. Her kontrolün benzersiz istek kimliği ve kısa süresi vardır. Eski bir yanıt çevrimiçi kabul edilmez. En fazla 8 saniye yanıt beklenir, kontrol isteği temizlenir ve dinleyici kapatılır. Kullanıcı arayüzü son kontrol sonucunu gösterir; arka planda yenilemez.
 
 QR anında komut ve gerekli açma yanıtı yazımları devam eder. Yerel `STATUS` seri komutu sadece cihaz bilgisini yazdırır, Firebase yazımı yapmaz. Periyodik yazımın gerçek kartta bitmesi için **2.2.3 kart yazılımı yüklenmelidir**. Sunucu eski kartlarla geçiş uyumluluğunu korur; eski kart yazılımı yüklenmiş kalırsa eski 5 saniyelik davranış devam eder. NVS yurt ve Wi-Fi bilgileri korunur. Rölenin önceki saha sorunu bu değişiklikle çözülmüş varsayılmaz.
+
+## Kart 2.2.4 — komut çözümleme düzeltmesi
+
+SSE `put /` içinde hareket kimliğine göre sarılan komutlar yanlış `is<JsonObject>()` kontrolü nedeniyle atlanıyordu. Salt okunur değerler `is<JsonObjectConst>()` ile kontrol edilerek komut işleyicisine aktarılır. [ArduinoJson tür kontrolü açıklaması](https://arduinojson.org/v7/api/jsonvariantconst/is/).
+
+Yükleme sonrası açılışta **Surum=2.2.4** görünmelidir. Uygulamanın kabul ettiği yeni QR hareketinde `Komut alindi` ve ardından `ROLE TETIKLENDI` beklenir. Son gözlenen çıkış komutu röle6/GPIO12 içindi; uygulamadaki güncel eşleme hangi fiziksel çıkışın çalışacağını belirler. Yeni sürüm periyodik `status` yazmaz, aynı kimlik/yurt/Wi-Fi bilgilerini kullanır. Yükleme ayarları Huge APP ve tam flash silme Disabled olarak korunmalıdır.

@@ -60,7 +60,7 @@ void ack(const Pending &p,const char *status){
 // Only a new session or an explicit admin request writes device status.
 void publishStatus(const String &requestId){
   JsonDocument d;d["sessionId"]=sessionId;d["lastSeen"][".sv"]="timestamp";
-  d["firmware"]="2.2.3";d["mode"]="on_demand";
+  d["firmware"]="2.2.4";d["mode"]="on_demand";
   if(!requestId.isEmpty())d["requestId"]=requestId;
   String json;serializeJson(d,json);
   database.set<object_t>(client,base+"/status",object_t(json),quietResult,"statusReply");
@@ -88,6 +88,21 @@ void processMessage(JsonObjectConst message){
   }
   if(message["eventId"].is<String>())offer(message);
 }
+// BEGIN COMMAND_MESSAGE_VISITOR
+// RTDB returns either one command or an object keyed by command ID.
+// JsonPairConst values MUST be tested as JsonObjectConst, never JsonObject:
+// ArduinoJson intentionally returns false for mutable casts from const values.
+void visitCommandMessages(JsonVariantConst payload, void (*handler)(JsonObjectConst)){
+  if(!payload.is<JsonObjectConst>())return;
+  const JsonObjectConst object=payload.as<JsonObjectConst>();
+  if(object["eventId"].is<const char *>()||object["kind"]=="probe"){
+    handler(object);return;
+  }
+  for(JsonPairConst entry:object){
+    if(entry.value().is<JsonObjectConst>())handler(entry.value().as<JsonObjectConst>());
+  }
+}
+// END COMMAND_MESSAGE_VISITOR
 void streamResult(AsyncResult &r){
   if(r.isError()){Serial.printf("Stream error %d\n",r.error().code());return;}
   if(!r.available())return;
@@ -108,8 +123,7 @@ void streamResult(AsyncResult &r){
     if(d["bound"]==true){String tid=d["tenantId"].as<String>();if(safeId(tid)&&prefs.putString("tenant",tid)>0){Serial.println("Yurt atamasi kaydedildi. Yeniden baslatiliyor.");ESP.restart();}}
     return;
   }
-  if(d["eventId"].is<String>()||d["kind"]=="probe")processMessage(d.as<JsonObjectConst>());
-  else if(d.is<JsonObject>())for(JsonPairConst kv:d.as<JsonObjectConst>())if(kv.value().is<JsonObject>())processMessage(kv.value().as<JsonObjectConst>());
+  visitCommandMessages(d.as<JsonVariantConst>(),processMessage);
 }
 class SaveCallbacks:public BLECharacteristicCallbacks {void onWrite(BLECharacteristic *c)override{if(c->getValue()=="SAVE")saveWifi=true;}};
 class ServerCallbacks:public BLEServerCallbacks{void onDisconnect(BLEServer*)override{BLEDevice::startAdvertising();}};
@@ -183,7 +197,7 @@ void loop(){
     initializeApp(client,firebase,getAuth(*userAuth),quietResult,"auth");firebase.getApp<RealtimeDatabase>(database);database.url(DB_URL);initialized=true;
   }
   firebase.loop();if(!firebase.ready())return;
-  if(!connectionReported){connectionReported=true;Serial.printf("Firebase baglandi. Surum=2.2.3 UTC_ms=%lld RAM=%u\n",(long long)nowMs(),ESP.getFreeHeap());}
+  if(!connectionReported){connectionReported=true;Serial.printf("Firebase baglandi. Surum=2.2.4 UTC_ms=%lld RAM=%u\n",(long long)nowMs(),ESP.getFreeHeap());}
   if(!streaming){
     base="/turnstiles/"+tenantId+"/"+deviceId;
     database.get(streamClient,tenantId.isEmpty()?"/bindings/"+deviceId:base+"/control/commands",streamResult,true,"stream");streaming=true;Serial.println("Komut dinleme yolu: "+(tenantId.isEmpty()?"/bindings/"+deviceId:base+"/control/commands"));
