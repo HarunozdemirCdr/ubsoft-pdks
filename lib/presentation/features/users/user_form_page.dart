@@ -21,7 +21,7 @@ import 'package:ubsoft_pdks/presentation/widgets/info_hint.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
-/// Öğrenci oluşturma ve düzenleme.
+/// Yurt kullanıcısı oluşturma ve düzenleme.
 ///
 /// E-posta ve şifre yalnız **oluştururken** sorulur. Sonradan değiştirilemez:
 /// e-posta hesabın kimliğidir, şifreyi ise yalnız sahibi bilmelidir —
@@ -29,7 +29,7 @@ import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 class UserFormPage extends ConsumerStatefulWidget {
   const UserFormPage({this.userId, super.key});
 
-  /// `null` ise yeni öğrenci.
+  /// `null` ise yeni kullanıcı.
   final String? userId;
 
   @override
@@ -95,7 +95,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
       );
 
       if (!mounted) return;
-      Toast.result(created, successMessage: 'Öğrenci eklendi.');
+      Toast.result(created, successMessage: 'Kullanıcı eklendi.');
       if (created.isOk) context.go(AppRoutes.users);
       return;
     }
@@ -117,13 +117,13 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
         _role,
       );
       if (!mounted) return;
-      Toast.result(roleResult, successMessage: 'Öğrenci güncellendi.');
+      Toast.result(roleResult, successMessage: 'Kullanıcı güncellendi.');
       if (roleResult.isOk) context.go(AppRoutes.users);
       return;
     }
 
     if (!mounted) return;
-    Toast.result(saved, successMessage: 'Öğrenci güncellendi.');
+    Toast.result(saved, successMessage: 'Kullanıcı güncellendi.');
     if (saved.isOk) context.go(AppRoutes.users);
   }
 
@@ -142,11 +142,11 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
     );
 
     return AppScaffold(
-      title: _isNew ? 'Yeni Öğrenci' : 'Öğrenciyi Düzenle',
+      title: _isNew ? 'Yeni Kullanıcı' : 'Kullanıcıyı Düzenle',
       showBackButton: true,
       scrollable: true,
       bottomBar: AppButton.primaryWide(
-        label: _isNew ? 'Öğrenciyi ekle' : 'Değişiklikleri kaydet',
+        label: _isNew ? 'Kullanıcıyı ekle' : 'Değişiklikleri kaydet',
         isLoading: busy,
         onPressed: () => _submit(existing),
       ),
@@ -175,7 +175,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
               enabled: _isNew,
               keyboardType: TextInputType.emailAddress,
               helper: _isNew
-                  ? 'Öğrenci bu adresle giriş yapacak.'
+                  ? 'Kullanıcı bu adresle giriş yapacak.'
                   : 'E-posta adresi hesabın kimliğidir, değiştirilemez.',
               validator: _isNew ? Validators.email : null,
             ),
@@ -190,7 +190,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
               AppSpacing.vXs,
               const InfoNote(
                 message:
-                    'Bu şifreyi öğrenciye iletin. Kendi şifresini profil '
+                    'Bu şifreyi ilgili kişiye iletin. Kendi şifresini profil '
                     'ekranından değiştirebilir.',
               ),
             ],
@@ -206,8 +206,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
             AppTextField(
               label: 'Açıklama',
               controller: _note,
-              hint: 'Oda / öğrenim notu',
-              helper: 'Listelerde ve raporun öğrenci başlığında görünür.',
+              hint: 'Belletmen, müdür yardımcısı veya öğrenim notu',
+              helper: 'Kullanıcı listelerinde ve öğrenci raporlarında görünür.',
               validator: (String? v) =>
                   Validators.maxLength(v, 60, field: 'Açıklama'),
             ),
@@ -361,7 +361,7 @@ class _ExistingUserActions extends ConsumerWidget {
                 color: context.colors.error,
               ),
               title: Text(
-                'Öğrenciyi sil',
+                'Kullanıcıyı sil',
                 style: AppTypography.bodyStrong(context.colors.error),
               ),
               subtitle: const Text(
@@ -381,7 +381,7 @@ class _ExistingUserActions extends ConsumerWidget {
   ) async {
     final bool ok = await ConfirmDialog.show(
       context,
-      title: 'Öğrenci silinsin mi?',
+      title: 'Kullanıcı silinsin mi?',
       message:
           '${user.displayName} listeden kaldırılacak ve giriş yapamayacak. '
           'Geçmiş devam kayıtları raporlarda görünmeye devam eder.',
@@ -393,7 +393,7 @@ class _ExistingUserActions extends ConsumerWidget {
     final Result<void> result = await controller.deleteUser(user);
     if (!context.mounted) return;
 
-    Toast.result(result, successMessage: 'Öğrenci silindi.');
+    Toast.result(result, successMessage: 'Kullanıcı silindi.');
     if (result.isOk) context.go(AppRoutes.users);
   }
 }

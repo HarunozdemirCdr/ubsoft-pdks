@@ -89,7 +89,11 @@ abstract final class AppConfig {
   ///
   /// Bir dakika, gerçek bir giriş–çıkış arasında asla görülmeyecek kadar
   /// kısa; kazara okutmayı yakalayacak kadar uzun.
-  static const Duration punchCooldown = Duration(minutes: 1);
+  static const Duration punchCooldown = Duration.zero;
+
+  // Kameranın aynı QR kodunu art arda bildirmesini süzer. Gerçek giriş ve
+  // çıkışlar arasında iş kuralı kaynaklı bekleme uygulanmaz.
+  static const Duration scannerRepeatDebounce = Duration(milliseconds: 1200);
 
   /// Konum alınırken beklenecek en uzun süre.
   static const Duration locationTimeout = Duration(seconds: 12);

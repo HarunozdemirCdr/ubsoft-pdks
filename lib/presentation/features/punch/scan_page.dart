@@ -47,7 +47,7 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     if (_lastCode != code) return false;
     final DateTime? at = _lastCodeAt;
     if (at == null) return false;
-    return DateTime.now().difference(at) < AppConfig.scanDebounce;
+    return DateTime.now().difference(at) < AppConfig.scannerRepeatDebounce;
   }
 
   void _remember(String code) {

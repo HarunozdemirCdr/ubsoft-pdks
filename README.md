@@ -4,6 +4,9 @@
 Flutter Web, Riverpod, GoRouter, Firebase Auth, Firestore ve Firebase Hosting kullanır.
 Paket/Firebase proje kimliği (`ubsoft_pdks`, `ubsoft-pdks`) mevcut kurulumlarla uyumluluk için korunur.
 
+> macOS ve Windows üzerinde ortak çalışma düzeni için
+> [GELISTIRME.md](GELISTIRME.md) dosyasına bakın.
+
 ## Kart 2.2.4 — gelen röle komutunun işlenmesi
 
 Sahada görülen 210 baytlık gerçek çıkış komutu, RTDB tarafından hareket kimliğinin altında nesne olarak gönderilmişti. Kod `JsonPairConst` değerini `is<JsonObject>()` ile denetliyordu; ArduinoJson bu salt okunur → değiştirilebilir dönüşüm için daima `false` döndürür. Bu nedenle paket karta gelse bile komut işleyicisine ulaşmıyordu. Ortak çözümleyici `JsonObjectConst` kullanacak şekilde düzeltildi. Tek komut, hareket kimliğiyle sarılı komut, çoklu komut ve bağlantı kontrolü aynı çözümleyiciden geçer; boş/silinen kayıtlar yok sayılır.

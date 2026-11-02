@@ -124,7 +124,7 @@ void main() {
       );
 
       expect(result, isA<PunchRejected>());
-      expect(result.failureOrNull!.message, contains('Açık bir girişiniz yok'));
+      expect(result.failureOrNull!.message, contains('Zaten çıkış yaptınız'));
     });
 
     test('pasif nokta reddedilir', () {
@@ -200,15 +200,13 @@ void main() {
       expect(message, isNot(contains('Zaten giriş yapmışsınız')));
     });
 
-    test('süre dolduktan sonra normal kurallar işler', () {
-      // Giriş+çıkış noktası: bir dakika sonra bu okutma gerçek bir çıkıştır.
+    test('varsayılan ayarda ters yön hemen kabul edilir', () {
       final PunchResolution result = ResolvePunch.call(
         checkpoint: TestData.checkpoint(kind: CheckpointKind.both),
         today: dayPunchedAt(punchedAt),
         settings: const TenantSettings(),
         location: _verified,
-        now: punchedAt.add(const Duration(minutes: 2)),
-        cooldown: cooldown,
+        now: punchedAt.add(const Duration(milliseconds: 1)),
       );
 
       expect(result, isA<PunchAccepted>());

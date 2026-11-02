@@ -271,7 +271,6 @@ final class DormRepository extends FirestoreRepositoryBase {
         ).copyWith(open: before.inside ?? type.isExit),
         settings: currentTenant.settings,
         location: check,
-        cooldown: Duration.zero,
       );
       if (resolution is PunchRejected) throw resolution.failure;
       final StudentLeave? permitted = lock.exists

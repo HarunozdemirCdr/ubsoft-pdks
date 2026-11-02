@@ -58,7 +58,7 @@ final class PunchRejected extends PunchResolution {
 /// 5. Konum kuralları sağlanıyor mu?
 ///
 /// İkinci maddenin üçüncüden **önce** gelmesi bilinçlidir. Kazara ikinci
-/// okutmada "Zaten giriş yapmışsınız. Önce çıkış kodunu okutmalısınız."
+/// okutmada "Zaten giriş yaptınız. Önce çıkış kodunu okutmalısınız."
 /// demek, kişiye yapmaması gereken bir şeyi tarif eder ve panikletir; oysa
 /// olan biten yalnızca kodun iki kez okunmasıdır.
 abstract final class ResolvePunch {
@@ -113,14 +113,16 @@ abstract final class ResolvePunch {
     if (type.isEntry && today.open) {
       return const PunchResolution.rejected(
         PunchFailure(
-          'Zaten giriş yapmışsınız. Önce çıkış kodunu okutmalısınız.',
+          'Zaten giriş yaptınız. Önce çıkış kodunu okutmalısınız.',
+          code: 'already-entered',
         ),
       );
     }
     if (type.isExit && !today.open) {
       return const PunchResolution.rejected(
         PunchFailure(
-          'Açık bir girişiniz yok. Önce giriş kodunu okutmalısınız.',
+          'Zaten çıkış yaptınız. Önce giriş kodunu okutmalısınız.',
+          code: 'already-exited',
         ),
       );
     }

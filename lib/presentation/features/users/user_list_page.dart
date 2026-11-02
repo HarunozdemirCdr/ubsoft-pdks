@@ -20,7 +20,7 @@ import 'package:ubsoft_pdks/presentation/widgets/empty_state.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 
-/// Öğrenci listesi.
+/// Yurt kullanıcıları listesi.
 class UserListPage extends ConsumerWidget {
   const UserListPage({super.key});
 
@@ -30,7 +30,7 @@ class UserListPage extends ConsumerWidget {
     final Tenant? tenant = ref.watch(currentTenantProvider);
 
     return AppScaffold(
-      title: 'Öğrenciler',
+      title: 'Kullanıcılar',
       maxContentWidth: AppWidths.wide,
       scrollable: true,
       body: Column(
@@ -59,11 +59,10 @@ class UserListPage extends ConsumerWidget {
             builder: (List<AppUser> users) => users.isEmpty
                 ? EmptyState(
                     icon: Icons.people_outline_rounded,
-                    title: 'Henüz öğrenci yok',
+                    title: 'Henüz kullanıcı yok',
                     description:
-                        'Öğrenci ekleyin; e-posta ve şifresiyle giriş yapıp '
-                        'QR okutmaya başlasın.',
-                    actionLabel: canCreate ? 'Öğrenci ekle' : null,
+                        'Öğrenci, belletmen veya müdür yardımcısı ekleyin.',
+                    actionLabel: canCreate ? 'Kullanıcı ekle' : null,
                     onAction: () => context.go(AppRoutes.userNewPath),
                   )
                 : Column(

@@ -96,7 +96,7 @@ abstract final class AppNavigation {
       requires: <AppPermission>[AppPermission.reportView],
     ),
     NavDestination(
-      label: 'Öğrenciler',
+      label: 'Kullanıcılar',
       icon: Icons.people_outline_rounded,
       selectedIcon: Icons.people_rounded,
       path: AppRoutes.users,
