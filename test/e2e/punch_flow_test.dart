@@ -126,7 +126,7 @@ void main() {
     expect(state, isA<PunchFailed>());
     expect(
       (state as PunchFailed).failure.message,
-      contains('Zaten içeridesiniz'),
+      contains('Zaten giriş yaptınız'),
     );
 
     // Reddedilen okutma kayıt bırakmaz.

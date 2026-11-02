@@ -130,7 +130,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                     return physical &&
                         attention &&
                         dormSearchKey(
-                          '${u.displayName} ${u.room} ${u.studentNumber}',
+                          u.displayName,
                         ).contains(dormSearchKey(_search.text));
                   }).toList()..sort((a, b) {
                     final urgent = (overdue(b) ? 1 : 0).compareTo(
@@ -686,15 +686,6 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
               selected?.displayName ?? user?.displayName ?? 'Öğrenci',
               style: AppTypography.h2(context.colors.onSurface),
             ),
-            if (selected != null &&
-                (selected.studentNumber.isNotEmpty || selected.room.isNotEmpty))
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  selected.subtitle,
-                  style: AppTypography.small(context.colors.onSurfaceVariant),
-                ),
-              ),
             const SizedBox(height: 8),
             Text(
               'Bir güne dokunarak bütün giriş ve çıkışları açın.',
@@ -1378,7 +1369,6 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
                             Text(
                               '${AppDate.dateTime(l.from)} — ${AppDate.dateTime(l.until)}',
                             ),
-                            Text(l.reason),
                             Text(
                               l.revoked
                                   ? 'İptal edildi'
@@ -1451,13 +1441,32 @@ class _LeaveDialog extends StatefulWidget {
 
 class _LeaveDialogState extends State<_LeaveDialog> {
   final _form = GlobalKey<FormState>();
-  final _reason = TextEditingController();
+  final _search = TextEditingController();
   String? _uid;
   DateTime _from = DateTime.now();
   DateTime _until = DateTime.now().add(const Duration(days: 1));
+
+  List<AppUser> get _visibleStudents {
+    final query = _search.text.trim().toLowerCase();
+    if (query.isEmpty) return widget.students;
+    return widget.students
+        .where(
+          (user) =>
+              user.uid == _uid ||
+              user.displayName.toLowerCase().contains(query),
+        )
+        .toList();
+  }
+
+  int get _dayCount {
+    final minutes = _until.difference(_from).inMinutes;
+    if (minutes <= 0) return 0;
+    return (minutes / Duration.minutesPerDay).ceil();
+  }
+
   @override
   void dispose() {
-    _reason.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -1496,11 +1505,20 @@ class _LeaveDialogState extends State<_LeaveDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              TextField(
+                controller: _search,
+                decoration: const InputDecoration(
+                  labelText: 'Öğrenci ara',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+              const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 isExpanded: true,
                 decoration: const InputDecoration(labelText: 'Öğrenci'),
                 items: [
-                  for (final u in widget.students)
+                  for (final u in _visibleStudents)
                     DropdownMenuItem(
                       value: u.uid,
                       child: Text(
@@ -1522,12 +1540,14 @@ class _LeaveDialogState extends State<_LeaveDialog> {
                 subtitle: Text(AppDate.dateTime(_until)),
                 onTap: () => _pick(false),
               ),
-              TextFormField(
-                controller: _reason,
-                maxLength: 500,
-                decoration: const InputDecoration(labelText: 'İzin açıklaması'),
-                validator: (v) =>
-                    (v ?? '').trim().isEmpty ? 'Açıklama girin.' : null,
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  _dayCount == 0
+                      ? 'Geçerli bir tarih aralığı seçin'
+                      : 'İzin süresi: $_dayCount gün',
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             ],
           ),
@@ -1552,7 +1572,7 @@ class _LeaveDialogState extends State<_LeaveDialog> {
               userId: _uid!,
               from: _from,
               until: _until,
-              reason: _reason.text.trim(),
+              reason: 'İzin',
             ),
           );
         },

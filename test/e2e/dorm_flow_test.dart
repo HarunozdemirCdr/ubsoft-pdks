@@ -82,7 +82,17 @@ void main() {
   });
   test('aynı yöndeki ikinci hareket transaction içinde reddedilir', () async {
     expect((await punch(entry: true)).isOk, true);
-    expect((await punch(entry: true)).isErr, true);
+    final secondEntry = await punch(entry: true);
+    expect(secondEntry.isErr, true);
+    expect(
+      secondEntry.failureOrNull!.message,
+      contains('Zaten giriş yaptınız'),
+    );
+
+    expect((await punch(entry: false)).isOk, true);
+    final secondExit = await punch(entry: false);
+    expect(secondExit.isErr, true);
+    expect(secondExit.failureOrNull!.message, contains('Zaten çıkış yaptınız'));
   });
   test(
     'ilk hareket çıkış olabilir; bilinmeyen durum içeride varsayılmaz',

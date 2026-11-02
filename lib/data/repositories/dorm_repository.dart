@@ -92,10 +92,8 @@ final class DormRepository extends FirestoreRepositoryBase {
     StudentLeave value,
     String actor,
   ) => guardVoid(() async {
-    if (!value.until.isAfter(value.from) || value.reason.trim().isEmpty) {
-      throw const ValidationFailure(
-        'İzin bitişi başlangıçtan sonra olmalı ve açıklama girilmeli.',
-      );
+    if (!value.until.isAfter(value.from)) {
+      throw const ValidationFailure('İzin bitişi başlangıçtan sonra olmalı.');
     }
     final DocumentReference<Map<String, dynamic>> lock = subcollection(
       tid,
@@ -127,7 +125,7 @@ final class DormRepository extends FirestoreRepositoryBase {
         'userId': value.userId,
         'from': Timestamp.fromDate(value.from),
         'until': Timestamp.fromDate(value.until),
-        'reason': value.reason.trim(),
+        'reason': value.reason.trim().isEmpty ? 'İzin' : value.reason.trim(),
         'revoked': false,
         'actor': actor,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -257,8 +255,9 @@ final class DormRepository extends FirestoreRepositoryBase {
       if (before.inside != null && before.inside == type.isEntry) {
         throw PunchFailure(
           type.isEntry
-              ? 'Zaten içeridesiniz. Çıkarken çıkış QR kodunu okutun.'
-              : 'Zaten dışarıdasınız. Döndüğünüzde giriş QR kodunu okutun.',
+              ? 'Zaten giriş yaptınız. Önce çıkış QR kodunu okutmalısınız.'
+              : 'Zaten çıkış yaptınız. Önce giriş QR kodunu okutmalısınız.',
+          code: type.isEntry ? 'already-entered' : 'already-exited',
         );
       }
       final resolution = ResolvePunch.call(

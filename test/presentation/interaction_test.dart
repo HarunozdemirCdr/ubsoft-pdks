@@ -528,7 +528,7 @@ void main() {
   });
 
   group('Öğrenci formu', () {
-    testWidgets('yeni öğrenci Auth hesabı ve Firestore kaydı üretir', (
+    testWidgets('yeni kullanıcı Auth hesabı ve Firestore kaydı üretir', (
       WidgetTester tester,
     ) async {
       final TestScope scope = await adminScope();
@@ -547,7 +547,7 @@ void main() {
 
       // Alan etiketleri girdinin ÜSTÜNDE ayrı bir Text'tir (labelText değil);
       // bu yüzden alanlar form sırasına göre bulunur.
-      await tester.enterText(find.byType(TextField).at(0), 'Yeni Öğrenci');
+      await tester.enterText(find.byType(TextField).at(0), 'Yeni Kullanıcı');
       await tester.enterText(
         find.byType(TextField).at(1),
         'yeni@beyazyapi.com',
@@ -556,13 +556,15 @@ void main() {
       await tester.enterText(
         find.byWidgetPredicate(
           (Widget w) =>
-              w is TextField && w.decoration?.hintText == 'Oda / öğrenim notu',
+              w is TextField &&
+              w.decoration?.hintText ==
+                  'Belletmen, müdür yardımcısı veya öğrenim notu',
         ),
-        'Oda / öğrenim notu',
+        'Belletmen, müdür yardımcısı veya öğrenim notu',
       );
       await settle(tester);
 
-      final Finder save = find.widgetWithText(AppButton, 'Öğrenciyi ekle');
+      final Finder save = find.widgetWithText(AppButton, 'Kullanıcıyı ekle');
       await tester.ensureVisible(save);
       await tester.tap(save);
       await settle(tester);
@@ -576,11 +578,11 @@ void main() {
 
       expect(users.docs, hasLength(1));
       final Map<String, dynamic> saved = users.docs.single.data();
-      expect(saved['displayName'], 'Yeni Öğrenci');
+      expect(saved['displayName'], 'Yeni Kullanıcı');
       expect(saved['role'], 'staff');
       expect(saved['status'], 'active');
       // Sicil no ve görev alanları kaldırıldı; yerlerine tek bir açıklama.
-      expect(saved['note'], 'Oda / öğrenim notu');
+      expect(saved['note'], 'Belletmen, müdür yardımcısı veya öğrenim notu');
       expect(saved.containsKey('employeeNo'), isFalse);
 
       // Kaydın ardından öğrenci listesine dönülür.
@@ -611,7 +613,7 @@ void main() {
       );
       await settle(tester);
 
-      final Finder save = find.widgetWithText(AppButton, 'Öğrenciyi ekle');
+      final Finder save = find.widgetWithText(AppButton, 'Kullanıcıyı ekle');
       await tester.ensureVisible(save);
       await tester.tap(save);
       await settle(tester);

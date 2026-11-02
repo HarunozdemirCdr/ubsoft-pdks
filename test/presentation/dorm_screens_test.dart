@@ -64,4 +64,40 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets(
+    'izin formu isimle arar, gün sayısını gösterir ve açıklama istemez',
+    (tester) async {
+      await initTestLocale();
+      final scope = await buildScope(
+        signedInAs: TestData.user(uid: TestData.adminUid, role: UserRole.admin),
+        extraUsers: [
+          TestData.user(uid: 'ayse', name: 'Ayşe Nur Yılmaz'),
+          TestData.user(uid: 'zeynep', name: 'Zeynep Demir'),
+        ],
+      );
+      addTearDown(scope.dispose);
+      scope.retain(scope.container.listen(usersProvider, (_, _) {}));
+      await settle(tester);
+
+      await tester.pumpWidget(
+        wrapPage(const DormLeavePage(), container: scope.container),
+      );
+      await settle(tester);
+      await tester.tap(find.text('Öğrenci izni tanımla'));
+      await settle(tester);
+
+      expect(find.text('Öğrenci ara'), findsOneWidget);
+      expect(find.text('İzin süresi: 1 gün'), findsOneWidget);
+      expect(find.text('İzin açıklaması'), findsNothing);
+
+      await tester.enterText(find.byType(TextField).last, 'Zeynep');
+      await settle(tester);
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await settle(tester);
+      expect(find.text('Zeynep Demir'), findsOneWidget);
+      expect(find.text('Ayşe Nur Yılmaz'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

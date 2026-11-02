@@ -308,10 +308,7 @@ class DormStudentCard extends StatelessWidget {
     final elapsed = presence.at == null
         ? Duration.zero
         : now.difference(presence.at!);
-    final subtitle = [
-      if (user.studentNumber.isNotEmpty) 'No ${user.studentNumber}',
-      if (user.room.isNotEmpty) 'Oda ${user.room}',
-    ].join(' · ');
+    const subtitle = '';
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(AppSpacing.md),

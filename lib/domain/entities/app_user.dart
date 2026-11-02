@@ -84,12 +84,7 @@ class AppUser extends Equatable {
   }
 
   /// Listelerde ad altında gösterilen ikinci satır.
-  String get subtitle => <String>[
-    if (studentNumber.isNotEmpty) 'No: $studentNumber',
-    if (room.isNotEmpty) 'Oda: $room',
-    if ((note ?? '').isNotEmpty) note!,
-    if (studentNumber.isEmpty && room.isEmpty && (note ?? '').isEmpty) email,
-  ].join(' · ');
+  String get subtitle => (note ?? '').isNotEmpty ? note! : email;
 
   AppUser copyWith({
     String? email,

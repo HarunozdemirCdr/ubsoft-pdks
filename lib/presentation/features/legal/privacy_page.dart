@@ -20,7 +20,7 @@ const String _dataLocation =
     'hassasiyeti.';
 const String _dataSession = 'Oturum: son giriş zamanı.';
 const String _dataLeave =
-    'İzinler: izin aralığı, dönüş zamanı ve izin açıklaması; kayıt düzeltmelerinin gerekçesi ve işlemi yapan yönetici.';
+    'İzinler: izin aralığı ve dönüş zamanı; kayıt düzeltmelerinin gerekçesi ve işlemi yapan yönetici.';
 
 const List<String> _collectedData = <String>[
   _dataIdentity,
