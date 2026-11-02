@@ -147,8 +147,9 @@ service cloud.firestore {
         n.inside == (e.type == 'in') &&
         (!exists(path) ? n.revision == 1 :
           (n.revision == get(path).data.revision + 1 &&
-           (get(path).data.inside == null || n.inside != get(path).data.inside) &&
-           (get(path).data.at == null || request.time - get(path).data.at >= duration.value(60, 's'))));
+           // Girişten hemen sonra çıkış (ve tersi) serbesttir. Aynı yönün
+           // tekrarı durum değişmediği için burada hâlâ reddedilir.
+           (get(path).data.inside == null || n.inside != get(path).data.inside)));
     }
 
     function touchesOnly(fields) {
