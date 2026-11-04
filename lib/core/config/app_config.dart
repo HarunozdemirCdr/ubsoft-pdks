@@ -42,7 +42,10 @@ abstract final class AppConfig {
   static const int qrCodeMaxLength = 10;
 
   /// Aynı QR'ın kazara arka arkaya okunmasını engelleyen bekleme süresi.
-  static const Duration scanDebounce = Duration(milliseconds: 1500);
+  // Kamera karelerinin analiz aralığı. 1,5 saniye hareketli telefonda net
+  // kareyi sıkça kaçırıyordu; aynı kodun çift işlenmesi aşağıdaki ayrı
+  // scannerRepeatDebounce ve PunchController durum kilidiyle engellenir.
+  static const Duration scanDebounce = Duration(milliseconds: 250);
 
   // ─────────────────────────── Konum ───────────────────────────
 
