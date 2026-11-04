@@ -18,30 +18,59 @@ import 'package:ubsoft_pdks/domain/usecases/attendance/verify_location.dart';
 
 final class DormRepository extends FirestoreRepositoryBase {
   const DormRepository(super.firestore);
-  static DateTime? _date(dynamic v) => v is Timestamp ? v.toDate() : null;
+  static DateTime? _date(dynamic v) {
+    if (v is Timestamp) return v.toDate();
+    if (v is DateTime) return v;
+    if (v is int) return DateTime.fromMillisecondsSinceEpoch(v);
+    if (v is String) return DateTime.tryParse(v);
+    return null;
+  }
+
+  static String? _string(dynamic value) => value is String ? value : null;
+
+  static bool? _bool(dynamic value) {
+    if (value is bool) return value;
+    if (value == 1 || value == 'true') return true;
+    if (value == 0 || value == 'false') return false;
+    return null;
+  }
+
+  static int _integer(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
   static Presence presence(String uid, Map<String, dynamic>? data) {
     final Map<String, dynamic> m = data ?? <String, dynamic>{};
     return Presence(
       userId: uid,
-      inside: m['inside'] as bool?,
+      inside: _bool(m['inside']),
       at: _date(m['at']),
-      eventId: m['eventId'] as String?,
-      checkpoint: m['checkpoint'] as String? ?? '',
-      lateMinutes: (m['lateMinutes'] as num?)?.toInt() ?? 0,
+      eventId: _string(m['eventId']),
+      checkpoint: _string(m['checkpoint']) ?? '',
+      lateMinutes: _integer(m['lateMinutes']),
       earlyExit: m['earlyExit'] == true,
       earlyEntry: m['earlyEntry'] == true,
       permitted: m['permitted'] == true,
     );
   }
 
-  static StudentLeave leave(String id, Map<String, dynamic> m) => StudentLeave(
-    id: id,
-    userId: m['userId'] as String,
-    from: _date(m['from'])!,
-    until: _date(m['until'])!,
-    reason: m['reason'] as String? ?? '',
-    revoked: m['revoked'] == true,
-  );
+  static StudentLeave? leaveOrNull(String id, Map<String, dynamic> m) {
+    final String? userId = _string(m['userId']);
+    final DateTime? from = _date(m['from']);
+    final DateTime? until = _date(m['until']);
+    if (userId == null || from == null || until == null) return null;
+    return StudentLeave(
+      id: id,
+      userId: userId,
+      from: from,
+      until: until,
+      reason: _string(m['reason']) ?? '',
+      revoked: m['revoked'] == true,
+    );
+  }
+
   Stream<Presence> watchPresence(String tid, String uid) => guardStream(
     subcollection(
       tid,
@@ -59,7 +88,8 @@ final class DormRepository extends FirestoreRepositoryBase {
     return guardStream(
       query.snapshots().map(
         (q) => q.docs
-            .map((d) => leave(d.id, d.data()))
+            .map((d) => leaveOrNull(d.id, d.data()))
+            .whereType<StudentLeave>()
             .where((leave) => !leave.revoked)
             .toList(),
       ),
@@ -272,8 +302,10 @@ final class DormRepository extends FirestoreRepositoryBase {
         location: check,
       );
       if (resolution is PunchRejected) throw resolution.failure;
+      // Eski sürümlerden kalmış eksik/bozuk bir izin kilidi okutmayı
+      // durdurmamalı. Geçerli bir izin yoksa normal hareket olarak ilerler.
       final StudentLeave? permitted = lock.exists
-          ? leave(lock.id, lock.data()!)
+          ? leaveOrNull(lock.id, lock.data()!)
           : null;
       final metadata = currentTenant.settings.dormPolicy.evaluate(
         now,
