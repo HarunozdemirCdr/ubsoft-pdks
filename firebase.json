@@ -27,7 +27,6 @@
         ]
       },
       {
-        "//": "CanvasKit yalnız Flutter sürümü değişince değişir ve büyüktür.",
         "source": "/canvaskit/**",
         "headers": [
           {
