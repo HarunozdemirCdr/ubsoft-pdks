@@ -18,12 +18,6 @@
     ],
     "headers": [
       {
-        "//": "Flutter web derlemesi dosya adlarına içerik damgası koymaz:",
-        "//2": "her sürümde aynı `main.dart.js` adı kullanılır. Bu yüzden",
-        "//3": "uygulama dosyaları ASLA `immutable` işaretlenmemeli — yoksa",
-        "//4": "tarayıcı yeni sürümü aylarca hiç indirmez ve düzeltmeler",
-        "//5": "kullanıcıya ulaşmaz. `no-cache` dosyayı önbellekte tutar ama",
-        "//6": "her açılışta doğrular; değişmediyse 304 döner, maliyeti yok.",
         "source": "**",
         "headers": [
           {
