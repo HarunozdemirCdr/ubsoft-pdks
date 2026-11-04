@@ -1369,6 +1369,7 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
                             Text(
                               '${AppDate.dateTime(l.from)} — ${AppDate.dateTime(l.until)}',
                             ),
+                            Text('İzinli gün sayısı: ${_leaveDayCount(l)} gün'),
                             Text(
                               l.revoked
                                   ? 'İptal edildi'
@@ -1417,7 +1418,7 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
     if (!await ConfirmDialog.show(
       context,
       title: 'İzin iptal edilsin mi?',
-      message: 'İzin geçmişte korunur, aktif geçerliliği kaldırılır.',
+      message: 'İzin kaydı tamamen silinecek. Bu işlem geri alınamaz.',
       confirmLabel: 'İptal et',
     )) {
       return;
@@ -1430,6 +1431,11 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
     Toast.result(result, successMessage: 'İzin iptal edildi.');
     if (mounted) setState(() => _busy = false);
   }
+}
+
+int _leaveDayCount(StudentLeave leave) {
+  final minutes = leave.until.difference(leave.from).inMinutes;
+  return minutes <= 0 ? 0 : (minutes / Duration.minutesPerDay).ceil();
 }
 
 class _LeaveDialog extends StatefulWidget {

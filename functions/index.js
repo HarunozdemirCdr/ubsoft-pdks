@@ -36,6 +36,74 @@ async function administrator(request) {
   return tid;
 }
 
+async function deleteQuery(query) {
+  let deleted = 0;
+  for (;;) {
+    const snapshot = await query.limit(400).get();
+    if (snapshot.empty) return deleted;
+    const batch = db.batch();
+    for (const doc of snapshot.docs) batch.delete(doc.ref);
+    await batch.commit();
+    deleted += snapshot.size;
+  }
+}
+
+// Hareket geçmişi topluca silinirken presence da temizlenmelidir; aksi halde
+// geçmiş boş olduğu hâlde öğrenci "zaten giriş yaptınız" uyarısı alır.
+exports.clearAttendanceHistory = onCall({timeoutSeconds:120}, async request => {
+  const tid = await administrator(request);
+  const root = db.collection(`tenants/${tid}/attendance`);
+  const days = db.collection(`tenants/${tid}/attendanceDays`);
+  const presence = db.collection(`tenants/${tid}/presence`);
+  const audit = db.collection(`tenants/${tid}/presenceAudit`);
+  const counts = await Promise.all([
+    deleteQuery(root),
+    deleteQuery(days),
+    deleteQuery(presence),
+    deleteQuery(audit),
+  ]);
+  return {ok:true, deleted:counts.reduce((sum, count) => sum + count, 0)};
+});
+
+exports.deleteUserAndData = onCall({timeoutSeconds:120}, async request => {
+  const tid = await administrator(request);
+  const uid = request.data?.uid;
+  if (typeof uid !== 'string' || !validId(uid)) {
+    throw new HttpsError('invalid-argument', 'Kullanıcı kimliği geçersiz.');
+  }
+  if (uid === request.auth.uid) {
+    throw new HttpsError('failed-precondition', 'Kendi hesabınızı silemezsiniz.');
+  }
+  const userRef = db.doc(`tenants/${tid}/users/${uid}`);
+  const user = await userRef.get();
+  if (!user.exists) throw new HttpsError('not-found', 'Kullanıcı bulunamadı.');
+
+  const tenant = db.doc(`tenants/${tid}`);
+  await Promise.all([
+    deleteQuery(db.collection(`tenants/${tid}/attendance`).where('userId','==',uid)),
+    deleteQuery(db.collection(`tenants/${tid}/attendanceDays`).where('userId','==',uid)),
+    deleteQuery(db.collection(`tenants/${tid}/leaves`).where('userId','==',uid)),
+    deleteQuery(db.collection(`tenants/${tid}/presenceAudit`).where('userId','==',uid)),
+  ]);
+  const batch = db.batch();
+  batch.delete(db.doc(`tenants/${tid}/presence/${uid}`));
+  batch.delete(db.doc(`tenants/${tid}/leaveLocks/${uid}`));
+  batch.delete(userRef);
+  batch.update(tenant, {
+    'counters.userCount': FieldValue.increment(-1),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  // Auth önce silinir: son Firestore batch'i geçici olarak başarısız olursa
+  // çağrı güvenle yeniden denenebilir ve artık giriş yapamayan profil tamamlanır.
+  try {
+    await auth.deleteUser(uid);
+  } catch (error) {
+    if (error?.code !== 'auth/user-not-found') throw error;
+  }
+  await batch.commit();
+  return {ok:true};
+});
+
 // Random identity and secret are generated and persisted by the board, never by
 // a browser. Registration retries must prove possession of the same secret.
 exports.registerTurnstileDevice = onRequest({cors:false,maxInstances:2},async(req,res)=>{

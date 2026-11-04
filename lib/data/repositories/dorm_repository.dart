@@ -58,7 +58,10 @@ final class DormRepository extends FirestoreRepositoryBase {
     if (uid != null) query = query.where('userId', isEqualTo: uid);
     return guardStream(
       query.snapshots().map(
-        (q) => q.docs.map((d) => leave(d.id, d.data())).toList(),
+        (q) => q.docs
+            .map((d) => leave(d.id, d.data()))
+            .where((leave) => !leave.revoked)
+            .toList(),
       ),
     );
   }
@@ -146,11 +149,8 @@ final class DormRepository extends FirestoreRepositoryBase {
     final lock = subcollection(tid, 'leaveLocks').doc(value.userId);
     await firestore.runTransaction((tx) async {
       final current = await tx.get(lock);
-      tx.update(subcollection(tid, 'leaves').doc(value.id), <String, Object?>{
-        'revoked': true,
-        'revokedBy': actor,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // İptal edilen izin geçmişte tutulmaz; izin belgesi tamamen kaldırılır.
+      tx.delete(subcollection(tid, 'leaves').doc(value.id));
       if (current.data()?['leaveId'] == value.id) tx.delete(lock);
     });
   });

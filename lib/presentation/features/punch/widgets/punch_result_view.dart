@@ -67,7 +67,9 @@ class PunchResultView extends StatelessWidget {
                   failure is AuthFailure ||
                       failure is PermissionFailure ||
                       failure is SubscriptionFailure ||
-                      failure.code == 'too-soon'
+                      failure.code == 'too-soon' ||
+                      failure.code == 'already-entered' ||
+                      failure.code == 'already-exited'
                   ? null
                   : autoRetryAfter,
               onAgain: onAgain,
@@ -279,21 +281,28 @@ class _FailedState extends State<_Failed> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDirectionWarning =
+        widget.failure.code == 'already-entered' ||
+        widget.failure.code == 'already-exited';
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Row(
           children: <Widget>[
-            const Icon(
-              Icons.error_outline_rounded,
-              color: AppColors.danger,
+            Icon(
+              isDirectionWarning
+                  ? Icons.info_outline_rounded
+                  : Icons.error_outline_rounded,
+              color: isDirectionWarning ? AppColors.warning : AppColors.danger,
               size: 28,
             ),
             AppSpacing.hSm,
             Expanded(
               child: Text(
-                'Okutma tamamlanmadı',
+                isDirectionWarning
+                    ? 'Doğru QR kodunu okutun'
+                    : 'Okutma tamamlanmadı',
                 style: AppTypography.h2(context.colors.onSurface),
               ),
             ),

@@ -100,7 +100,7 @@ void main() {
       expect((await punch(entry: false)).isOk, true);
     },
   );
-  test('izin kaydı durumu değiştirmez, iptal geçmişte korunur', () async {
+  test('izin kaydı durumu değiştirmez, iptal edilince silinir', () async {
     final user = TestData.user();
     final now = DateTime.now();
     final result = await repo.saveLeave(
@@ -123,7 +123,7 @@ void main() {
       (await repo.revokeLeave(user.tenantId, leave, 'admin-1')).isOk,
       true,
     );
-    expect((await repo.watchLeaves(user.tenantId).first).single.revoked, true);
+    expect(await repo.watchLeaves(user.tenantId).first, isEmpty);
   });
   test('çakışan izin reddedilir', () async {
     final now = DateTime.now();

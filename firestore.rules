@@ -401,7 +401,7 @@ service cloud.firestore {
         allow update: if isAdminOf(tid) && writable(tid) &&
           request.resource.data.revoked == true && request.resource.data.revokedBy == request.auth.uid &&
           touchesOnly(['revoked', 'revokedBy', 'updatedAt']) && serverTime('updatedAt');
-        allow delete: if isSuperAdmin();
+        allow delete: if isAdminOf(tid) && writable(tid) || isSuperAdmin();
       }
       match /leaveLocks/{uid} {
         allow get: if memberOf(tid) && (request.auth.uid == uid || isAdminOf(tid)) || isSuperAdmin();

@@ -64,6 +64,24 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
     expect(retries, 1);
   });
+  testWidgets('aynı yön tekrarları hata yerine doğru QR uyarısı gösterir', (
+    tester,
+  ) async {
+    await panel(
+      tester,
+      const PunchFailure(
+        'Zaten giriş yaptınız. Önce çıkış QR kodunu okutmalısınız.',
+        code: 'already-entered',
+      ),
+      () {},
+    );
+    expect(find.text('Doğru QR kodunu okutun'), findsOneWidget);
+    expect(find.byIcon(Icons.info_outline_rounded), findsOneWidget);
+    expect(find.textContaining('Zaten giriş yaptınız'), findsOneWidget);
+    expect(find.textContaining('saniye sonra'), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
   testWidgets('ekran kapanınca otomatik yeniden tarama yapılmaz', (
     tester,
   ) async {
@@ -111,9 +129,7 @@ void main() {
     final detect = tester
         .widget<MobileScanner>(find.byType(MobileScanner))
         .onDetect!;
-    const capture = BarcodeCapture(
-      barcodes: [Barcode(rawValue: '999999')],
-    );
+    const capture = BarcodeCapture(barcodes: [Barcode(rawValue: '999999')]);
     detect(capture);
     await settle(tester);
     expect(scope.container.read(punchControllerProvider), isA<PunchFailed>());

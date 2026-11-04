@@ -111,8 +111,8 @@ enum AppPermission {
     PermissionGroup.user,
     isWrite: true,
     description:
-        'Kullanıcı listeden kaldırılır ve giriş yapamaz. Geçmiş devam '
-        'kayıtları korunur.',
+        'Kullanıcının hesabı, giriş e-postası ve yurttaki tüm verileri '
+        'kalıcı olarak silinir.',
   ),
   userResetPassword(
     'user.resetPassword',

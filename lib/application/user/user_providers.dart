@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:ubsoft_pdks/application/admin/maintenance_providers.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
@@ -202,10 +203,9 @@ class UserController extends AsyncNotifier<void> {
 
   Future<Result<void>> deleteUser(AppUser user) async {
     state = const AsyncValue<void>.loading();
-    final Result<void> result = await _users.softDelete(
-      tenantId: user.tenantId,
-      uid: user.uid,
-    );
+    final Result<void> result = await ref
+        .read(maintenanceServiceProvider)
+        .deleteUserAndData(user.uid);
     _finish(result);
     return result;
   }

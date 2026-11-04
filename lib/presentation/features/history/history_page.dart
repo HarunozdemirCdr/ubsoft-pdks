@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:ubsoft_pdks/application/admin/maintenance_providers.dart';
 import 'package:ubsoft_pdks/application/attendance/attendance_providers.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
@@ -12,10 +13,13 @@ import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/permissions/app_permission.dart';
 import 'package:ubsoft_pdks/presentation/features/history/widgets/day_roster_table.dart';
+import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_scaffold.dart';
+import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
 import 'package:ubsoft_pdks/presentation/widgets/empty_state.dart';
 import 'package:ubsoft_pdks/presentation/widgets/info_hint.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
+import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
 /// Geçmiş — bir günün tüm kadrosu tek tabloda.
 ///
@@ -41,15 +45,17 @@ class HistoryPage extends ConsumerStatefulWidget {
 
 class _HistoryPageState extends ConsumerState<HistoryPage> {
   String? _expandedUserId;
+  bool _clearing = false;
 
   @override
   Widget build(BuildContext context) {
     final bool canViewAll = ref.watch(
       canProvider(AppPermission.attendanceViewAll),
     );
+    final AppUser? currentUser = ref.watch(currentUserProvider);
 
     if (!canViewAll) {
-      final AppUser? user = ref.watch(currentUserProvider);
+      final AppUser? user = currentUser;
       if (user == null) return const AppScaffold(body: SizedBox.shrink());
       return _OwnHistoryRedirect(userId: user.uid);
     }
@@ -109,10 +115,44 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   'dökümü için Raporlar ekranını kullanın.',
             ),
           ],
+          if (currentUser?.role.isAdmin ?? false) ...<Widget>[
+            AppSpacing.vLg,
+            AppButton(
+              label: 'Tüm geçmiş verilerini sil',
+              icon: Icons.delete_forever_outlined,
+              variant: AppButtonVariant.danger,
+              isLoading: _clearing,
+              onPressed: _clearing ? null : _clearHistory,
+            ),
+          ],
           AppSpacing.vXl,
         ],
       ),
     );
+  }
+
+  Future<void> _clearHistory() async {
+    final bool confirmed = await ConfirmDialog.show(
+      context,
+      title: 'Tüm geçmiş silinsin mi?',
+      message:
+          'Yurttaki bütün giriş-çıkış hareketleri, günlük özetler ve '
+          'öğrencilerin mevcut içeride/dışarıda durumları kalıcı olarak '
+          'silinecek. Bu işlem geri alınamaz.',
+      confirmLabel: 'Tümünü sil',
+      isDestructive: true,
+    );
+    if (!confirmed || !mounted) return;
+    setState(() => _clearing = true);
+    final result = await ref
+        .read(maintenanceServiceProvider)
+        .clearAttendanceHistory();
+    if (!mounted) return;
+    Toast.result(result, successMessage: 'Tüm geçmiş verileri silindi.');
+    setState(() {
+      _clearing = false;
+      _expandedUserId = null;
+    });
   }
 }
 

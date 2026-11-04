@@ -350,7 +350,7 @@ class _ExistingUserActions extends ConsumerWidget {
                 style: AppTypography.bodyStrong(context.colors.error),
               ),
               subtitle: const Text(
-                'Listeden kaldırılır; geçmiş devam kayıtları durur.',
+                'Hesabı, e-postası ve tüm geçmiş verileri kalıcı silinir.',
               ),
               contentPadding: EdgeInsets.zero,
               onTap: () => _confirmDelete(context, controller),
@@ -368,8 +368,9 @@ class _ExistingUserActions extends ConsumerWidget {
       context,
       title: 'Kullanıcı silinsin mi?',
       message:
-          '${user.displayName} listeden kaldırılacak ve giriş yapamayacak. '
-          'Geçmiş devam kayıtları raporlarda görünmeye devam eder.',
+          '${user.displayName} adlı kullanıcının hesabı, giriş e-postası, '
+          'hareketleri, izinleri ve tüm geçmiş verileri kalıcı olarak '
+          'silinecek. Bu işlem geri alınamaz.',
       confirmLabel: 'Sil',
       isDestructive: true,
     );
