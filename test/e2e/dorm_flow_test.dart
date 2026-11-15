@@ -40,7 +40,6 @@ void main() {
         location: TestData.locationNorthOf(10),
       ),
       location: TestData.locationNorthOf(10),
-      cooldown: Duration.zero,
     );
   }
 

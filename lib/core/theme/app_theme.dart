@@ -111,10 +111,9 @@ abstract final class AppTheme {
         ),
       ),
 
-      // ─────────── Butonlar: yumuşak dikdörtgen, 48px yükseklik ───────────
+      // ─────────── Butonlar: pill (tam yuvarlak), 48px yükseklik ───────────
       //
-      // Tam yuvarlak (pill) buton bilinçli olarak kullanılmıyor; ürünün geri
-      // kalanı hizalı satırlardan oluşuyor ve pill butonlar o hizayı bozuyor.
+      // UBSoft kurumsal tasarım dili standardı: StadiumBorder (Pill).
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -126,7 +125,7 @@ abstract final class AppTheme {
           elevation: 0,
           minimumSize: const Size(0, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.allMd),
+          shape: const StadiumBorder(),
           textStyle: AppTypography.label(AppColors.white),
         ),
       ),
@@ -138,7 +137,7 @@ abstract final class AppTheme {
           side: BorderSide(
             color: isDark ? AppColors.borderStrongDark : AppColors.borderStrong,
           ),
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.allMd),
+          shape: const StadiumBorder(),
           textStyle: AppTypography.label(textPrimary),
         ),
       ),
@@ -147,7 +146,7 @@ abstract final class AppTheme {
           foregroundColor: accent,
           minimumSize: const Size(0, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          shape: const RoundedRectangleBorder(borderRadius: AppRadius.allSm),
+          shape: const StadiumBorder(),
           textStyle: AppTypography.label(accent),
         ),
       ),

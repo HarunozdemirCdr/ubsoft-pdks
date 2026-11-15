@@ -11,10 +11,10 @@ import 'package:flutter/widgets.dart';
 /// çelişirdi.
 abstract final class AppRadius {
   static const double xs = 2;
-  static const double sm = 6;
-  static const double md = 10;
-  static const double lg = 14;
-  static const double xl = 20;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
   static const double full = 9999;
 
   static const BorderRadius allXs = BorderRadius.all(Radius.circular(xs));

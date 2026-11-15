@@ -201,7 +201,7 @@ final class DormRepository extends FirestoreRepositoryBase {
     required Checkpoint checkpoint,
     required LocationCheck check,
     required ScanLocation? location,
-    Duration cooldown = const Duration(minutes: 1),
+    Duration cooldown = Duration.zero,
   }) => guard(() async {
     if (!user.role.isStaff) {
       throw const PermissionFailure(
@@ -222,122 +222,139 @@ final class DormRepository extends FirestoreRepositoryBase {
       'attendanceDays',
     ).doc('${user.uid}_$dateKey');
     AttendanceEvent? written;
-    await firestore.runTransaction((tx) async {
-      final state = await tx.get(stateDoc);
-      final day = await tx.get(dayDoc);
-      final liveCheckpoint = await tx.get(
-        subcollection(tenant.id, 'checkpoints').doc(checkpoint.id),
-      );
-      final liveTenant = await tx.get(tenantRef(tenant.id));
-      final lock = await tx.get(
-        subcollection(tenant.id, 'leaveLocks').doc(user.uid),
-      );
-      if (!liveCheckpoint.exists ||
-          liveCheckpoint.data()?['active'] != true ||
-          liveCheckpoint.data()?['kind'] != checkpoint.kind.key ||
-          liveCheckpoint.data()?['code'] != checkpoint.code ||
-          liveCheckpoint.data()?['latitude'] != checkpoint.latitude ||
-          liveCheckpoint.data()?['longitude'] != checkpoint.longitude ||
-          liveCheckpoint.data()?['radiusMeters'] != checkpoint.radiusMeters) {
-        throw const ConflictFailure(
-          'QR noktası değişmiş. Lütfen yeniden okutun.',
+
+    // FlutterFire Web, transaction callback'inden fırlatılan uygulama
+    // istisnalarını `[cloud_firestore/unknown]` olarak sarabiliyor. Böyle
+    // olunca `already-entered` gibi kullanıcıya özel mesaj kaybolup
+    // ekranda "Beklenmeyen hata" görünüyordu. İş kuralı reddini transaction
+    // sonucu olarak dışarı taşıyıp ancak transaction bittikten sonra
+    // fırlatıyoruz; kullanıcı tam ve doğru uyarı mesajını görür.
+    final Failure? rejection = await firestore.runTransaction<Failure?>((
+      tx,
+    ) async {
+      try {
+        final state = await tx.get(stateDoc);
+        final day = await tx.get(dayDoc);
+        final liveCheckpoint = await tx.get(
+          subcollection(tenant.id, 'checkpoints').doc(checkpoint.id),
         );
-      }
-      final Tenant currentTenant = TenantMapper.fromDoc(liveTenant);
-      final Presence before = presence(user.uid, state.data());
-      final PunchType type = checkpoint.kind.fixedType!;
-      if (cooldown > Duration.zero &&
-          before.at != null &&
-          now.difference(before.at!) < cooldown) {
-        throw const PunchFailure(
-          'Kaydınız az önce alındı. Tekrar okutmanıza gerek yok.',
-          code: 'too-soon',
+        final liveTenant = await tx.get(tenantRef(tenant.id));
+        final lock = await tx.get(
+          subcollection(tenant.id, 'leaveLocks').doc(user.uid),
         );
-      }
-      if (before.inside != null && before.inside == type.isEntry) {
-        throw PunchFailure(
-          type.isEntry
-              ? 'Zaten içeridesiniz. Çıkarken çıkış QR kodunu okutun.'
-              : 'Zaten dışarıdasınız. Döndüğünüzde giriş QR kodunu okutun.',
+        if (!liveCheckpoint.exists ||
+            liveCheckpoint.data()?['active'] != true ||
+            liveCheckpoint.data()?['kind'] != checkpoint.kind.key ||
+            liveCheckpoint.data()?['code'] != checkpoint.code ||
+            liveCheckpoint.data()?['latitude'] != checkpoint.latitude ||
+            liveCheckpoint.data()?['longitude'] != checkpoint.longitude ||
+            liveCheckpoint.data()?['radiusMeters'] != checkpoint.radiusMeters) {
+          return const ConflictFailure(
+            'QR noktası değişmiş. Lütfen yeniden okutun.',
+          );
+        }
+        final Tenant currentTenant = TenantMapper.fromDoc(liveTenant);
+        final Presence before = presence(user.uid, state.data());
+        final PunchType type = checkpoint.kind.fixedType!;
+        if (cooldown > Duration.zero &&
+            before.at != null &&
+            now.difference(before.at!) < cooldown) {
+          return const PunchFailure(
+            'Kaydınız az önce alındı. Tekrar okutmanıza gerek yok.',
+            code: 'too-soon',
+          );
+        }
+        if (before.inside != null && before.inside == type.isEntry) {
+          return PunchFailure(
+            type.isEntry
+                ? 'Zaten içeridesiniz. Çıkarken çıkış QR kodunu okutun.'
+                : 'Zaten dışarıdasınız. Döndüğünüzde giriş QR kodunu okutun.',
+            code: type.isEntry ? 'already-entered' : 'already-exited',
+          );
+        }
+        final resolution = ResolvePunch.call(
+          checkpoint: checkpoint,
+          today: AttendanceDay.empty(
+            tenantId: tenant.id,
+            userId: user.uid,
+            userName: user.displayName,
+            dateKey: dateKey,
+          ).copyWith(open: before.inside ?? type.isExit),
+          settings: currentTenant.settings,
+          location: check,
         );
-      }
-      final resolution = ResolvePunch.call(
-        checkpoint: checkpoint,
-        today: AttendanceDay.empty(
+        if (resolution is PunchRejected) return resolution.failure;
+        final StudentLeave? permitted = lock.exists
+            ? leave(lock.id, lock.data()!)
+            : null;
+        final metadata = currentTenant.settings.dormPolicy.evaluate(
+          now,
+          entry: type.isEntry,
+          leave: permitted,
+          departedAt: before.inside == false ? before.at : null,
+        );
+        final event = AttendanceEvent(
+          id: eventDoc.id,
           tenantId: tenant.id,
           userId: user.uid,
           userName: user.displayName,
+          type: type,
+          at: now,
           dateKey: dateKey,
-        ).copyWith(open: before.inside ?? type.isExit),
-        settings: currentTenant.settings,
-        location: check,
-        cooldown: Duration.zero,
-      );
-      if (resolution is PunchRejected) throw resolution.failure;
-      final StudentLeave? permitted = lock.exists
-          ? leave(lock.id, lock.data()!)
-          : null;
-      final metadata = currentTenant.settings.dormPolicy.evaluate(
-        now,
-        entry: type.isEntry,
-        leave: permitted,
-        departedAt: before.inside == false ? before.at : null,
-      );
-      final event = AttendanceEvent(
-        id: eventDoc.id,
-        tenantId: tenant.id,
-        userId: user.uid,
-        userName: user.displayName,
-        type: type,
-        at: now,
-        dateKey: dateKey,
-        checkpointId: checkpoint.id,
-        checkpointName: checkpoint.name,
-        checkpointCode: checkpoint.code,
-        verdict: check.verdict,
-        location: location,
-        distanceMeters: check.distanceMeters,
-        radiusMeters: check.radiusMeters,
-        lateMinutes: metadata['lateMinutes']! as int,
-        earlyExit: metadata['earlyExit']! as bool,
-        earlyEntry: metadata['earlyEntry']! as bool,
-        permitted: metadata['permitted']! as bool,
-      );
-      final AttendanceDay base = day.exists
-          ? AttendanceDayMapper.fromDoc(day)
-          : AttendanceDay.empty(
-              tenantId: tenant.id,
-              userId: user.uid,
-              userName: user.displayName,
-              dateKey: dateKey,
-            );
-      final AttendanceDay after = SummarizeDay.applyPunch(
-        day: base,
-        type: type,
-        at: now,
-        verdict: check.verdict,
-        userName: user.displayName,
-        settings: currentTenant.settings,
-      );
-      tx
-        ..set(eventDoc, <String, Object?>{
-          ...AttendanceEventMapper.toCreateMap(event),
-          ...metadata,
-          'voided': false,
-          'schemaVersion': 2,
-        })
-        ..set(dayDoc, AttendanceDayMapper.toMap(after))
-        ..set(stateDoc, <String, Object?>{
-          'userId': user.uid,
-          'inside': type.isEntry,
-          'eventId': eventDoc.id,
-          'at': FieldValue.serverTimestamp(),
-          'checkpoint': checkpoint.name,
-          'revision': ((state.data()?['revision'] as num?)?.toInt() ?? 0) + 1,
-          ...metadata,
-        });
-      written = event;
+          checkpointId: checkpoint.id,
+          checkpointName: checkpoint.name,
+          checkpointCode: checkpoint.code,
+          verdict: check.verdict,
+          location: location,
+          distanceMeters: check.distanceMeters,
+          radiusMeters: check.radiusMeters,
+          lateMinutes: metadata['lateMinutes']! as int,
+          earlyExit: metadata['earlyExit']! as bool,
+          earlyEntry: metadata['earlyEntry']! as bool,
+          permitted: metadata['permitted']! as bool,
+        );
+        final AttendanceDay base = day.exists
+            ? AttendanceDayMapper.fromDoc(day)
+            : AttendanceDay.empty(
+                tenantId: tenant.id,
+                userId: user.uid,
+                userName: user.displayName,
+                dateKey: dateKey,
+              );
+        final AttendanceDay after = SummarizeDay.applyPunch(
+          day: base,
+          type: type,
+          at: now,
+          verdict: check.verdict,
+          userName: user.displayName,
+          settings: currentTenant.settings,
+        );
+        tx
+          ..set(eventDoc, <String, Object?>{
+            ...AttendanceEventMapper.toCreateMap(event),
+            ...metadata,
+            'voided': false,
+            'schemaVersion': 2,
+          })
+          ..set(dayDoc, AttendanceDayMapper.toMap(after))
+          ..set(stateDoc, <String, Object?>{
+            'userId': user.uid,
+            'inside': type.isEntry,
+            'eventId': eventDoc.id,
+            'at': FieldValue.serverTimestamp(),
+            'checkpoint': checkpoint.name,
+            'revision':
+                ((state.data()?['revision'] as num?)?.toInt() ?? 0) + 1,
+            ...metadata,
+          });
+        written = event;
+        return null;
+      } on Failure catch (failure) {
+        return failure;
+      }
     });
+
+    if (rejection != null) throw rejection;
     return written!;
   });
 

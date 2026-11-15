@@ -39,6 +39,11 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
         _error = false;
         if (name == 'getTurnstileStatus') {
           _status = result;
+        } else if (name == 'unbindTurnstileDevice') {
+          _message = 'Kart yurttan kaldırıldı.';
+          _draft = null;
+          _status = null;
+          _id.clear();
         } else {
           _message = 'Ayarlar kaydedildi.';
           _draft = null;
@@ -70,6 +75,35 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _confirmUnbind(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Kartı Yurttan Sil'),
+        content: const Text(
+          'Bu turnike kartını bu yurttan silmek/ayırmak istediğinize emin misiniz? '
+          'Kart kaldırıldığında turnike tetiklemeleri durur ve yeni kart bağlanabilir.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Kartı Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _run('unbindTurnstileDevice');
     }
   }
 
@@ -124,18 +158,28 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
                             style: Theme.of(context).textTheme.titleLarge,
                           ),
                         ),
+                        if (paired)
+                          FilledButton.tonalIcon(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: Colors.red.shade50,
+                              foregroundColor: Colors.red.shade700,
+                            ),
+                            onPressed: _busy ? null : () => _confirmUnbind(context),
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            label: const Text('Kartı Sil'),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Text(
                       paired
                           ? 'Kart kimliği: ${config['deviceId']}'
-                          : 'Önce kartın Bluetooth kurulumundan Wi-Fi bilgilerini kaydedin. Kart internete bağlandıktan sonra ekranda gösterilen kimliğini buraya girin.',
+                          : 'Önce kartın Wi-Fi kurulumunu yapın. Kart internete bağlandıktan sonra ekranda gösterilen kimliğini buraya girin.',
                     ),
                     const SizedBox(height: 12),
                     if (!paired) ...[
                       const Text(
-                        'Yurt ataması kalıcıdır. Kimliği kartınızdan kontrol ederek girin.',
+                        'Kart kimliğini kutudan kontrol ederek girin.',
                       ),
                       const SizedBox(height: 12),
                       TextField(
@@ -155,6 +199,15 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
                               }),
                         icon: const Icon(Icons.link),
                         label: const Text('Bu yurda bağla'),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton.icon(
+                        onPressed: _busy ? null : () => _confirmUnbind(context),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                        ),
+                        icon: const Icon(Icons.cleaning_services_outlined, size: 16),
+                        label: const Text('Yurttaki Kart Kayıtlarını Sıfırla / Sil'),
                       ),
                     ] else ...[
                       SwitchListTile(
@@ -200,6 +253,44 @@ class _TurnstilePageState extends ConsumerState<TurnstilePage> {
                             : () => _run('getTurnstileStatus'),
                         icon: const Icon(Icons.refresh),
                         label: const Text('Bağlantıyı kontrol et'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _busy
+                            ? null
+                            : () async {
+                                final confirmed = await showDialog<bool>(
+                                  context: context,
+                                  builder: (ctx) => AlertDialog(
+                                    title: const Text('Kartı Yurttan Kaldır'),
+                                    content: const Text(
+                                      'Bu turnike kartını bu yurttan ayırmak istediğinize emin misiniz? '
+                                      'Kart kaldırıldığında turnike tetiklemeleri durur.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(ctx, false),
+                                        child: const Text('Vazgeç'),
+                                      ),
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: Theme.of(context).colorScheme.error,
+                                        ),
+                                        onPressed: () => Navigator.pop(ctx, true),
+                                        child: const Text('Kaldır'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirmed == true) {
+                                  await _run('unbindTurnstileDevice');
+                                }
+                              },
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                        ),
+                        icon: const Icon(Icons.link_off),
+                        label: const Text('Kartı Yurttan Kaldır'),
                       ),
                     ],
                   ],

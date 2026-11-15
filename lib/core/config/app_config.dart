@@ -79,17 +79,9 @@ abstract final class AppConfig {
   static const Duration lookupTimeout = Duration(seconds: 4);
 
   /// Aynı kişinin iki okutması arasında olması gereken en az süre.
-  ///
-  /// Kazara ikinci okutmaya karşıdır ve asıl tehlikeli olan **giriş+çıkış**
-  /// noktalarıdır: tek etiket iki iş gördüğü için, art arda iki okutma
-  /// kişiyi bir saniye arayla içeri alıp dışarı çıkarır ve o gün sıfır
-  /// dakika çalışmış görünür. Sabit yönlü noktalarda ikinci okutma zaten
-  /// reddedilirdi ama mesajı ("Zaten giriş yapmışsınız") kazara okutan biri
-  /// için gereksiz sert.
-  ///
-  /// Bir dakika, gerçek bir giriş–çıkış arasında asla görülmeyecek kadar
-  /// kısa; kazara okutmayı yakalayacak kadar uzun.
-  static const Duration punchCooldown = Duration(minutes: 1);
+  /// Yurt sisteminde giriş ve çıkış ayrı kapılardır; öğrenci içeri girdikten
+  /// hemen sonra çıkabilir veya çıktıktan hemen sonra geri girebilir.
+  static const Duration punchCooldown = Duration.zero;
 
   /// Konum alınırken beklenecek en uzun süre.
   static const Duration locationTimeout = Duration(seconds: 12);

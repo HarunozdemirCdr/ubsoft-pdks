@@ -7,6 +7,7 @@ import 'package:ubsoft_pdks/application/user/user_providers.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
 import 'package:ubsoft_pdks/core/routing/app_routes.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
+import 'package:ubsoft_pdks/core/theme/app_radius.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
@@ -19,6 +20,7 @@ import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_scaffold.dart';
 import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
+import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/services/export/dorm_pdf_service.dart';
 import 'package:ubsoft_pdks/services/export/file_download_service.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
@@ -145,16 +147,12 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    tenant.name,
-                    style: AppTypography.bodyStrong(context.colors.onSurface),
+                  SectionHeader(
+                    eyebrow: 'GENEL BAKIŞ',
+                    title: tenant.name,
+                    description: '${AppDate.date(now)} · ${AppDate.dayName(now)}',
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${AppDate.date(now)} · ${AppDate.time(now)}',
-                    style: AppTypography.small(context.colors.onSurfaceVariant),
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   DormMetricGrid(
                     metrics: [
                       DormMetric(
@@ -507,64 +505,79 @@ class StudentHomePage extends ConsumerWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          AppSpacing.vMd,
           Text(
-            'Merhaba, ${user.displayName}',
-            style: Theme.of(context).textTheme.headlineSmall,
+            user.displayName.isEmpty
+                ? 'Merhaba'
+                : 'Merhaba, ${user.displayName}',
+            style: AppTypography.h1(context.colors.onSurface),
           ),
-          const SizedBox(height: 16),
+          AppSpacing.vXxs,
+          Text(
+            '${AppDate.date(now)} · ${AppDate.dayName(now)}',
+            style: AppTypography.small(context.colors.onSurfaceVariant),
+          ),
+          AppSpacing.vLg,
+          const SectionHeader(
+            eyebrow: 'ŞU AN',
+            title: 'Yurttaki Durumunuz',
+          ),
+          AppSpacing.vSm,
           AsyncValueView<Presence>(
             value: ref.watch(myPresenceProvider),
             builder: (p) => AppCard(
+              padding: const EdgeInsets.all(AppSpacing.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Row(
                     children: [
                       Container(
-                        width: 46,
-                        height: 46,
+                        width: 52,
+                        height: 52,
                         decoration: BoxDecoration(
-                          color:
-                              (p.inside == null
-                                      ? AppColors.neutral
-                                      : p.inside!
+                          color: (p.inside == null
+                                  ? AppColors.neutral
+                                  : p.inside!
                                       ? AppColors.entry
                                       : AppColors.exit)
-                                  .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
+                              .withValues(alpha: 0.12),
+                          borderRadius: AppRadius.allMd,
                         ),
                         child: Icon(
                           p.inside == null
                               ? Icons.help_outline_rounded
                               : p.inside!
-                              ? Icons.login_rounded
-                              : Icons.logout_rounded,
+                                  ? Icons.login_rounded
+                                  : Icons.logout_rounded,
+                          size: 26,
                           color: p.inside == null
                               ? AppColors.neutral
                               : p.inside!
-                              ? AppColors.entry
-                              : AppColors.exit,
+                                  ? AppColors.entry
+                                  : AppColors.exit,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      AppSpacing.hMd,
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Yurttaki durumunuz',
-                              style: AppTypography.caption(
+                              'YURTTAKİ DURUMUNUZ',
+                              style: AppTypography.eyebrow(
                                 context.colors.onSurfaceVariant,
                               ),
                             ),
+                            AppSpacing.vXxs,
                             Text(
                               p.label,
                               style: AppTypography.h2(
                                 p.inside == null
                                     ? context.colors.onSurface
                                     : p.inside!
-                                    ? AppColors.entry
-                                    : AppColors.exit,
+                                        ? AppColors.entry
+                                        : AppColors.exit,
                               ),
                             ),
                           ],
@@ -572,30 +585,42 @@ class StudentHomePage extends ConsumerWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   if (p.at != null)
-                    Text('Son hareket: ${AppDate.dateTime(p.at!)}'),
+                    Text(
+                      'Son hareket: ${AppDate.dateTime(p.at!)}',
+                      style: AppTypography.body(context.colors.onSurfaceVariant),
+                    ),
                   if (p.inside == null)
-                    const Text(
+                    Text(
                       'İlk giriş veya çıkış okutmanızla durumunuz belirlenir.',
+                      style: AppTypography.body(context.colors.onSurfaceVariant),
                     ),
                   for (final w in p.warnings)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),
-                      child: Text(w),
+                      child: Text(
+                        w,
+                        style: AppTypography.small(AppColors.warning),
+                      ),
                     ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
                   AppButton.primaryWide(
                     label: p.inside == true
                         ? 'Çıkış QR kodunu okut'
                         : p.inside == false
-                        ? 'Giriş QR kodunu okut'
-                        : 'Giriş / çıkış QR kodunu okut',
+                            ? 'Giriş QR kodunu okut'
+                            : 'Giriş / çıkış QR kodunu okut',
                     onPressed: () => context.push(AppRoutes.scanPath),
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Girişte giriş QR’ını, çıkışta çıkış QR’ını kullanın.',
+                  const SizedBox(height: 10),
+                  Center(
+                    child: Text(
+                      'Girişte giriş QR’ını, çıkışta çıkış QR’ını kullanın.',
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -609,18 +634,34 @@ class StudentHomePage extends ConsumerWidget {
               return leave == null
                   ? const SizedBox.shrink()
                   : AppCard(
-                      child: Text(
-                        'İzinlisiniz · Dönüş: ${AppDate.dateTime(leave.until)}',
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.event_available_rounded,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                          AppSpacing.hSm,
+                          Expanded(
+                            child: Text(
+                              'İzinlisiniz · Dönüş: ${AppDate.dateTime(leave.until)}',
+                              style: AppTypography.bodyStrong(
+                                context.colors.onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
             },
           ),
-          const SizedBox(height: 20),
-          Text(
-            'Bugünkü hareketlerim',
-            style: Theme.of(context).textTheme.titleLarge,
+          AppSpacing.vLg,
+          const SectionHeader(
+            eyebrow: 'GEÇMİŞ',
+            title: 'Bugünkü Hareketlerim',
           ),
-          const SizedBox(height: 10),
+          AppSpacing.vSm,
           AsyncValueView<List<AttendanceEvent>>(
             onRetry: () => ref.invalidate(
               movementsProvider((

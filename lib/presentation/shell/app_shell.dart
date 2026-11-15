@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +14,8 @@ import 'package:ubsoft_pdks/domain/entities/session.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/permissions/permission_set.dart';
 import 'package:ubsoft_pdks/presentation/shell/nav_destinations.dart';
+import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
+import 'package:ubsoft_pdks/services/location/location_service.dart';
 
 /// Uygulama kabuğu.
 ///
@@ -47,12 +50,17 @@ class _AppShellState extends ConsumerState<AppShell> {
       isSuperAdmin: session is SessionSuperAdmin,
     );
 
+    final bool isStaff = session is SessionActive && session.user.role.isStaff;
+
     // Aboneliği bitmiş hesapta yönetici salt okunur devam eder; bandı her
     // düzende (dar, geniş, menüsüz) görmesi gerekir, bu yüzden içerik burada
     // bir kez sarılır.
-    final Widget body = _ExpiredBanner.wrap(
-      child: widget.child,
-      tenant: session.tenantOrNull,
+    final Widget body = _LocationGate.wrap(
+      requireMandatory: isStaff,
+      child: _ExpiredBanner.wrap(
+        child: widget.child,
+        tenant: session.tenantOrNull,
+      ),
     );
 
     if (destinations.length < 2) return body;
@@ -451,5 +459,158 @@ class _SideRail extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// Uygulama seviyesinde konum zorunluluğu ve arka planda konum ısıtma kapısı.
+///
+/// Öğrenci sisteme girdiğinde konumu önden doğrular ve bellekte sıcak tutar.
+/// Böylece QR okutma ekranı açıldığında GPS uydusu beklenmez (0 ms).
+class _LocationGate extends ConsumerStatefulWidget {
+  const _LocationGate({
+    required this.child,
+    required this.requireMandatory,
+  });
+
+  final Widget child;
+  final bool requireMandatory;
+
+  static Widget wrap({
+    required Widget child,
+    required bool requireMandatory,
+  }) {
+    return _LocationGate(
+      requireMandatory: requireMandatory,
+      child: child,
+    );
+  }
+
+  @override
+  ConsumerState<_LocationGate> createState() => _LocationGateState();
+}
+
+class _LocationGateState extends ConsumerState<_LocationGate>
+    with WidgetsBindingObserver {
+  bool _checking = true;
+  bool _hasPermission = false;
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initLocation());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _initLocation();
+    }
+  }
+
+  Future<void> _initLocation() async {
+    final LocationService service = ref.read(locationServiceProvider);
+    final bool granted = await service.ensurePermission();
+    if (!mounted) return;
+
+    setState(() {
+      _hasPermission = granted;
+      _checking = false;
+    });
+
+    if (granted) {
+      // Arka planda konumu anında ısıtıp belleğe alır
+      service.warmUp().ignore();
+      _startPeriodicRefresh();
+    }
+  }
+
+  void _startPeriodicRefresh() {
+    _refreshTimer?.cancel();
+    // Uygulama açıkken her 90 saniyede bir konumu sessizce tazeler
+    _refreshTimer = Timer.periodic(const Duration(seconds: 90), (_) {
+      if (mounted) {
+        ref.read(locationServiceProvider).warmUp(force: true).ignore();
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sadece öğrenci (staff) için konum zorunludur. Yönetici masaüstünden girebilir.
+    if (!widget.requireMandatory) {
+      return widget.child;
+    }
+
+    if (_checking) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (!_hasPermission) {
+      final Color color = context.colors.primary;
+      return Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xl),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: context.colors.primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.location_on_rounded,
+                      size: 36,
+                      color: color,
+                    ),
+                  ),
+                  AppSpacing.vLg,
+                  Text(
+                    'Konum Erişimi Zorunludur',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.h2(context.colors.onSurface),
+                  ),
+                  AppSpacing.vSm,
+                  Text(
+                    'UBSoft Yurt Kontrol sistemini kullanabilmek ve turnike giriş-çıkışlarınızı '
+                    'gerçekleştirebilmek için cihazınızın konum servisinin açık olması ve '
+                    'tarayıcınıza izin vermeniz gerekmektedir.',
+                    textAlign: TextAlign.center,
+                    style: AppTypography.body(context.colors.onSurfaceVariant),
+                  ),
+                  AppSpacing.vXl,
+                  SizedBox(
+                    width: double.infinity,
+                    child: AppButton(
+                      label: 'Konum İznini Aç ve Devam Et',
+                      onPressed: () async {
+                        setState(() => _checking = true);
+                        await _initLocation();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return widget.child;
   }
 }

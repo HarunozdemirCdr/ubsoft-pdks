@@ -45,12 +45,22 @@ exports.registerTurnstileDevice = onRequest({cors:false,maxInstances:2},async(re
   if(typeof deviceId!=='string'||typeof deviceSecret!=='string'||!/^[a-f0-9]{32}$/.test(deviceId||'')||!/^[A-F0-9]{12}$/.test(mac)||!/^[a-f0-9]{64}$/.test(deviceSecret||'')){res.status(400).json({error:'Geçersiz cihaz bilgisi.'});return;}
   try{
     const ref=db.doc(`turnstileRegistry/${deviceId}`), hw=db.doc(`turnstileHardware/${hash(mac)}`);
+    let oldDeviceId=null;
     await db.runTransaction(async tx=>{
       const [rs,hs]=await Promise.all([tx.get(ref),tx.get(hw)]);const r=rs.data(),h=hs.data();
-      if((r&&(r.secretHash!==hash(deviceSecret)||r.hardwareHash!==hash(mac)))||(h&&h.deviceId!==deviceId))throw new Error('identity');
-      if(!r)tx.create(ref,{secretHash:hash(deviceSecret),hardwareHash:hash(mac),tenantId:null,createdAt:FieldValue.serverTimestamp()});
-      if(!h)tx.create(hw,{deviceId});
+      if(r&&(r.secretHash!==hash(deviceSecret)||r.hardwareHash!==hash(mac)))throw new Error('identity');
+      if(h&&h.deviceId!==deviceId){
+        oldDeviceId=h.deviceId;
+        tx.delete(db.doc(`turnstileRegistry/${oldDeviceId}`));
+      }
+      tx.set(ref,{secretHash:hash(deviceSecret),hardwareHash:hash(mac),tenantId:r?.tenantId||null,createdAt:r?.createdAt||FieldValue.serverTimestamp(),updatedAt:FieldValue.serverTimestamp()},{merge:true});
+      tx.set(hw,{deviceId,updatedAt:FieldValue.serverTimestamp()});
     });
+    if(oldDeviceId){
+      try{await auth.deleteUser(`turnstile_${oldDeviceId}`);}catch(_){}
+      try{await rtdb.ref(`bindings/${oldDeviceId}`).remove();}catch(_){}
+      try{await rtdb.ref(`registry/${oldDeviceId}`).remove();}catch(_){}
+    }
     const uid=`turnstile_${deviceId}`, email=`${deviceId}@turnstile.invalid`;
     try{await auth.createUser({uid,email,password:deviceSecret,displayName:'Yurt turnike kartı'});}
     catch(e){if(e.code!=='auth/uid-already-exists')throw e;const u=await auth.getUser(uid);if(u.email!==email)throw new Error('identity');}
@@ -58,7 +68,7 @@ exports.registerTurnstileDevice = onRequest({cors:false,maxInstances:2},async(re
     // Do not downgrade a binding if a registration retry races with the admin.
     await rtdb.ref(`registry/${deviceId}`).transaction(c=>c||{uid,tenantId:'',enabled:false});
     await rtdb.ref(`bindings/${deviceId}`).transaction(c=>c||{bound:false,deviceId});
-    res.json({deviceId,deviceEmail:email,databaseURL,relayPins:[26,27,25,32,14,12,13,15]});
+    res.json({deviceId,deviceEmail:email,databaseURL,relayPins:[26,27,25,32,33,18,19,23]});
   }catch(e){res.status(403).json({error:'Cihaz kaydı doğrulanamadı.'});}
 });
 
@@ -70,15 +80,45 @@ exports.bindTurnstileDevice = onCall(async request=>{
     const [rs,cs]=await Promise.all([tx.get(registry),tx.get(ref)]);const r=rs.data(),c=cs.data();
     if(!r)throw new HttpsError('not-found','Kart önce Wi-Fi üzerinden internete bağlanıp kaydolmalıdır.');
     if(r.tenantId&&r.tenantId!==tid)throw new HttpsError('already-exists','Kart başka bir yurda kalıcı olarak atanmış.');
-    if(c?.paired&&c.deviceId!==did)throw new HttpsError('already-exists','Bu yurda zaten bir kart atanmış.');
+    const oldDeviceId = (c?.paired && c.deviceId !== did) ? c.deviceId : null;
     const next={deviceId:did,paired:true,enabled:c?.enabled??true,relays:c?.relays||{}};
     tx.update(registry,{tenantId:tid});
+    if (oldDeviceId) {
+      tx.set(db.doc(`turnstileRegistry/${oldDeviceId}`), { tenantId: FieldValue.delete() }, { merge: true });
+    }
     tx.set(ref,{...next,updatedAt:FieldValue.serverTimestamp(),updatedBy:request.auth.uid},{merge:true});
     tx.set(db.doc(`tenants/${tid}/turnstileState/controller`),next);
-    return next;
+    return { ...next, oldDeviceId };
   });
+  if (config.oldDeviceId) {
+    await rtdb.ref(`bindings/${config.oldDeviceId}`).remove();
+    await rtdb.ref(`registry/${config.oldDeviceId}`).remove();
+  }
   await rtdb.ref().update({[`registry/${did}`]:{uid:`turnstile_${did}`,tenantId:tid,enabled:config.enabled},[`bindings/${did}`]:{bound:true,tenantId:tid,deviceId:did}});
   return {ok:true,deviceId:did};
+});
+
+exports.unbindTurnstileDevice = onCall(async request=>{
+  const tid=await administrator(request);
+  const ref=configRef(tid);
+  const oldDeviceId=await db.runTransaction(async tx=>{
+    const cs=await tx.get(ref);const c=cs.data();
+    if(!c?.paired||!c?.deviceId)return null;
+    const did=c.deviceId;
+    const next={paired:false,deviceId:null,enabled:false,relays:{}};
+    tx.set(ref,{...next,updatedAt:FieldValue.serverTimestamp(),updatedBy:request.auth.uid});
+    tx.set(db.doc(`tenants/${tid}/turnstileState/controller`),next);
+    tx.set(db.doc(`turnstileRegistry/${did}`),{tenantId:null},{merge:true});
+    return did;
+  });
+  if(oldDeviceId){
+    await Promise.all([
+      rtdb.ref(`bindings/${oldDeviceId}`).remove(),
+      rtdb.ref(`registry/${oldDeviceId}`).remove(),
+      rtdb.ref(`turnstiles/${tid}/${oldDeviceId}`).remove(),
+    ]);
+  }
+  return {ok:true,unbonded:oldDeviceId};
 });
 
 exports.saveTurnstileRelays = onCall(async request=>{

@@ -21,36 +21,36 @@ import 'package:flutter/material.dart';
 abstract final class AppColors {
   // ─────────────────────────── Vurgu (Primary) ───────────────────────────
   /// Birincil vurgu rengi. Butonlar, aktif durumlar, bağlantılar.
-  static const Color primary = Color(0xFF1E3A8A);
+  /// UBSoft kurumsal tasarım dili standardı: Canlı Kraliyet Mavisi.
+  static const Color primary = Color(0xFF2563EB);
 
   /// Hover / basılı durum.
-  static const Color primaryHover = Color(0xFF172554);
+  static const Color primaryHover = Color(0xFF1D4ED8);
 
   /// Koyu zemin üzerinde okunabilir vurgu tonu.
-  static const Color primaryOnDark = Color(0xFF93C5FD);
+  static const Color primaryOnDark = Color(0xFF60A5FA);
 
   /// Açık ikon arkaplanı (light tema).
   static const Color primarySurface = Color(0xFFDBEAFE);
 
   /// Koyu tema ikon arkaplanı (primary @ %20 opaklık).
-  static const Color primarySurfaceDark = Color(0x331E3A8A);
+  static const Color primarySurfaceDark = Color(0x332563EB);
 
   // ─────────────────────────── Nötr skala ───────────────────────────
   //
-  // Sıcak taş (stone) tonları. Adları `gray…` kalır çünkü token'ın işi
-  // "nötr basamak" olmaktır; hangi sıcaklıkta olduğu burada bir kez seçilir.
+  // Tailwind / UBSoft kurumsal soğuk-nötr gri skalası.
   static const Color white = Color(0xFFFFFFFF);
-  static const Color gray50 = Color(0xFFFAFAF9);
-  static const Color gray100 = Color(0xFFF5F5F4);
-  static const Color gray200 = Color(0xFFE7E5E4);
-  static const Color gray300 = Color(0xFFD6D3D1);
-  static const Color gray400 = Color(0xFFA8A29E);
-  static const Color gray500 = Color(0xFF78716C);
-  static const Color gray600 = Color(0xFF57534E);
-  static const Color gray700 = Color(0xFF44403C);
-  static const Color gray800 = Color(0xFF292524);
-  static const Color gray900 = Color(0xFF1C1917);
-  static const Color gray950 = Color(0xFF0C0A09);
+  static const Color gray50 = Color(0xFFF9FAFB);
+  static const Color gray100 = Color(0xFFF3F4F6);
+  static const Color gray200 = Color(0xFFE5E7EB);
+  static const Color gray300 = Color(0xFFD1D5DB);
+  static const Color gray400 = Color(0xFF9CA3AF);
+  static const Color gray500 = Color(0xFF6B7280);
+  static const Color gray600 = Color(0xFF4B5563);
+  static const Color gray700 = Color(0xFF374151);
+  static const Color gray800 = Color(0xFF1F2937);
+  static const Color gray900 = Color(0xFF111827);
+  static const Color gray950 = Color(0xFF030712);
 
   // ─────────────────────────── Açık tema yüzeyleri ───────────────────────────
   static const Color surface = white;
@@ -68,11 +68,11 @@ abstract final class AppColors {
   static const Color surfaceDark = gray950;
   static const Color surfaceAltDark = gray900;
   static const Color surfaceMutedDark = gray800;
-  static const Color borderDark = Color(0xFF292524);
-  static const Color borderStrongDark = Color(0xFF44403C);
+  static const Color borderDark = Color(0xFF1F2937);
+  static const Color borderStrongDark = Color(0xFF374151);
 
-  static const Color textPrimaryDark = Color(0xFFFAFAF9);
-  static const Color textBodyDark = Color(0xFFD6D3D1);
+  static const Color textPrimaryDark = Color(0xFFF9FAFB);
+  static const Color textBodyDark = Color(0xFFD1D5DB);
   static const Color textMutedDark = gray400;
 
   // ─────────────────────────── Durum renkleri ───────────────────────────

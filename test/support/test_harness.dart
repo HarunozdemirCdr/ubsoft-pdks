@@ -141,6 +141,12 @@ class FakeLocationService implements LocationService {
   int currentCalls = 0;
 
   @override
+  ScanLocation? get cachedLocation => location;
+
+  @override
+  Future<Result<ScanLocation>> warmUp({bool force = false}) async => current();
+
+  @override
   Future<bool> ensurePermission() async => failure == null;
 
   @override

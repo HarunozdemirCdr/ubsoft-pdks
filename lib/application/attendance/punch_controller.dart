@@ -220,9 +220,11 @@ class PunchController extends Notifier<PunchState> {
   /// çözülmeden başlatıldığı için noktanın koordinatı olup olmadığı bu
   /// noktada henüz bilinmez.
   Future<ScanLocation?> _readLocation() async {
-    final Result<ScanLocation> result = await ref
-        .read(locationServiceProvider)
-        .current();
+    final LocationService service = ref.read(locationServiceProvider);
+    final ScanLocation? warm = service.cachedLocation;
+    if (warm != null) return warm;
+
+    final Result<ScanLocation> result = await service.current();
     return result.valueOrNull;
   }
 }

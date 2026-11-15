@@ -70,6 +70,7 @@ class _ScanPageState extends ConsumerState<ScanPage> {
     // okutma yarıda kalırdı.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(locationServiceProvider).ensurePermission();
+      ref.read(locationServiceProvider).warmUp().ignore();
       ref.read(punchControllerProvider.notifier).reset();
     });
   }
