@@ -456,7 +456,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(flex: 11, child: recentLogsSection),
+                            Expanded(flex: 11, child: studentsSection),
                             const SizedBox(width: 24),
                             Expanded(
                               flex: 9,
@@ -467,7 +467,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                                   const SizedBox(height: 16),
                                   filterPanel,
                                   const SizedBox(height: 20),
-                                  studentsSection,
+                                  recentLogsSection,
                                 ],
                               ),
                             ),
@@ -481,9 +481,9 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                           const SizedBox(height: 16),
                           filterPanel,
                           const SizedBox(height: 20),
-                          recentLogsSection,
-                          const SizedBox(height: 20),
                           studentsSection,
+                          const SizedBox(height: 20),
+                          recentLogsSection,
                         ],
                       );
                     },
