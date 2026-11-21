@@ -1,16 +1,20 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/dorm/dorm_providers.dart';
 import 'package:ubsoft_pdks/application/user/user_providers.dart';
+import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
+import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/core/routing/app_routes.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
+import 'package:ubsoft_pdks/data/repositories/dorm_repository.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
@@ -20,7 +24,9 @@ import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_scaffold.dart';
 import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
+import 'package:ubsoft_pdks/presentation/widgets/error_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
+import 'package:ubsoft_pdks/presentation/widgets/ubs_logo.dart';
 import 'package:ubsoft_pdks/services/export/dorm_pdf_service.dart';
 import 'package:ubsoft_pdks/services/export/file_download_service.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
@@ -140,17 +146,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                             a.displayName,
                           ).compareTo(dormSearchKey(b.displayName));
                   });
-              final todayKey = DormClock.key(now);
-              final recentFromKey = DormClock.key(
-                DormClock.local(now).subtract(const Duration(days: 6)),
-              );
-              final recentState = ref.watch(
-                movementsProvider((
-                  from: recentFromKey,
-                  to: todayKey,
-                  uid: null,
-                )),
-              );
+              final recentState = ref.watch(recentMovementsProvider);
               final isFiltered = _status != 'all' || _attention != 'all';
               final allRecent = [
                 ...(recentState.value ?? const <AttendanceEvent>[]),
@@ -870,8 +866,88 @@ class _DormReportState extends ConsumerState<DormReportPage> {
   String _focus = 'all';
   bool _exporting = false;
   final Map<String, String> _knownNames = {};
+
+  String? _activeKey;
+  int _requestId = 0;
+  bool _loading = false;
+  bool _loadingMore = false;
+  bool _hasMore = false;
+  Failure? _error;
+  DocumentSnapshot<Map<String, dynamic>>? _cursor;
+  List<AttendanceEvent> _loaded = const [];
+
+  void _ensureLoaded(String tid, String from, String to) {
+    final key = '$tid|$from|$to|${_uid ?? ''}';
+    if (_activeKey == key) return;
+    _activeKey = key;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _load(tid: tid, from: from, to: to, reset: true);
+    });
+  }
+
+  Future<void> _load({
+    required String tid,
+    required String from,
+    required String to,
+    required bool reset,
+  }) async {
+    if (tid.isEmpty) return;
+    final req = ++_requestId;
+    setState(() {
+      if (reset) {
+        _loading = true;
+        _error = null;
+        _cursor = null;
+        _hasMore = false;
+        _loaded = const [];
+      } else {
+        _loadingMore = true;
+      }
+    });
+    final res = await ref
+        .read(dormRepositoryProvider)
+        .fetchReportEvents(
+          tid,
+          from,
+          to,
+          uid: _uid,
+          startAfter: reset ? null : _cursor,
+        );
+    if (!mounted || req != _requestId) return;
+    switch (res) {
+      case Ok<ReportEventsPage>(:final value):
+        final merged = reset
+            ? value.events
+            : <AttendanceEvent>[
+                ..._loaded,
+                ...value.events.where(
+                  (e) => !_loaded.any((prev) => prev.id == e.id),
+                ),
+              ]
+          ..sort((a, b) => b.at.compareTo(a.at));
+        for (final event in merged) {
+          _knownNames[event.userId] = event.userName;
+        }
+        setState(() {
+          _loaded = merged;
+          _cursor = value.cursor;
+          _hasMore = value.hasMore;
+          _loading = false;
+          _loadingMore = false;
+          _error = null;
+        });
+      case Err<ReportEventsPage>(:final failure):
+        setState(() {
+          _loading = false;
+          _loadingMore = false;
+          _error = failure;
+        });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final tid = ref.watch(tenantIdProvider);
     final now = DormClock.local(ref.watch(dormNowProvider));
     final range =
         _range ??
@@ -885,13 +961,9 @@ class _DormReportState extends ConsumerState<DormReportPage> {
         );
     final from = _calendarKey(range.start);
     final to = _calendarKey(range.end);
+    _ensureLoaded(tid, from, to);
+
     final users = ref.watch(usersProvider).value ?? <AppUser>[];
-    final movementState = ref.watch(
-      movementsProvider((from: from, to: to, uid: _uid)),
-    );
-    for (final event in movementState.value ?? <AttendanceEvent>[]) {
-      _knownNames[event.userId] = event.userName;
-    }
     final names = {
       ..._knownNames,
       for (final u in users.where((u) => u.role.isStaff)) u.uid: u.displayName,
@@ -900,17 +972,39 @@ class _DormReportState extends ConsumerState<DormReportPage> {
       title: 'Raporlar',
       maxContentWidth: AppWidths.wide,
       scrollable: true,
+      actions: [
+        IconButton(
+          tooltip: 'Raporu yenile',
+          onPressed: _loading
+              ? null
+              : () => _load(tid: tid, from: from, to: to, reset: true),
+          icon: const Icon(Icons.refresh_rounded),
+        ),
+      ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Öğrenci hareketlerini inceleyin',
-            style: AppTypography.h2(context.colors.onSurface),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Öğrenciyi ve günü açın; tüm giriş–çıkışları saatleriyle görün.',
-            style: AppTypography.small(context.colors.onSurfaceVariant),
+          Row(
+            children: [
+              const UbsLogo(width: 96),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Öğrenci hareketlerini inceleyin',
+                      style: AppTypography.h2(context.colors.onSurface),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Öğrenciyi ve günü açın; tüm giriş–çıkışları saatleriyle görün.',
+                      style: AppTypography.small(context.colors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 20),
           DormFilterPanel(
@@ -1003,75 +1097,101 @@ class _DormReportState extends ConsumerState<DormReportPage> {
             ],
           ),
           const SizedBox(height: 24),
-          AsyncValueView<List<AttendanceEvent>>(
-            onRetry: () => ref.invalidate(
-              movementsProvider((from: from, to: to, uid: _uid)),
-            ),
-            value: movementState,
-            builder: (all) {
-              final events = all
-                  .where(
-                    (e) => switch (_focus) {
-                      'late' => e.lateMinutes > 0,
-                      'earlyExit' => e.earlyExit,
-                      'earlyEntry' => e.earlyEntry,
-                      'leave' => e.permitted,
-                      'location' => e.verdict.needsAttention,
-                      _ => true,
-                    },
-                  )
-                  .toList();
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${events.map((e) => e.userId).toSet().length} öğrenci · ${events.length} hareket',
-                              style: AppTypography.bodyStrong(
-                                context.colors.onSurface,
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_error != null && _loaded.isEmpty)
+            ErrorView(
+              error: _error!,
+              onRetry: () => _load(tid: tid, from: from, to: to, reset: true),
+            )
+          else ...[
+            Builder(
+              builder: (context) {
+                final events = _loaded
+                    .where(
+                      (e) => switch (_focus) {
+                        'late' => e.lateMinutes > 0,
+                        'earlyExit' => e.earlyExit,
+                        'earlyEntry' => e.earlyEntry,
+                        'leave' => e.permitted,
+                        'location' => e.verdict.needsAttention,
+                        _ => true,
+                      },
+                    )
+                    .toList();
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${events.map((e) => e.userId).toSet().length} öğrenci · ${events.length} hareket',
+                                style: AppTypography.bodyStrong(
+                                  context.colors.onSurface,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              '${events.where((e) => e.type.isEntry).length} giriş · ${events.where((e) => e.type.isExit).length} çıkış',
-                              style: AppTypography.caption(
-                                context.colors.onSurfaceVariant,
+                              const SizedBox(height: 3),
+                              Text(
+                                '${events.where((e) => e.type.isEntry).length} giriş · ${events.where((e) => e.type.isExit).length} çıkış',
+                                style: AppTypography.caption(
+                                  context.colors.onSurfaceVariant,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
+                        ),
+                        AppButton(
+                          label: 'PDF indir',
+                          icon: Icons.file_download_outlined,
+                          size: AppButtonSize.small,
+                          isLoading: _exporting,
+                          onPressed: events.isEmpty
+                              ? null
+                              : () => _export(
+                                  events,
+                                  '${_displayDate(from)} — ${_displayDate(to)} · ${_focusLabel(_focus)}${_uid == null ? '' : ' · ${names[_uid] ?? 'Seçili öğrenci'}'}',
+                                ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const _MovementLegend(),
+                    const SizedBox(height: 12),
+                    _GroupedMovements(
+                      key: ValueKey('report-$from-$to-$_uid-$_focus'),
+                      events: events,
+                      byStudent: _uid == null,
+                    ),
+                    if (_hasMore) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton(
+                        onPressed: _loadingMore
+                            ? null
+                            : () => _load(
+                                tid: tid,
+                                from: from,
+                                to: to,
+                                reset: false,
+                              ),
+                        child: Text(
+                          _loadingMore
+                              ? 'Yükleniyor...'
+                              : 'Daha fazla kayıt yükle',
                         ),
                       ),
-                      AppButton(
-                        label: 'PDF indir',
-                        icon: Icons.file_download_outlined,
-                        size: AppButtonSize.small,
-                        isLoading: _exporting,
-                        onPressed: events.isEmpty
-                            ? null
-                            : () => _export(
-                                events,
-                                '${_displayDate(from)} — ${_displayDate(to)} · ${_focusLabel(_focus)}${_uid == null ? '' : ' · ${names[_uid] ?? 'Seçili öğrenci'}'}',
-                              ),
-                      ),
                     ],
-                  ),
-                  const SizedBox(height: 14),
-                  const _MovementLegend(),
-                  const SizedBox(height: 12),
-                  _GroupedMovements(
-                    key: ValueKey('report-$from-$to-$_uid-$_focus'),
-                    events: events,
-                    byStudent: _uid == null,
-                  ),
-                ],
-              );
-            },
-          ),
+                  ],
+                );
+              },
+            ),
+          ],
         ],
       ),
     );

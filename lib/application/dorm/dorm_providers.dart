@@ -53,6 +53,15 @@ final dormLeavesProvider = StreamProvider<List<StudentLeave>>((ref) {
       .watchLeaves(user.tenantId, uid: user.student ? user.uid : null);
 });
 typedef MovementQuery = ({String from, String to, String? uid});
+final recentMovementsProvider = StreamProvider<List<AttendanceEvent>>((ref) {
+  final user = ref.watch(
+    currentUserProvider.select(
+      (u) => u == null ? null : (tenantId: u.tenantId, uid: u.uid),
+    ),
+  );
+  if (user == null) return Stream.value(const <AttendanceEvent>[]);
+  return ref.watch(dormRepositoryProvider).watchRecentEvents(user.tenantId);
+});
 final movementsProvider =
     StreamProvider.family<List<AttendanceEvent>, MovementQuery>((ref, query) {
       final user = ref.watch(

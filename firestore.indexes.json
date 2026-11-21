@@ -36,6 +36,15 @@
         { "fieldPath": "userId", "order": "ASCENDING" },
         { "fieldPath": "dateKey", "order": "ASCENDING" }
       ]
+    },
+    {
+      "//": "Sayfalı rapor: bir öğrencinin aralıktaki okutmaları, yeniden eskiye.",
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": [

@@ -11,6 +11,7 @@ import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/permissions/app_permission.dart';
+import 'package:ubsoft_pdks/presentation/features/users/bulk_import_dialog.dart';
 import 'package:ubsoft_pdks/presentation/formatters/enum_labels.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
@@ -44,11 +45,25 @@ class UserListPage extends ConsumerWidget {
                 : '${tenant.counters.userCount} / '
                       '${tenant.subscription.maxUsers} kullanıcı',
             trailing: canCreate
-                ? AppButton(
-                    label: 'Yeni',
-                    icon: Icons.add_rounded,
-                    size: AppButtonSize.small,
-                    onPressed: () => context.go(AppRoutes.userNewPath),
+                ? Wrap(
+                    spacing: AppSpacing.xs,
+                    runSpacing: AppSpacing.xs,
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        onPressed: () => showDialog<bool>(
+                          context: context,
+                          builder: (_) => const BulkStudentImportDialog(),
+                        ),
+                        icon: const Icon(Icons.upload_file_rounded, size: 18),
+                        label: const Text('Toplu yükle'),
+                      ),
+                      AppButton(
+                        label: 'Yeni',
+                        icon: Icons.add_rounded,
+                        size: AppButtonSize.small,
+                        onPressed: () => context.go(AppRoutes.userNewPath),
+                      ),
+                    ],
                   )
                 : null,
           ),

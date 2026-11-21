@@ -16,6 +16,17 @@ import 'package:ubsoft_pdks/domain/usecases/attendance/resolve_punch.dart';
 import 'package:ubsoft_pdks/domain/usecases/attendance/summarize_day.dart';
 import 'package:ubsoft_pdks/domain/usecases/attendance/verify_location.dart';
 
+final class ReportEventsPage {
+  const ReportEventsPage({
+    required this.events,
+    required this.hasMore,
+    this.cursor,
+  });
+  final List<AttendanceEvent> events;
+  final bool hasMore;
+  final DocumentSnapshot<Map<String, dynamic>>? cursor;
+}
+
 final class DormRepository extends FirestoreRepositoryBase {
   const DormRepository(super.firestore);
   static DateTime? _date(dynamic v) => v is Timestamp ? v.toDate() : null;
@@ -62,6 +73,53 @@ final class DormRepository extends FirestoreRepositoryBase {
       ),
     );
   }
+
+  Stream<List<AttendanceEvent>> watchRecentEvents(
+    String tid, {
+    int limit = 10,
+  }) {
+    final Query<Map<String, dynamic>> q = subcollection(tid, 'attendance')
+        .orderBy('at', descending: true)
+        .limit(limit * 2);
+    List<AttendanceEvent> events(QuerySnapshot<Map<String, dynamic>> s) => s.docs
+        .where((d) => d.data()['voided'] != true)
+        .map(AttendanceEventMapper.fromDoc)
+        .take(limit)
+        .toList();
+    return guardLiveStream(
+      q.snapshots(includeMetadataChanges: true).map(events),
+      loadInitial: () async =>
+          events(await q.get(const GetOptions(source: Source.server))),
+    );
+  }
+
+  Future<Result<ReportEventsPage>> fetchReportEvents(
+    String tid,
+    String from,
+    String to, {
+    String? uid,
+    int limit = 250,
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+  }) => guard(() async {
+    Query<Map<String, dynamic>> q = subcollection(tid, 'attendance')
+        .where('dateKey', isGreaterThanOrEqualTo: from, isLessThanOrEqualTo: to);
+    if (uid != null) q = q.where('userId', isEqualTo: uid);
+    q = q.orderBy('dateKey', descending: true);
+    if (startAfter != null) q = q.startAfterDocument(startAfter);
+    final snap = await q.limit(limit + 1).get();
+    final hasMore = snap.docs.length > limit;
+    final pageDocs = hasMore ? snap.docs.take(limit).toList() : snap.docs;
+    final events = pageDocs
+        .where((d) => d.data()['voided'] != true)
+        .map(AttendanceEventMapper.fromDoc)
+        .toList()
+      ..sort((a, b) => b.at.compareTo(a.at));
+    return ReportEventsPage(
+      events: events,
+      hasMore: hasMore,
+      cursor: pageDocs.isEmpty ? null : pageDocs.last,
+    );
+  });
 
   Stream<List<AttendanceEvent>> watchEvents(
     String tid,

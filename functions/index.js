@@ -10,7 +10,7 @@ const {onDocumentCreated} = require('firebase-functions/v2/firestore');
 const {onValueCreated} = require('firebase-functions/v2/database');
 const {onSchedule} = require('firebase-functions/v2/scheduler');
 const {setGlobalOptions} = require('firebase-functions/v2');
-const {hash, validId, validateRelays, locationAllowed, commandFor, waitForProbe, enqueue} = require('./core');
+const {hash, validId, validateRelays, evaluateLocation, evaluateDormPolicy, locationAllowed, commandFor, waitForProbe, enqueue} = require('./core');
 initializeApp();
 setGlobalOptions({region:'europe-west1', maxInstances:3, memory:'256MiB', timeoutSeconds:30});
 const db = getFirestore();
@@ -184,18 +184,59 @@ exports.dispatchTurnstile = onDocumentCreated({document:'tenants/{tenantId}/atte
   // Firestore permits characters which RTDB keys do not. Reject malformed
   // source paths before any command write, rather than retrying forever.
   if(!validId(tid)||!validId(eventId)||!validId(e.checkpointId)||typeof e.userId!=='string'||e.userId.includes('/'))return;
-  const config=(await configRef(tid).get()).data();
+  const latest=(await event.data.ref.get()).data();
+  if(!latest)return;
+
+  const [configSnap,tenant,point,presence,user,lockSnap]=await Promise.all([
+    configRef(tid).get(),
+    db.doc(`tenants/${tid}`).get(),
+    db.doc(`tenants/${tid}/checkpoints/${e.checkpointId}`).get(),
+    db.doc(`tenants/${tid}/presence/${e.userId}`).get(),
+    db.doc(`tenants/${tid}/users/${e.userId}`).get(),
+    db.doc(`tenants/${tid}/leaveLocks/${e.userId}`).get(),
+  ]);
+  const config=configSnap.data(), t=tenant.data(), p=point.data();
+
+  // Authoritative server-side re-evaluation of location & dorm timing policy.
+  let verifiedEvent = latest;
+  if (!latest.demoSource && latest.voided !== true && latest.schemaVersion === 2 && latest.serverVerified !== true && t && p) {
+    const atMs = typeof latest.at?.toMillis === 'function' ? latest.at.toMillis() : Date.now();
+    const loc = evaluateLocation(latest, p);
+    const lock = lockSnap.exists ? lockSnap.data() : null;
+    const pol = evaluateDormPolicy(atMs, { entry: latest.type === 'in', policy: t.settings?.dormPolicy || {}, leave: lock });
+    const patch = {
+      verdict: loc.verdict,
+      ...(loc.distanceMeters != null ? { distanceMeters: loc.distanceMeters } : {}),
+      radiusMeters: loc.radiusMeters,
+      lateMinutes: pol.lateMinutes,
+      earlyExit: pol.earlyExit,
+      earlyEntry: pol.earlyEntry,
+      permitted: pol.permitted,
+      cycleDate: pol.cycleDate,
+      serverVerified: true,
+    };
+    await event.data.ref.set(patch, { merge: true });
+    if (presence.data()?.eventId === eventId) {
+      await db.doc(`tenants/${tid}/presence/${e.userId}`).set({
+        lateMinutes: pol.lateMinutes,
+        earlyExit: pol.earlyExit,
+        earlyEntry: pol.earlyEntry,
+        permitted: pol.permitted,
+        cycleDate: pol.cycleDate,
+        serverVerified: true,
+      }, { merge: true });
+    }
+    verifiedEvent = { ...latest, ...patch };
+  }
+
   if(!config?.paired || !Object.values(config.relays||{}).includes(e.checkpointId))return;
   // Never replay an invocation whose earlier acknowledgement was already saved.
-  const latest=(await event.data.ref.get()).data();
-  if(latest?.turnstile?.status && !['queued'].includes(latest.turnstile.status))return;
-  const [tenant,point,presence,user]=await Promise.all([db.doc(`tenants/${tid}`).get(),db.doc(`tenants/${tid}/checkpoints/${e.checkpointId}`).get(),db.doc(`tenants/${tid}/presence/${e.userId}`).get(),db.doc(`tenants/${tid}/users/${e.userId}`).get()]);
-  const t=tenant.data(), p=point.data();
-  if(t?.status!=='active'||!t.subscription?.expiresAt||t.subscription.expiresAt.toMillis()<=Date.now()||user.data()?.status!=='active'||p?.code!==e.checkpointCode||!p?.active||p.kind!==e.type||presence.data()?.eventId!==eventId||latest?.voided===true){await hardwareStatus(event.data.ref,'rejected');return;}
-  if(!locationAllowed(e,p,t.settings)){await hardwareStatus(event.data.ref,'rejected');return;}
+  if(verifiedEvent?.turnstile?.status && !['queued'].includes(verifiedEvent.turnstile.status))return;
+  if(t?.status!=='active'||!t.subscription?.expiresAt||t.subscription.expiresAt.toMillis()<=Date.now()||user.data()?.status!=='active'||p?.code!==e.checkpointCode||!p?.active||p.kind!==e.type||presence.data()?.eventId!==eventId||verifiedEvent?.voided===true){await hardwareStatus(event.data.ref,'rejected');return;}
+  if(!locationAllowed(verifiedEvent,p,t.settings)){await hardwareStatus(event.data.ref,'rejected');return;}
   const base=devicePath(tid,config.deviceId);
   const status=(await rtdb.ref(`${base}/status`).get()).val();
-  const command=commandFor(e,config,status,Date.now());
+  const command=commandFor(verifiedEvent,config,status,Date.now());
   if(command.skip){if(command.skip!=='ineligible')await hardwareStatus(event.data.ref,command.skip);return;}
   // Record queued BEFORE publishing: a very fast acknowledgement cannot be
   // overwritten by a late queued write from this function.
