@@ -65,7 +65,7 @@ class DormMetricGrid extends StatelessWidget {
       final width = (bounds.maxWidth - gap * (columns - 1)) / columns;
       final scale = MediaQuery.textScalerOf(context).scale(1);
       final height =
-          (width < 155 ? 168.0 : 156.0) + (scale > 1 ? 105 * (scale - 1) : 0);
+          (width < 155 ? 108.0 : 94.0) + (scale > 1 ? 82 * (scale - 1) : 0);
       return Wrap(
         spacing: gap,
         runSpacing: gap,
@@ -87,60 +87,71 @@ class DormMetricGrid extends StatelessWidget {
                   background: m.selected
                       ? m.color.withValues(alpha: 0.05)
                       : null,
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm + 2,
+                    vertical: AppSpacing.sm + 2,
+                  ),
+                  child: Row(
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: m.color.withValues(alpha: 0.09),
-                              borderRadius: AppRadius.allMd,
-                            ),
-                            child: Icon(m.icon, size: 18, color: m.color),
-                          ),
-                          const Spacer(),
-                          Icon(
-                            Icons.north_east_rounded,
-                            size: 15,
-                            color: context.colors.onSurfaceVariant.withValues(
-                              alpha: 0.5,
-                            ),
-                          ),
-                        ],
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: m.color.withValues(alpha: 0.09),
+                          borderRadius: AppRadius.allMd,
+                        ),
+                        child: Icon(m.icon, size: 18, color: m.color),
                       ),
-                      const Spacer(),
-                      Text(
-                        '${m.value}',
-                        style: AppTypography.h1(context.colors.onSurface)
-                            .copyWith(
-                              fontSize: 28,
-                              height: 1.1,
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  '${m.value}',
+                                  style:
+                                      AppTypography.h1(
+                                        context.colors.onSurface,
+                                      ).copyWith(
+                                        fontSize: 22,
+                                        height: 1.05,
+                                        fontFeatures: const [
+                                          FontFeature.tabularFigures(),
+                                        ],
+                                      ),
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.north_east_rounded,
+                                  size: 13,
+                                  color: context.colors.onSurfaceVariant
+                                      .withValues(alpha: 0.5),
+                                ),
                               ],
                             ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        m.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.bodyStrong(
-                          context.colors.onSurface,
-                        ).copyWith(fontSize: 13),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        m.caption,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption(
-                          context.colors.onSurfaceVariant,
-                        ).copyWith(fontSize: 11),
+                            const SizedBox(height: 2),
+                            Text(
+                              m.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.bodyStrong(
+                                context.colors.onSurface,
+                              ).copyWith(fontSize: 12.5, height: 1.15),
+                            ),
+                            const SizedBox(height: 1),
+                            Text(
+                              m.caption,
+                              maxLines: width < 155 ? 2 : 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTypography.caption(
+                                context.colors.onSurfaceVariant,
+                              ).copyWith(fontSize: 10.5, height: 1.15),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),

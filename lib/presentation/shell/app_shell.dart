@@ -269,9 +269,6 @@ class _NavDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final String tenantName =
-        ref.watch(currentTenantProvider)?.name ?? 'UBSoft Yurt Kontrol';
-
     return Drawer(
       backgroundColor: context.colors.surface,
       shape: const RoundedRectangleBorder(borderRadius: AppRadius.rightXl),
@@ -279,27 +276,14 @@ class _NavDrawer extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
+            const Padding(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.lg,
                 AppSpacing.lg,
                 AppSpacing.md,
                 AppSpacing.md,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const UbsLogo.mark(),
-                  AppSpacing.vSm,
-                  Text(
-                    tenantName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.h3(context.colors.onSurface),
-                  ),
-                ],
-              ),
+              child: UbsLogo(scale: 0.95),
             ),
             const Divider(height: 1),
             Expanded(
@@ -411,40 +395,19 @@ class _SideRail extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final String tenantName =
-        ref.watch(currentTenantProvider)?.name ?? 'UBSoft Yurt Kontrol';
-
     return SingleChildScrollView(
       child: IntrinsicHeight(
         child: NavigationRail(
-          minWidth: 104,
+          minWidth: 88,
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelect,
           labelType: NavigationRailLabelType.all,
-          leading: Padding(
-            padding: const EdgeInsets.symmetric(
+          leading: const Padding(
+            padding: EdgeInsets.symmetric(
               horizontal: AppSpacing.xs,
               vertical: AppSpacing.md,
             ),
-            child: SizedBox(
-              width: 92,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  const UbsLogo(width: 90),
-                  const SizedBox(height: 8),
-                  Text(
-                    tenantName,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTypography.caption(
-                      context.colors.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            child: UbsLogo.compact(scale: 0.82),
           ),
           destinations: destinations
               .map(

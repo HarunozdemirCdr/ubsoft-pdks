@@ -984,25 +984,25 @@ class _DormReportState extends ConsumerState<DormReportPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
+          Wrap(
+            spacing: 14,
+            runSpacing: 10,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const UbsLogo(width: 96),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Öğrenci hareketlerini inceleyin',
-                      style: AppTypography.h2(context.colors.onSurface),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Öğrenciyi ve günü açın; tüm giriş–çıkışları saatleriyle görün.',
-                      style: AppTypography.small(context.colors.onSurfaceVariant),
-                    ),
-                  ],
-                ),
+              const UbsLogo(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Öğrenci hareketlerini inceleyin',
+                    style: AppTypography.h2(context.colors.onSurface),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Öğrenciyi ve günü açın; tüm giriş–çıkışları saatleriyle görün.',
+                    style: AppTypography.small(context.colors.onSurfaceVariant),
+                  ),
+                ],
               ),
             ],
           ),
