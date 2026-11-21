@@ -361,22 +361,17 @@ class DormStudentCard extends StatelessWidget {
         : inside
         ? AppColors.entrySurface
         : AppColors.exitSurface;
-    final elapsed = presence.at == null
-        ? Duration.zero
-        : now.difference(presence.at!);
     final meta = [
       if (user.room.isNotEmpty) 'Oda ${user.room}',
       if (user.studentNumber.isNotEmpty) 'No ${user.studentNumber}',
     ].join(' · ');
-    final timeInfo = presence.at != null
-        ? AppDate.dateTime(presence.at!)
-        : 'İlk okutma bekleniyor';
-    final detail = [
-      if (meta.isNotEmpty) meta,
-      timeInfo,
-      if (presence.inside == false && elapsed > Duration.zero)
-        '${AppDate.durationHuman(elapsed)} dışarıda',
-    ].join(' · ');
+    final detail = presence.at == null
+        ? [if (meta.isNotEmpty) meta, 'İlk okutma bekleniyor'].join(' · ')
+        : meta.isNotEmpty
+        ? meta
+        : (presence.checkpoint.isNotEmpty
+              ? presence.checkpoint
+              : presence.label);
     final hasBadges =
         overdue || (permitted && !inside) || presence.warnings.isNotEmpty;
     return Semantics(
@@ -425,12 +420,17 @@ class DormStudentCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 18,
-                  color: context.colors.onSurfaceVariant,
-                ),
+                if (presence.at != null) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    AppDate.time(presence.at!),
+                    style: AppTypography.bodyStrong(color).copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ],
             ),
             if (hasBadges) ...[

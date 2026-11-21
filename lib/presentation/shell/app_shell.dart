@@ -15,6 +15,7 @@ import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/permissions/permission_set.dart';
 import 'package:ubsoft_pdks/presentation/shell/nav_destinations.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
+import 'package:ubsoft_pdks/presentation/widgets/ubs_logo.dart';
 import 'package:ubsoft_pdks/services/location/location_service.dart';
 
 /// Uygulama kabuğu.
@@ -287,26 +288,28 @@ class _NavDrawer extends ConsumerWidget {
               ),
               child: Row(
                 children: <Widget>[
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: context.colors.primaryContainer,
-                      borderRadius: AppRadius.allMd,
-                    ),
-                    child: Icon(
-                      Icons.badge_outlined,
-                      color: context.colors.primary,
-                      size: 22,
-                    ),
-                  ),
+                  const UbsLogo.mark(),
                   AppSpacing.hSm,
                   Expanded(
-                    child: Text(
-                      tenantName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.h3(context.colors.onSurface),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          tenantName,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.h3(context.colors.onSurface),
+                        ),
+                        Text(
+                          'UBS Elektronik',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTypography.caption(
+                            context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -434,16 +437,25 @@ class _SideRail extends ConsumerWidget {
           leading: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.xs,
-              vertical: AppSpacing.lg,
+              vertical: AppSpacing.md,
             ),
             child: SizedBox(
-              width: 64,
-              child: Text(
-                tenantName,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: AppTypography.caption(context.colors.onSurfaceVariant),
+              width: 68,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  const UbsLogo(),
+                  const SizedBox(height: 8),
+                  Text(
+                    tenantName,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption(
+                      context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),

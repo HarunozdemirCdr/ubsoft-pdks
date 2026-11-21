@@ -1309,17 +1309,39 @@ class _EventList extends ConsumerWidget {
             'Giriş veya çıkış QR kodunu okuttuğunuzda kaydınız burada görünür.',
       );
     }
-    return Column(
-      children: [
-        for (final e in events)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: DormMovementTile(
-              event: e,
-              onVoid: admin ? () => _void(context, ref, e) : null,
-            ),
-          ),
-      ],
+    return LayoutBuilder(
+      builder: (context, bounds) {
+        if (bounds.maxWidth < 560) {
+          return Column(
+            children: [
+              for (final e in events)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: DormMovementTile(
+                    event: e,
+                    onVoid: admin ? () => _void(context, ref, e) : null,
+                  ),
+                ),
+            ],
+          );
+        }
+        const gap = 8.0;
+        final width = (bounds.maxWidth - gap) / 2;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final e in events)
+              SizedBox(
+                width: width,
+                child: DormMovementTile(
+                  event: e,
+                  onVoid: admin ? () => _void(context, ref, e) : null,
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 

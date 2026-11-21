@@ -150,6 +150,13 @@ void main() {
       expect(find.text('Görünümü düzenle'), findsNothing);
       expect(find.text('Son Hareketler'), findsOneWidget);
       expect(
+        find.descendant(
+          of: find.byType(DormStudentCard),
+          matching: find.textContaining('sa'),
+        ),
+        findsNothing,
+      );
+      expect(
         tester.getTopLeft(find.text('16:45').first).dy,
         lessThan(tester.getTopLeft(find.text('08:30').first).dy),
       );
@@ -231,6 +238,41 @@ void main() {
       }
       expect(tester.takeException(), isNull);
       await capture(tester, boundary, 'report-expanded-390.png');
+    },
+  );
+  testWidgets(
+    'rapor geniş ekranda hareket kartlarını yan yana iki sütunda gösterir',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final scope = await setup(tester);
+      await tester.pumpWidget(
+        wrapPage(
+          const DormReportPage(),
+          container: scope.container,
+          size: const Size(1200, 900),
+        ),
+      );
+      await settle(tester);
+      final student = find.byKey(const ValueKey('student-group-ayse'));
+      await tester.ensureVisible(student);
+      await tester.tap(student);
+      await settle(tester);
+      final day = find.byKey(ValueKey('day-group-ayse-${AppDate.todayKey()}'));
+      await tester.ensureVisible(day);
+      await tester.tap(day);
+      await settle(tester);
+      final tiles = find.byType(DormMovementTile);
+      expect(tiles, findsNWidgets(2));
+      expect(
+        tester.getTopLeft(tiles.at(0)).dy,
+        tester.getTopLeft(tiles.at(1)).dy,
+      );
+      expect(
+        tester.getTopLeft(tiles.at(0)).dx,
+        lessThan(tester.getTopLeft(tiles.at(1)).dx),
+      );
+      expect(tester.takeException(), isNull);
     },
   );
   testWidgets('büyütülmüş metinde metrik kartları taşmaz', (tester) async {
