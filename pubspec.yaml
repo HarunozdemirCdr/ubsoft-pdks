@@ -68,3 +68,4 @@ flutter:
   # harfler (ş, ğ, İ, ı) yoktur ve rapor kutu karakterleriyle çıkar.
   assets:
     - assets/fonts/
+    - assets/images/

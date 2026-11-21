@@ -286,31 +286,17 @@ class _NavDrawer extends ConsumerWidget {
                 AppSpacing.md,
                 AppSpacing.md,
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   const UbsLogo.mark(),
-                  AppSpacing.hSm,
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Text(
-                          tenantName,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.h3(context.colors.onSurface),
-                        ),
-                        Text(
-                          'UBS Elektronik',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTypography.caption(
-                            context.colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
+                  AppSpacing.vSm,
+                  Text(
+                    tenantName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.h3(context.colors.onSurface),
                   ),
                 ],
               ),
@@ -431,6 +417,7 @@ class _SideRail extends ConsumerWidget {
     return SingleChildScrollView(
       child: IntrinsicHeight(
         child: NavigationRail(
+          minWidth: 104,
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelect,
           labelType: NavigationRailLabelType.all,
@@ -440,11 +427,11 @@ class _SideRail extends ConsumerWidget {
               vertical: AppSpacing.md,
             ),
             child: SizedBox(
-              width: 68,
+              width: 92,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  const UbsLogo(),
+                  const UbsLogo(width: 90),
                   const SizedBox(height: 8),
                   Text(
                     tenantName,
