@@ -241,7 +241,7 @@ void main() {
     },
   );
   testWidgets(
-    'rapor geniş ekranda hareket kartlarını yan yana iki sütunda gösterir',
+    'rapor geniş ekranda hareket kartlarını alt alta sıralar',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -266,11 +266,7 @@ void main() {
       expect(tiles, findsNWidgets(2));
       expect(
         tester.getTopLeft(tiles.at(0)).dy,
-        tester.getTopLeft(tiles.at(1)).dy,
-      );
-      expect(
-        tester.getTopLeft(tiles.at(0)).dx,
-        lessThan(tester.getTopLeft(tiles.at(1)).dx),
+        lessThan(tester.getTopLeft(tiles.at(1)).dy),
       );
       expect(tester.takeException(), isNull);
     },
