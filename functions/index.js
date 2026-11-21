@@ -1,4 +1,5 @@
 'use strict';
+// Turnstile Cloud Functions (europe-west1).
 const crypto = require('node:crypto');
 const {initializeApp, getApp} = require('firebase-admin/app');
 const {getAuth} = require('firebase-admin/auth');
@@ -81,7 +82,7 @@ exports.bindTurnstileDevice = onCall(async request=>{
     if(!r)throw new HttpsError('not-found','Kart önce Wi-Fi üzerinden internete bağlanıp kaydolmalıdır.');
     if(r.tenantId&&r.tenantId!==tid)throw new HttpsError('already-exists','Kart başka bir yurda kalıcı olarak atanmış.');
     const oldDeviceId = (c?.paired && c.deviceId !== did) ? c.deviceId : null;
-    const next={deviceId:did,paired:true,enabled:c?.enabled??true,relays:c?.relays||{}};
+    const next={deviceId:did,paired:true,enabled:c?.paired?(c.enabled??true):true,relays:c?.relays||{}};
     tx.update(registry,{tenantId:tid});
     if (oldDeviceId) {
       tx.set(db.doc(`turnstileRegistry/${oldDeviceId}`), { tenantId: FieldValue.delete() }, { merge: true });
