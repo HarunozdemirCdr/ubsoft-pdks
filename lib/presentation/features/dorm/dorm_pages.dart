@@ -144,16 +144,39 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                             a.displayName,
                           ).compareTo(dormSearchKey(b.displayName));
                   });
-              return Column(
+              final todayKey = DormClock.key(now);
+              final recentFromKey = DormClock.key(
+                DormClock.local(now).subtract(const Duration(days: 6)),
+              );
+              final recentState = ref.watch(
+                movementsProvider((
+                  from: recentFromKey,
+                  to: todayKey,
+                  uid: null,
+                )),
+              );
+              final isFiltered =
+                  _status != 'all' ||
+                  _attention != 'all' ||
+                  _search.text.trim().isNotEmpty;
+              final visibleIds = {for (final u in visible) u.uid};
+              final allRecent = [
+                ...(recentState.value ?? const <AttendanceEvent>[]),
+              ]..sort((a, b) => b.at.compareTo(a.at));
+              final recentLogs =
+                  (isFiltered
+                          ? allRecent.where(
+                              (e) => visibleIds.contains(e.userId),
+                            )
+                          : allRecent)
+                      .take(10)
+                      .toList();
+
+              Widget buildMetrics({required bool forceTwoColumns}) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SectionHeader(
-                    eyebrow: 'GENEL BAKIŞ',
-                    title: tenant.name,
-                    description: '${AppDate.date(now)} · ${AppDate.dayName(now)}',
-                  ),
-                  const SizedBox(height: 16),
                   DormMetricGrid(
+                    forceTwoColumns: forceTwoColumns,
                     metrics: [
                       DormMetric(
                         'Toplam öğrenci',
@@ -225,134 +248,160 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                  DormFilterPanel(
-                    onReset:
-                        _status != 'all' ||
-                            _attention != 'all' ||
-                            _search.text.isNotEmpty
-                        ? _reset
-                        : null,
-                    children: [
-                      TextField(
-                        key: const ValueKey('dashboard-search'),
-                        controller: _search,
-                        decoration: InputDecoration(
-                          hintText: 'Öğrenci, numara veya oda ara',
-                          prefixIcon: const Icon(Icons.search_rounded),
-                          suffixIcon: _search.text.isEmpty
-                              ? null
-                              : IconButton(
-                                  tooltip: 'Aramayı temizle',
-                                  icon: const Icon(Icons.close_rounded),
-                                  onPressed: () {
-                                    _search.clear();
-                                    setState(() {});
-                                  },
-                                ),
-                        ),
-                        onChanged: (_) => setState(() => _visibleCount = 30),
-                      ),
-                      const SizedBox(height: 14),
-                      LayoutBuilder(
-                        builder: (context, bounds) {
-                          final fields = [
-                            DormSelect<String>(
-                              label: 'Bulunma durumu',
-                              value: _status,
-                              options: const [
-                                DormOption(
-                                  'all',
-                                  'Tüm öğrenciler',
-                                  Icons.people_outline_rounded,
-                                ),
-                                DormOption(
-                                  'inside',
-                                  'İçeride',
-                                  Icons.login_rounded,
-                                ),
-                                DormOption(
-                                  'outside',
-                                  'Dışarıda',
-                                  Icons.logout_rounded,
-                                ),
-                                DormOption(
-                                  'unknown',
-                                  'Başlangıç bekleyen',
-                                  Icons.help_outline_rounded,
-                                ),
-                              ],
-                              onChanged: (v) => setState(() {
-                                _status = v;
-                                _visibleCount = 30;
-                              }),
+                ],
+              );
+
+              final filterPanel = DormFilterPanel(
+                onReset: isFiltered ? _reset : null,
+                children: [
+                  TextField(
+                    key: const ValueKey('dashboard-search'),
+                    controller: _search,
+                    decoration: InputDecoration(
+                      hintText: 'Öğrenci, numara veya oda ara',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      suffixIcon: _search.text.isEmpty
+                          ? null
+                          : IconButton(
+                              tooltip: 'Aramayı temizle',
+                              icon: const Icon(Icons.close_rounded),
+                              onPressed: () {
+                                _search.clear();
+                                setState(() {});
+                              },
                             ),
-                            DormSelect<String>(
-                              label: 'İnceleme',
-                              value: _attention,
-                              options: const [
-                                DormOption(
-                                  'all',
-                                  'Tüm durumlar',
-                                  Icons.filter_list_rounded,
-                                ),
-                                DormOption(
-                                  'late',
-                                  'Dönüşü geciken',
-                                  Icons.schedule_rounded,
-                                ),
-                                DormOption(
-                                  'leave',
-                                  'İzinli dışarıda',
-                                  Icons.event_available_outlined,
-                                ),
-                                DormOption(
-                                  'warning',
-                                  'Saat uyarısı',
-                                  Icons.error_outline_rounded,
-                                ),
-                              ],
-                              onChanged: (v) => setState(() {
-                                _attention = v;
-                                _visibleCount = 30;
-                              }),
-                            ),
-                          ];
-                          return bounds.maxWidth >= 300
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(child: fields[0]),
-                                    const SizedBox(width: 12),
-                                    Expanded(child: fields[1]),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    fields[0],
-                                    const SizedBox(height: 12),
-                                    fields[1],
-                                  ],
-                                );
-                        },
-                      ),
-                    ],
+                    ),
+                    onChanged: (_) => setState(() => _visibleCount = 30),
                   ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Text(
-                        'Öğrenciler',
-                        style: AppTypography.h2(context.colors.onSurface),
-                      ),
-                      const Spacer(),
-                      Text(
-                        '${visible.length} öğrenci',
-                        style: AppTypography.small(
-                          context.colors.onSurfaceVariant,
+                  const SizedBox(height: 14),
+                  LayoutBuilder(
+                    builder: (context, bounds) {
+                      final fields = [
+                        DormSelect<String>(
+                          label: 'Bulunma durumu',
+                          value: _status,
+                          options: const [
+                            DormOption(
+                              'all',
+                              'Tüm öğrenciler',
+                              Icons.people_outline_rounded,
+                            ),
+                            DormOption(
+                              'inside',
+                              'İçeride',
+                              Icons.login_rounded,
+                            ),
+                            DormOption(
+                              'outside',
+                              'Dışarıda',
+                              Icons.logout_rounded,
+                            ),
+                            DormOption(
+                              'unknown',
+                              'Başlangıç bekleyen',
+                              Icons.help_outline_rounded,
+                            ),
+                          ],
+                          onChanged: (v) => setState(() {
+                            _status = v;
+                            _visibleCount = 30;
+                          }),
+                        ),
+                        DormSelect<String>(
+                          label: 'İnceleme',
+                          value: _attention,
+                          options: const [
+                            DormOption(
+                              'all',
+                              'Tüm durumlar',
+                              Icons.filter_list_rounded,
+                            ),
+                            DormOption(
+                              'late',
+                              'Dönüşü geciken',
+                              Icons.schedule_rounded,
+                            ),
+                            DormOption(
+                              'leave',
+                              'İzinli dışarıda',
+                              Icons.event_available_outlined,
+                            ),
+                            DormOption(
+                              'warning',
+                              'Saat uyarısı',
+                              Icons.error_outline_rounded,
+                            ),
+                          ],
+                          onChanged: (v) => setState(() {
+                            _attention = v;
+                            _visibleCount = 30;
+                          }),
+                        ),
+                      ];
+                      return bounds.maxWidth >= 300
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(child: fields[0]),
+                                const SizedBox(width: 12),
+                                Expanded(child: fields[1]),
+                              ],
+                            )
+                          : Column(
+                              children: [
+                                fields[0],
+                                const SizedBox(height: 12),
+                                fields[1],
+                              ],
+                            );
+                    },
+                  ),
+                ],
+              );
+
+              final recentLogsSection = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionTitleRow(
+                    title: 'Son Hareketler',
+                    trailing: 'Son ${recentLogs.length} kayıt',
+                  ),
+                  const SizedBox(height: 12),
+                  if (recentState.isLoading && recentState.value == null)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (recentLogs.isEmpty)
+                    DormEmpty(
+                      title: isFiltered
+                          ? 'Bu seçime uyan hareket yok'
+                          : 'Henüz son hareket yok',
+                      message: isFiltered
+                          ? 'Filtreyi sıfırlayarak son hareketleri görebilirsiniz.'
+                          : 'Öğrenciler QR okuttuğunda en son 10 hareket burada üstte görünür.',
+                      onReset: isFiltered ? _reset : null,
+                    )
+                  else
+                    for (final event in recentLogs)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: DormRecentMovementCard(
+                          event: event,
+                          onTap: () => context.push(
+                            AppRoutes.personHistoryPath(event.userId),
+                          ),
                         ),
                       ),
-                    ],
+                ],
+              );
+
+              final studentsSection = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _SectionTitleRow(
+                    title: 'Öğrenciler',
+                    trailing: '${visible.length} öğrenci',
                   ),
                   const SizedBox(height: 12),
                   if (visible.isEmpty)
@@ -367,7 +416,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                     ),
                   for (final u in visible.take(_visibleCount))
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: 8),
                       child: DormStudentCard(
                         user: u,
                         presence: state(u),
@@ -389,6 +438,56 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                         'Daha fazla göster (${visible.length - _visibleCount})',
                       ),
                     ),
+                ],
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SectionHeader(
+                    eyebrow: 'GENEL BAKIŞ',
+                    title: tenant.name,
+                    description: '${AppDate.date(now)} · ${AppDate.dayName(now)}',
+                  ),
+                  const SizedBox(height: 16),
+                  LayoutBuilder(
+                    builder: (context, bounds) {
+                      if (bounds.maxWidth >= 900) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 11, child: recentLogsSection),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              flex: 9,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  buildMetrics(forceTwoColumns: true),
+                                  const SizedBox(height: 16),
+                                  filterPanel,
+                                  const SizedBox(height: 20),
+                                  studentsSection,
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          buildMetrics(forceTwoColumns: false),
+                          const SizedBox(height: 16),
+                          filterPanel,
+                          const SizedBox(height: 20),
+                          recentLogsSection,
+                          const SizedBox(height: 20),
+                          studentsSection,
+                        ],
+                      );
+                    },
+                  ),
                   const SizedBox(height: 20),
                 ],
               );
@@ -433,6 +532,30 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
         ),
       ],
     ),
+  );
+}
+
+class _SectionTitleRow extends StatelessWidget {
+  const _SectionTitleRow({required this.title, required this.trailing});
+  final String title;
+  final String trailing;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.h2(context.colors.onSurface),
+        ),
+      ),
+      const SizedBox(width: 8),
+      Text(
+        trailing,
+        style: AppTypography.small(context.colors.onSurfaceVariant),
+      ),
+    ],
   );
 }
 
@@ -1247,7 +1370,7 @@ class _GroupedMovementsState extends State<_GroupedMovements> {
                     padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
                     child: _EventList(
                       events: [...groups[date]!]
-                        ..sort((a, b) => a.at.compareTo(b.at)),
+                        ..sort((a, b) => b.at.compareTo(a.at)),
                     ),
                   ),
               ],

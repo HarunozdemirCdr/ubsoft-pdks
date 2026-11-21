@@ -46,17 +46,22 @@ class DormMetric {
 
 /// Boyutlar metin uzunluğuna göre değişmez; her satır eşit kolonlardan oluşur.
 class DormMetricGrid extends StatelessWidget {
-  const DormMetricGrid({required this.metrics, super.key});
+  const DormMetricGrid({
+    required this.metrics,
+    this.forceTwoColumns = false,
+    super.key,
+  });
   final List<DormMetric> metrics;
+  final bool forceTwoColumns;
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
-      final columns = bounds.maxWidth >= 840 ? 4 : 2;
+      final columns = !forceTwoColumns && bounds.maxWidth >= 840 ? 4 : 2;
       const gap = AppSpacing.sm;
       final width = (bounds.maxWidth - gap * (columns - 1)) / columns;
       final scale = MediaQuery.textScalerOf(context).scale(1);
       final height =
-          (width < 155 ? 164.0 : 150.0) + (scale > 1 ? 100 * (scale - 1) : 0);
+          (width < 155 ? 168.0 : 156.0) + (scale > 1 ? 100 * (scale - 1) : 0);
       return Wrap(
         spacing: gap,
         runSpacing: gap,
@@ -219,13 +224,18 @@ class DormFilterPanel extends StatelessWidget {
           children: [
             Icon(Icons.tune_rounded, size: 18, color: context.colors.primary),
             const SizedBox(width: 8),
-            Text(
-              'Görünümü düzenle',
-              style: AppTypography.label(context.colors.onSurface),
+            Expanded(
+              child: Text(
+                'Görünümü düzenle',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.label(context.colors.onSurface),
+              ),
             ),
-            const Spacer(),
-            if (onReset != null)
+            if (onReset != null) ...[
+              const SizedBox(width: 8),
               TextButton(onPressed: onReset, child: const Text('Sıfırla')),
+            ],
           ],
         ),
         const SizedBox(height: 16),
@@ -279,6 +289,37 @@ class DormEmpty extends StatelessWidget {
   );
 }
 
+class _DirectionBadge extends StatelessWidget {
+  const _DirectionBadge({
+    required this.icon,
+    required this.color,
+    required this.surface,
+    required this.tooltip,
+    this.size = 36,
+    this.borderAlpha = 0.25,
+  });
+  final IconData icon;
+  final Color color;
+  final Color surface;
+  final String tooltip;
+  final double size;
+  final double borderAlpha;
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: AppRadius.allMd,
+        border: Border.all(color: color.withValues(alpha: borderAlpha)),
+      ),
+      child: Icon(icon, size: 18, color: color),
+    ),
+  );
+}
+
 class DormStudentCard extends StatelessWidget {
   const DormStudentCard({
     required this.user,
@@ -300,143 +341,266 @@ class DormStudentCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inside = presence.inside == true;
-    final color = presence.inside == null
+    final hasState = presence.inside != null;
+    final color = !hasState
         ? AppColors.neutral
         : inside
         ? AppColors.entry
         : AppColors.exit;
+    final surface = !hasState
+        ? AppColors.neutral.withValues(alpha: 0.1)
+        : inside
+        ? AppColors.entrySurface
+        : AppColors.exitSurface;
     final elapsed = presence.at == null
         ? Duration.zero
         : now.difference(presence.at!);
-    final subtitle = [
-      if (user.studentNumber.isNotEmpty) 'No ${user.studentNumber}',
+    final meta = [
       if (user.room.isNotEmpty) 'Oda ${user.room}',
+      if (user.studentNumber.isNotEmpty) 'No ${user.studentNumber}',
     ].join(' · ');
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primarySurface,
-                foregroundColor: AppColors.primary,
-                child: Text(
-                  user.initials,
-                  style: AppTypography.label(AppColors.primary),
+    final timeInfo = presence.at != null
+        ? AppDate.dateTime(presence.at!)
+        : 'İlk okutma bekleniyor';
+    final detail = [
+      if (meta.isNotEmpty) meta,
+      timeInfo,
+      if (presence.inside == false && elapsed > Duration.zero)
+        '${AppDate.durationHuman(elapsed)} dışarıda',
+    ].join(' · ');
+    final hasBadges =
+        overdue || (permitted && !inside) || presence.warnings.isNotEmpty;
+    return Semantics(
+      label: '${user.displayName}, ${presence.label}',
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                _DirectionBadge(
+                  tooltip: presence.label,
+                  icon: !hasState
+                      ? Icons.help_outline_rounded
+                      : inside
+                      ? Icons.login_rounded
+                      : Icons.logout_rounded,
+                  color: color,
+                  surface: surface,
+                  borderAlpha: hasState ? 0.25 : 0.18,
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      user.displayName,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.bodyStrong(context.colors.onSurface),
-                    ),
-                    if (subtitle.isNotEmpty) ...[
-                      const SizedBox(height: 3),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       Text(
-                        subtitle,
+                        user.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyStrong(
+                          context.colors.onSurface,
+                        ).copyWith(fontSize: 13.5),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        detail,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: AppTypography.caption(
                           context.colors.onSurfaceVariant,
                         ),
                       ),
                     ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: context.colors.onSurfaceVariant,
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            children: [
-              StatusChip(
-                label: presence.inside == null
-                    ? 'Başlangıç kaydı yok'
-                    : presence.label,
-                icon: presence.inside == null
-                    ? Icons.help_outline_rounded
-                    : inside
-                    ? Icons.login_rounded
-                    : Icons.logout_rounded,
-                tone: presence.inside == null
-                    ? StatusTone.neutral
-                    : inside
-                    ? StatusTone.success
-                    : StatusTone.danger,
-                compact: true,
-              ),
-              if (overdue)
-                const StatusChip(
-                  label: 'Dönüşü gecikti',
-                  icon: Icons.schedule_rounded,
-                  tone: StatusTone.warning,
-                  compact: true,
-                ),
-              if (permitted && !inside)
-                const StatusChip(
-                  label: 'İzinli',
-                  icon: Icons.event_available_outlined,
-                  tone: StatusTone.info,
-                  compact: true,
-                ),
-              for (final w in presence.warnings)
-                StatusChip(label: w, tone: StatusTone.warning, compact: true),
-            ],
-          ),
-          const SizedBox(height: 12),
-          if (presence.at != null)
-            Row(
-              children: [
-                Icon(Icons.access_time_rounded, size: 15, color: color),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    '${presence.checkpoint == 'Başlangıç durumu'
-                        ? 'Durum doğrulaması'
-                        : inside
-                        ? 'Son giriş'
-                        : 'Son çıkış'} · ${AppDate.dateTime(presence.at!)}',
-                    style: AppTypography.caption(
-                      context.colors.onSurfaceVariant,
-                    ),
                   ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: context.colors.onSurfaceVariant,
                 ),
               ],
             ),
-          if (presence.inside == false && elapsed > Duration.zero)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                '${AppDate.durationHuman(elapsed)} dışarıda',
-                style: AppTypography.caption(context.colors.onSurfaceVariant),
+            if (hasBadges) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  if (overdue)
+                    const StatusChip(
+                      label: 'Dönüşü gecikti',
+                      icon: Icons.schedule_rounded,
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (permitted && !inside)
+                    const StatusChip(
+                      label: 'İzinli',
+                      icon: Icons.event_available_outlined,
+                      tone: StatusTone.info,
+                      compact: true,
+                    ),
+                  for (final w in presence.warnings)
+                    StatusChip(
+                      label: w,
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                ],
               ),
-            ),
-          if (onInitialize != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: onInitialize,
-                icon: const Icon(Icons.edit_location_alt_outlined, size: 17),
-                label: const Text('Başlangıç durumunu belirle'),
+            ],
+            if (onInitialize != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onInitialize,
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                  ),
+                  icon: const Icon(Icons.edit_location_alt_outlined, size: 16),
+                  label: const Text(
+                    'Başlangıç durumunu belirle',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Sol paneldeki Son Hareketler akışı için kompakt log kartı.
+class DormRecentMovementCard extends StatelessWidget {
+  const DormRecentMovementCard({
+    required this.event,
+    required this.onTap,
+    super.key,
+  });
+  final AttendanceEvent event;
+  final VoidCallback onTap;
+  @override
+  Widget build(BuildContext context) {
+    final isEntry = event.type.isEntry;
+    final color = isEntry ? AppColors.entry : AppColors.exit;
+    final surface = isEntry ? AppColors.entrySurface : AppColors.exitSurface;
+    final hasAlert =
+        event.lateMinutes > 0 ||
+        event.earlyExit ||
+        event.earlyEntry ||
+        event.permitted ||
+        event.verdict.needsAttention;
+    return Semantics(
+      label:
+          '${event.userName}, ${event.type.label}, ${AppDate.dateTime(event.at)}',
+      child: AppCard(
+        key: ValueKey('recent-log-${event.id}'),
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                _DirectionBadge(
+                  tooltip: event.type.label,
+                  icon: isEntry ? Icons.login_rounded : Icons.logout_rounded,
+                  color: color,
+                  surface: surface,
+                  size: 34,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        event.userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.bodyStrong(
+                          context.colors.onSurface,
+                        ).copyWith(fontSize: 13.5),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${event.checkpointName} · ${AppDate.date(event.at)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption(
+                          context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  AppDate.time(event.at),
+                  style: AppTypography.bodyStrong(color).copyWith(
+                    fontSize: 14,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: context.colors.onSurfaceVariant,
+                ),
+              ],
             ),
-        ],
+            if (hasAlert) ...[
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 5,
+                runSpacing: 4,
+                children: [
+                  if (event.lateMinutes > 0)
+                    StatusChip(
+                      label: '${event.lateMinutes} dk geç giriş',
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (event.earlyExit)
+                    const StatusChip(
+                      label: 'Erken çıkış',
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (event.earlyEntry)
+                    const StatusChip(
+                      label: 'Erken giriş',
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (event.permitted)
+                    const StatusChip(
+                      label: 'İzinli',
+                      tone: StatusTone.info,
+                      compact: true,
+                    ),
+                  if (event.verdict.needsAttention)
+                    StatusChip(
+                      label: event.verdict.label,
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                ],
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

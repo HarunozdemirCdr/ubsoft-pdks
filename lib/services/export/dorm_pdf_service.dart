@@ -17,7 +17,7 @@ abstract final class DormPdfService {
       await rootBundle.load('assets/fonts/PlusJakartaSans-Bold.ttf'),
     );
     final doc = pw.Document(title: 'Yurt giriş–çıkış raporu', author: dorm);
-    final sorted = [...events]..sort((a, b) => a.at.compareTo(b.at));
+    final sorted = [...events]..sort((a, b) => b.at.compareTo(a.at));
     doc.addPage(
       pw.MultiPage(
         maxPages: 500,

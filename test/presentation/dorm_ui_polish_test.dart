@@ -144,6 +144,11 @@ void main() {
         expect(size, sizes.first);
       }
       expect(find.text('Dönüş yapmadı'), findsNothing);
+      expect(find.text('Son Hareketler'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('16:45').first).dy,
+        lessThan(tester.getTopLeft(find.text('08:30').first).dy),
+      );
       expect(find.textContaining('başlangıç kaydı yok'), findsOneWidget);
       expect(tester.takeException(), isNull);
       if (width == 390 || width == 1440) {
@@ -186,6 +191,10 @@ void main() {
       await settle(tester);
       expect(find.text('08:30'), findsNWidgets(2));
       expect(find.text('16:45'), findsNWidgets(2));
+      expect(
+        tester.getTopLeft(find.text('16:45').last).dy,
+        lessThan(tester.getTopLeft(find.text('08:30').last).dy),
+      );
       for (final text in tester.widgetList<Text>(find.text('08:30'))) {
         expect(text.style!.color, AppColors.entry);
       }
