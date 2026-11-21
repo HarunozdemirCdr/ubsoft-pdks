@@ -156,6 +156,16 @@ final class DormRepository extends FirestoreRepositoryBase {
       if (current.data()?['leaveId'] == value.id) tx.delete(lock);
     });
   });
+
+  Future<Result<void>> deleteLeave(String tid, StudentLeave value) =>
+      guardVoid(() async {
+        final lock = subcollection(tid, 'leaveLocks').doc(value.userId);
+        await firestore.runTransaction((tx) async {
+          final current = await tx.get(lock);
+          tx.delete(subcollection(tid, 'leaves').doc(value.id));
+          if (current.data()?['leaveId'] == value.id) tx.delete(lock);
+        });
+      });
   Future<Result<void>> initializePresence(
     String tid,
     String uid,

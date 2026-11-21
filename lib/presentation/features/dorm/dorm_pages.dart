@@ -1456,22 +1456,48 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
                               '${AppDate.dateTime(l.from)} — ${AppDate.dateTime(l.until)}',
                             ),
                             Text(l.reason),
-                            Text(
-                              l.revoked
-                                  ? 'İptal edildi'
-                                  : l.covers(now)
-                                  ? 'Aktif izin'
-                                  : now.isBefore(l.from)
-                                  ? 'Planlandı'
-                                  : 'Sona erdi',
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    l.revoked
+                                        ? 'İptal edildi'
+                                        : l.covers(now)
+                                        ? 'Aktif izin'
+                                        : now.isBefore(l.from)
+                                        ? 'Planlandı'
+                                        : 'Sona erdi',
+                                    style: AppTypography.small(
+                                      l.revoked
+                                          ? AppColors.textMuted
+                                          : l.covers(now)
+                                          ? AppColors.entry
+                                          : context.colors.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ),
+                                if (user.role.isAdmin &&
+                                    !l.revoked &&
+                                    l.until.isAfter(now))
+                                  TextButton(
+                                    onPressed: _busy ? null : () => _revoke(l),
+                                    child: const Text('İzni iptal et'),
+                                  ),
+                                if (user.role.isAdmin &&
+                                    (l.revoked || !l.until.isAfter(now)))
+                                  TextButton.icon(
+                                    onPressed: _busy ? null : () => _delete(l),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.danger,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('Sil'),
+                                  ),
+                              ],
                             ),
-                            if (user.role.isAdmin &&
-                                !l.revoked &&
-                                l.until.isAfter(now))
-                              TextButton(
-                                onPressed: _busy ? null : () => _revoke(l),
-                                child: const Text('İzni iptal et'),
-                              ),
                           ],
                         ),
                       ),
@@ -1504,7 +1530,7 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
     if (!await ConfirmDialog.show(
       context,
       title: 'İzin iptal edilsin mi?',
-      message: 'İzin geçmişte korunur, aktif geçerliliği kaldırılır.',
+      message: 'İznin aktif geçerliliği kaldırılır. İsterseniz sonra kartı silebilirsiniz.',
       confirmLabel: 'İptal et',
     )) {
       return;
@@ -1515,6 +1541,24 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
         .read(dormRepositoryProvider)
         .revokeLeave(u.tenantId, value, u.uid);
     Toast.result(result, successMessage: 'İzin iptal edildi.');
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<void> _delete(StudentLeave value) async {
+    if (!await ConfirmDialog.show(
+      context,
+      title: 'İzin kaydı silinsin mi?',
+      message: 'Bu izin kaydı listeden ve veritabanından kalıcı olarak silinir.',
+      confirmLabel: 'Sil',
+    )) {
+      return;
+    }
+    setState(() => _busy = true);
+    final u = ref.read(currentUserProvider)!;
+    final result = await ref
+        .read(dormRepositoryProvider)
+        .deleteLeave(u.tenantId, value);
+    Toast.result(result, successMessage: 'İzin kaydı silindi.');
     if (mounted) setState(() => _busy = false);
   }
 }

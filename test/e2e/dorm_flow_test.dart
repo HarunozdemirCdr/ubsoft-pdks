@@ -113,6 +113,8 @@ void main() {
       true,
     );
     expect((await repo.watchLeaves(user.tenantId).first).single.revoked, true);
+    expect((await repo.deleteLeave(user.tenantId, leave)).isOk, true);
+    expect(await repo.watchLeaves(user.tenantId).first, isEmpty);
   });
   test('çakışan izin reddedilir', () async {
     final now = DateTime.now();
