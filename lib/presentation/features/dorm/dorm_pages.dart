@@ -34,23 +34,20 @@ class DormDashboardPage extends ConsumerStatefulWidget {
 class _DormDashboardState extends ConsumerState<DormDashboardPage> {
   String _status = 'all';
   String _attention = 'all';
-  final _search = TextEditingController();
   int _visibleCount = 30;
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
-  }
 
   void _select(String status, [String attention = 'all']) => setState(() {
     _status = status;
     _attention = attention;
     _visibleCount = 30;
   });
-  void _reset() {
-    _search.clear();
-    _select('all');
-  }
+
+  void _toggle(String status, [String attention = 'all']) =>
+      (_status == status && _attention == attention)
+      ? _select('all')
+      : _select(status, attention);
+
+  void _reset() => _select('all');
 
   @override
   Widget build(BuildContext context) {
@@ -112,6 +109,9 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                   .length;
               final delayed = students.where(overdue).length;
               final onLeave = students.where(permitted).length;
+              final warningCount = students
+                  .where((u) => state(u).warnings.isNotEmpty)
+                  .length;
               final unknown = students
                   .where((u) => state(u).inside == null)
                   .length;
@@ -129,11 +129,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                       'warning' => state(u).warnings.isNotEmpty,
                       _ => true,
                     };
-                    return physical &&
-                        attention &&
-                        dormSearchKey(
-                          '${u.displayName} ${u.room} ${u.studentNumber}',
-                        ).contains(dormSearchKey(_search.text));
+                    return physical && attention;
                   }).toList()..sort((a, b) {
                     final urgent = (overdue(b) ? 1 : 0).compareTo(
                       overdue(a) ? 1 : 0,
@@ -155,22 +151,11 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                   uid: null,
                 )),
               );
-              final isFiltered =
-                  _status != 'all' ||
-                  _attention != 'all' ||
-                  _search.text.trim().isNotEmpty;
-              final visibleIds = {for (final u in visible) u.uid};
+              final isFiltered = _status != 'all' || _attention != 'all';
               final allRecent = [
                 ...(recentState.value ?? const <AttendanceEvent>[]),
               ]..sort((a, b) => b.at.compareTo(a.at));
-              final recentLogs =
-                  (isFiltered
-                          ? allRecent.where(
-                              (e) => visibleIds.contains(e.userId),
-                            )
-                          : allRecent)
-                      .take(10)
-                      .toList();
+              final recentLogs = allRecent.take(10).toList();
 
               Widget buildMetrics({required bool forceTwoColumns}) => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -185,6 +170,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                         AppColors.primary,
                         'Aktif öğrenci',
                         () => _select('all'),
+                        selected: !isFiltered,
                       ),
                       DormMetric(
                         'İçeride',
@@ -192,7 +178,8 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                         Icons.login_rounded,
                         AppColors.entry,
                         'Son kaydı giriş',
-                        () => _select('inside'),
+                        () => _toggle('inside'),
+                        selected: _status == 'inside' && _attention == 'all',
                       ),
                       DormMetric(
                         'Dışarıda',
@@ -202,15 +189,35 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                         onLeave == 0
                             ? 'Son kaydı çıkış'
                             : '$onLeave izinli öğrenci dahil',
-                        () => _select('outside'),
+                        () => _toggle('outside'),
+                        selected: _status == 'outside' && _attention == 'all',
                       ),
                       DormMetric(
                         'Dönüşü geciken',
                         delayed,
                         Icons.schedule_rounded,
                         AppColors.warning,
-                        'Dışarıdakilerin içinden',
-                        () => _select('outside', 'late'),
+                        'Dışarıda ve dönüş saati geçti',
+                        () => _toggle('outside', 'late'),
+                        selected: _attention == 'late',
+                      ),
+                      DormMetric(
+                        'İzinli dışarıda',
+                        onLeave,
+                        Icons.event_available_outlined,
+                        AppColors.primary,
+                        'Aktif izin kapsamında',
+                        () => _toggle('outside', 'leave'),
+                        selected: _attention == 'leave',
+                      ),
+                      DormMetric(
+                        'Saat uyarısı',
+                        warningCount,
+                        Icons.error_outline_rounded,
+                        AppColors.warning,
+                        'Geç giriş / erken çıkış',
+                        () => _toggle('all', 'warning'),
+                        selected: _attention == 'warning',
                       ),
                     ],
                   ),
@@ -251,114 +258,6 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                 ],
               );
 
-              final filterPanel = DormFilterPanel(
-                onReset: isFiltered ? _reset : null,
-                children: [
-                  TextField(
-                    key: const ValueKey('dashboard-search'),
-                    controller: _search,
-                    decoration: InputDecoration(
-                      hintText: 'Öğrenci, numara veya oda ara',
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      suffixIcon: _search.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Aramayı temizle',
-                              icon: const Icon(Icons.close_rounded),
-                              onPressed: () {
-                                _search.clear();
-                                setState(() {});
-                              },
-                            ),
-                    ),
-                    onChanged: (_) => setState(() => _visibleCount = 30),
-                  ),
-                  const SizedBox(height: 14),
-                  LayoutBuilder(
-                    builder: (context, bounds) {
-                      final fields = [
-                        DormSelect<String>(
-                          label: 'Bulunma durumu',
-                          value: _status,
-                          options: const [
-                            DormOption(
-                              'all',
-                              'Tüm öğrenciler',
-                              Icons.people_outline_rounded,
-                            ),
-                            DormOption(
-                              'inside',
-                              'İçeride',
-                              Icons.login_rounded,
-                            ),
-                            DormOption(
-                              'outside',
-                              'Dışarıda',
-                              Icons.logout_rounded,
-                            ),
-                            DormOption(
-                              'unknown',
-                              'Başlangıç bekleyen',
-                              Icons.help_outline_rounded,
-                            ),
-                          ],
-                          onChanged: (v) => setState(() {
-                            _status = v;
-                            _visibleCount = 30;
-                          }),
-                        ),
-                        DormSelect<String>(
-                          label: 'İnceleme',
-                          value: _attention,
-                          options: const [
-                            DormOption(
-                              'all',
-                              'Tüm durumlar',
-                              Icons.filter_list_rounded,
-                            ),
-                            DormOption(
-                              'late',
-                              'Dönüşü geciken',
-                              Icons.schedule_rounded,
-                            ),
-                            DormOption(
-                              'leave',
-                              'İzinli dışarıda',
-                              Icons.event_available_outlined,
-                            ),
-                            DormOption(
-                              'warning',
-                              'Saat uyarısı',
-                              Icons.error_outline_rounded,
-                            ),
-                          ],
-                          onChanged: (v) => setState(() {
-                            _attention = v;
-                            _visibleCount = 30;
-                          }),
-                        ),
-                      ];
-                      return bounds.maxWidth >= 300
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: fields[0]),
-                                const SizedBox(width: 12),
-                                Expanded(child: fields[1]),
-                              ],
-                            )
-                          : Column(
-                              children: [
-                                fields[0],
-                                const SizedBox(height: 12),
-                                fields[1],
-                              ],
-                            );
-                    },
-                  ),
-                ],
-              );
-
               final recentLogsSection = Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -373,14 +272,10 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                       child: Center(child: CircularProgressIndicator()),
                     )
                   else if (recentLogs.isEmpty)
-                    DormEmpty(
-                      title: isFiltered
-                          ? 'Bu seçime uyan hareket yok'
-                          : 'Henüz son hareket yok',
-                      message: isFiltered
-                          ? 'Filtreyi sıfırlayarak son hareketleri görebilirsiniz.'
-                          : 'Öğrenciler QR okuttuğunda en son 10 hareket burada üstte görünür.',
-                      onReset: isFiltered ? _reset : null,
+                    const DormEmpty(
+                      title: 'Henüz son hareket yok',
+                      message:
+                          'Öğrenciler QR okuttuğunda en son 10 hareket burada üstte görünür.',
                     )
                   else
                     for (final event in recentLogs)
@@ -402,6 +297,8 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                   _SectionTitleRow(
                     title: 'Öğrenciler',
                     trailing: '${visible.length} öğrenci',
+                    actionLabel: isFiltered ? 'Tümü' : null,
+                    onAction: isFiltered ? _reset : null,
                   ),
                   const SizedBox(height: 12),
                   if (visible.isEmpty)
@@ -411,7 +308,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                           : 'Bu seçime uyan öğrenci yok',
                       message: students.isEmpty
                           ? 'Öğrenciler bölümünden ilk öğrenciyi ekleyin.'
-                          : 'Durum ve inceleme filtrelerini değiştirerek tekrar bakabilirsiniz.',
+                          : 'Üstteki özet kartlarından başka bir durum seçebilir veya tüm öğrencilere dönebilirsiniz.',
                       onReset: students.isEmpty ? null : _reset,
                     ),
                   for (final u in visible.take(_visibleCount))
@@ -464,8 +361,6 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                                 crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
                                   buildMetrics(forceTwoColumns: true),
-                                  const SizedBox(height: 16),
-                                  filterPanel,
                                   const SizedBox(height: 20),
                                   recentLogsSection,
                                 ],
@@ -478,8 +373,6 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           buildMetrics(forceTwoColumns: false),
-                          const SizedBox(height: 16),
-                          filterPanel,
                           const SizedBox(height: 20),
                           studentsSection,
                           const SizedBox(height: 20),
@@ -522,7 +415,7 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
       title: const Text('Durumları doğru okuyun'),
       content: const SingleChildScrollView(
         child: Text(
-          'İçeride: Son geçerli kaydı giriş olan öğrenci.\n\nDışarıda: Son geçerli kaydı çıkış olan öğrenci. İzinli ve dönüşü geciken öğrenciler de bu sayıya dahildir.\n\nDönüşü geciken: Dışarıda olan, geçerli izni bulunmayan ve beklenen dönüş saati geçmiş öğrenci. Ayrı bir öğrenci grubu olarak toplama eklenmez.\n\nBaşlangıç kaydı yok: Henüz hareket veya doğrulanmış başlangıç durumu bulunmuyor. Öğrenci içeride ya da dışarıda varsayılmaz.\n\nDurumlar kayıtlı QR hareketlerine dayanır; okutulmamış bir fiziksel geçişi sistem kendiliğinden bilemez.',
+          'İçeride: Son geçerli kaydı giriş olan öğrenci.\n\nDışarıda: Son geçerli kaydı çıkış olan öğrenci. İzinli ve dönüşü geciken öğrenciler de bu sayıya dahildir.\n\nDönüşü geciken: Şu an hâlâ dışarıda olan, geçerli izni bulunmayan ve beklenen dönüş saati geçmiş öğrenci.\n\nİzinli dışarıda: Dışarıda olup aktif bir yurt izni kapsamında olan öğrenci.\n\nSaat uyarısı: Son okutmasında geç giriş, erken çıkış veya erken giriş uyarısı bulunan öğrenci (içeride olsa bile son girişi geç saatte yapılmışsa burada görünür).\n\nBaşlangıç kaydı yok: Henüz hareket veya doğrulanmış başlangıç durumu bulunmuyor. Öğrenci içeride ya da dışarıda varsayılmaz.\n\nDurumlar kayıtlı QR hareketlerine dayanır; okutulmamış bir fiziksel geçişi sistem kendiliğinden bilemez.',
         ),
       ),
       actions: [
@@ -536,9 +429,16 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
 }
 
 class _SectionTitleRow extends StatelessWidget {
-  const _SectionTitleRow({required this.title, required this.trailing});
+  const _SectionTitleRow({
+    required this.title,
+    required this.trailing,
+    this.actionLabel,
+    this.onAction,
+  });
   final String title;
   final String trailing;
+  final String? actionLabel;
+  final VoidCallback? onAction;
   @override
   Widget build(BuildContext context) => Row(
     children: [
@@ -550,6 +450,19 @@ class _SectionTitleRow extends StatelessWidget {
           style: AppTypography.h2(context.colors.onSurface),
         ),
       ),
+      if (actionLabel != null && onAction != null) ...[
+        const SizedBox(width: 6),
+        TextButton(
+          onPressed: onAction,
+          style: TextButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          ),
+          child: Text(actionLabel!),
+        ),
+      ],
       const SizedBox(width: 8),
       Text(
         trailing,

@@ -12,6 +12,7 @@ import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/enums/user_role.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_pages.dart';
+import 'package:ubsoft_pdks/presentation/features/dorm/widgets/dorm_ui.dart';
 import '../support/test_harness.dart';
 
 void main() {
@@ -137,6 +138,8 @@ void main() {
           'İçeride',
           'Dışarıda',
           'Dönüşü geciken',
+          'İzinli dışarıda',
+          'Saat uyarısı',
         ])
           tester.getSize(find.byKey(ValueKey('metric-$label'))),
       ];
@@ -144,6 +147,7 @@ void main() {
         expect(size, sizes.first);
       }
       expect(find.text('Dönüş yapmadı'), findsNothing);
+      expect(find.text('Görünümü düzenle'), findsNothing);
       expect(find.text('Son Hareketler'), findsOneWidget);
       expect(
         tester.getTopLeft(find.text('16:45').first).dy,
@@ -156,9 +160,33 @@ void main() {
       }
       await tester.tap(find.byKey(const ValueKey('metric-Dönüşü geciken')));
       await settle(tester);
-      expect(find.text('Zeynep Demir'), findsOneWidget);
-      expect(find.text('Ayşe Nur Yılmaz'), findsNothing);
-      expect(find.text('Elif Kaya'), findsNothing);
+      final filteredStudentCards = find.byType(DormStudentCard);
+      expect(filteredStudentCards, findsOneWidget);
+      expect(
+        find.descendant(
+          of: filteredStudentCards,
+          matching: find.text('Zeynep Demir'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: filteredStudentCards,
+          matching: find.text('Ayşe Nur Yılmaz'),
+        ),
+        findsNothing,
+      );
+      // Son Hareketler, özet kart filtresinden etkilenmemelidir.
+      expect(
+        find.descendant(
+          of: find.byType(DormRecentMovementCard),
+          matching: find.text('Ayşe Nur Yılmaz'),
+        ),
+        findsNWidgets(2),
+      );
+      await tester.tap(find.byKey(const ValueKey('metric-Dönüşü geciken')));
+      await settle(tester);
+      expect(find.byType(DormStudentCard), findsNWidgets(3));
       expect(tester.takeException(), isNull);
     });
   }

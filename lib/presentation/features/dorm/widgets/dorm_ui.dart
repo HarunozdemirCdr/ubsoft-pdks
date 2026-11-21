@@ -34,14 +34,16 @@ class DormMetric {
     this.icon,
     this.color,
     this.caption,
-    this.onTap,
-  );
+    this.onTap, {
+    this.selected = false,
+  });
   final String label;
   final int value;
   final IconData icon;
   final Color color;
   final String caption;
   final VoidCallback onTap;
+  final bool selected;
 }
 
 /// Boyutlar metin uzunluğuna göre değişmez; her satır eşit kolonlardan oluşur.
@@ -56,12 +58,14 @@ class DormMetricGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, bounds) {
-      final columns = !forceTwoColumns && bounds.maxWidth >= 840 ? 4 : 2;
+      final columns = !forceTwoColumns && bounds.maxWidth >= 840
+          ? (metrics.length == 6 ? 3 : 4)
+          : 2;
       const gap = AppSpacing.sm;
       final width = (bounds.maxWidth - gap * (columns - 1)) / columns;
       final scale = MediaQuery.textScalerOf(context).scale(1);
       final height =
-          (width < 155 ? 168.0 : 156.0) + (scale > 1 ? 100 * (scale - 1) : 0);
+          (width < 155 ? 168.0 : 156.0) + (scale > 1 ? 105 * (scale - 1) : 0);
       return Wrap(
         spacing: gap,
         runSpacing: gap,
@@ -73,11 +77,16 @@ class DormMetricGrid extends StatelessWidget {
               height: height,
               child: Semantics(
                 button: true,
+                selected: m.selected,
                 onTap: m.onTap,
                 excludeSemantics: true,
                 label: '${m.label}, ${m.value}. ${m.caption}',
                 child: AppCard(
                   onTap: m.onTap,
+                  borderColor: m.selected ? m.color : null,
+                  background: m.selected
+                      ? m.color.withValues(alpha: 0.05)
+                      : null,
                   padding: const EdgeInsets.all(AppSpacing.md),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
