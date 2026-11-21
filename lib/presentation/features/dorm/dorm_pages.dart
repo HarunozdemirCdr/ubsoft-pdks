@@ -26,7 +26,6 @@ import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
 import 'package:ubsoft_pdks/presentation/widgets/error_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
-import 'package:ubsoft_pdks/presentation/widgets/ubs_logo.dart';
 import 'package:ubsoft_pdks/services/export/dorm_pdf_service.dart';
 import 'package:ubsoft_pdks/services/export/file_download_service.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
@@ -984,27 +983,14 @@ class _DormReportState extends ConsumerState<DormReportPage> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Wrap(
-            spacing: 14,
-            runSpacing: 10,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              const UbsLogo(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Öğrenci hareketlerini inceleyin',
-                    style: AppTypography.h2(context.colors.onSurface),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Öğrenciyi ve günü açın; tüm giriş–çıkışları saatleriyle görün.',
-                    style: AppTypography.small(context.colors.onSurfaceVariant),
-                  ),
-                ],
-              ),
-            ],
+          Text(
+            'Öğrenci hareketlerini inceleyin',
+            style: AppTypography.h2(context.colors.onSurface),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Öğrenciyi ve günü açın; tüm giriş–çıkışları saatleriyle görün.',
+            style: AppTypography.small(context.colors.onSurfaceVariant),
           ),
           const SizedBox(height: 20),
           DormFilterPanel(

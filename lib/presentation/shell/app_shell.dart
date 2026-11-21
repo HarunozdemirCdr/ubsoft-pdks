@@ -283,7 +283,10 @@ class _NavDrawer extends ConsumerWidget {
                 AppSpacing.md,
                 AppSpacing.md,
               ),
-              child: UbsLogo(scale: 0.95),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: UbsLogo.mark(),
+              ),
             ),
             const Divider(height: 1),
             Expanded(
@@ -398,7 +401,7 @@ class _SideRail extends ConsumerWidget {
     return SingleChildScrollView(
       child: IntrinsicHeight(
         child: NavigationRail(
-          minWidth: 88,
+          minWidth: 108,
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelect,
           labelType: NavigationRailLabelType.all,
@@ -407,7 +410,7 @@ class _SideRail extends ConsumerWidget {
               horizontal: AppSpacing.xs,
               vertical: AppSpacing.md,
             ),
-            child: UbsLogo.compact(scale: 0.82),
+            child: UbsLogo(),
           ),
           destinations: destinations
               .map(
