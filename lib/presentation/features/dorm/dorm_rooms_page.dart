@@ -467,11 +467,11 @@ class _RoomStudentTile extends StatelessWidget {
             child: Row(
               children: [
                 Container(
-                  width: 3,
-                  height: 30,
+                  width: 9,
+                  height: 9,
                   decoration: BoxDecoration(
                     color: accent,
-                    borderRadius: BorderRadius.circular(2),
+                    shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 10),

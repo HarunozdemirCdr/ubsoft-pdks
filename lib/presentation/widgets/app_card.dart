@@ -18,7 +18,7 @@ class AppCard extends StatefulWidget {
     this.margin,
     this.background,
     this.borderColor,
-    this.borderRadius = AppRadius.allLg,
+    this.borderRadius = AppRadius.allMd,
     this.showBorder = true,
     this.spacious = false,
     super.key,
@@ -46,11 +46,12 @@ class _AppCardState extends State<AppCard> {
   @override
   Widget build(BuildContext context) {
     final bool interactive = widget.onTap != null;
+    final bool dark = context.isDark;
     final Color bg = widget.background ?? context.colors.surface;
     final Color border = widget.borderColor ?? context.colors.outline;
 
     final Widget content = AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 220),
       curve: Curves.easeInOut,
       padding:
           widget.padding ??
@@ -61,7 +62,11 @@ class _AppCardState extends State<AppCard> {
         color: bg,
         borderRadius: widget.borderRadius,
         border: widget.showBorder ? Border.all(color: border) : null,
-        boxShadow: _hovered && interactive ? AppShadows.card : AppShadows.none,
+        boxShadow: _hovered && interactive
+            ? AppShadows.card
+            : (!dark && widget.background == null
+                  ? AppShadows.subtle
+                  : AppShadows.none),
       ),
       child: widget.child,
     );

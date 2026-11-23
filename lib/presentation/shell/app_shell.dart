@@ -7,6 +7,7 @@ import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
+import 'package:ubsoft_pdks/core/theme/app_shadows.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
@@ -68,25 +69,24 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     final String location = GoRouterState.of(context).matchedLocation;
 
-    // Geniş ekran: hepsi yan menüde sığar.
+    // Geniş ekran: tek kurumsal sol menü (ikon + metin, çift bar yok).
     if (context.isWide) {
-      final int index = _indexFor(destinations, location);
       return Scaffold(
         body: Row(
           children: <Widget>[
-            _SideRail(
+            _CorporateSidebar(
               destinations: destinations,
-              selectedIndex: index,
-              onSelect: (i) => context.go(destinations[i].path),
+              location: location,
+              onSelect: (destination) => context.go(destination.path),
             ),
-            const VerticalDivider(width: 1),
             Expanded(child: body),
           ],
         ),
       );
     }
 
-    // Dar ekran: fazlalık soldan açılan menüye (Drawer) iner.
+    // Dar ekran: soldan ekstra yan bar açılmaz; yalnızca temiz alt navigasyon
+    // ve sığmayan modüller için tek dokunuşluk İşlemler alt penceresi kullanılır.
     final bool overflows = destinations.length > AppShell._mobileTabLimit;
     final List<NavDestination> primary = overflows
         ? destinations.sublist(0, AppShell._mobileTabLimit - 1)
@@ -104,53 +104,105 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: overflows
-          ? _NavDrawer(
-              destinations: destinations,
-              location: location,
-              onSelect: (destination) {
-                _scaffoldKey.currentState?.closeDrawer();
-                context.go(destination.path);
-              },
-            )
-          : null,
       body: body,
-      bottomNavigationBar: DefaultTextStyle.merge(
-        textAlign: TextAlign.center,
-        child: NavigationBar(
-          height: 80,
-          labelPadding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-          labelTextStyle: WidgetStateProperty.resolveWith(
-            (states) => AppTypography.caption(
-              states.contains(WidgetState.selected)
-                  ? context.colors.primary
-                  : context.colors.onSurfaceVariant,
-            ).copyWith(fontSize: 11, height: 1.3),
-          ),
-          selectedIndex: index,
-          onDestinationSelected: (i) {
-            if (overflows && i == primary.length) {
-              _scaffoldKey.currentState?.openDrawer();
-              return;
-            }
-            context.go(primary[i].path);
-          },
-          destinations: <Widget>[
-            for (final NavDestination destination in primary)
-              NavigationDestination(
-                icon: Icon(destination.icon),
-                selectedIcon: Icon(destination.selectedIcon),
-                label: destination.label,
-              ),
-            if (overflows)
-              NavigationDestination(
-                icon: Icon(
-                  inOverflow ? Icons.menu_open_rounded : Icons.menu_rounded,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: context.colors.surface,
+          border: Border(top: BorderSide(color: context.colors.outline)),
+          boxShadow: context.isDark ? null : AppShadows.navBar,
+        ),
+        child: DefaultTextStyle.merge(
+          textAlign: TextAlign.center,
+          child: NavigationBar(
+            height: 80,
+            labelPadding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+            labelTextStyle: WidgetStateProperty.resolveWith(
+              (states) => AppTypography.caption(
+                states.contains(WidgetState.selected)
+                    ? context.colors.primary
+                    : context.colors.onSurfaceVariant,
+              ).copyWith(fontSize: 11, height: 1.3),
+            ),
+            selectedIndex: index,
+            onDestinationSelected: (i) {
+              if (overflows && i == primary.length) {
+                _openMoreSheet(context, destinations, location);
+                return;
+              }
+              context.go(primary[i].path);
+            },
+            destinations: <Widget>[
+              for (final NavDestination destination in primary)
+                NavigationDestination(
+                  icon: Icon(destination.icon),
+                  selectedIcon: Icon(destination.selectedIcon),
+                  label: destination.label,
                 ),
-                selectedIcon: const Icon(Icons.menu_open_rounded),
-                label: 'Menü',
+              if (overflows)
+                NavigationDestination(
+                  icon: Icon(
+                    inOverflow ? Icons.grid_view_rounded : Icons.grid_view_outlined,
+                  ),
+                  selectedIcon: const Icon(Icons.grid_view_rounded),
+                  label: 'İşlemler',
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openMoreSheet(
+    BuildContext context,
+    List<NavDestination> destinations,
+    String location,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetCtx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const UbsLogo(width: 90),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Tüm Modüller',
+                      style: AppTypography.h3(sheetCtx.colors.onSurface),
+                    ),
+                  ),
+                ],
               ),
-          ],
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 8),
+              for (final NavDestination destination in destinations)
+                _SidebarTile(
+                  destination: destination,
+                  selected: _isActive(destination.path, location),
+                  onTap: () {
+                    Navigator.pop(sheetCtx);
+                    context.go(destination.path);
+                  },
+                ),
+              const Divider(height: 16),
+              ListTile(
+                leading: const Icon(Icons.logout_rounded, size: 20),
+                title: const Text('Çıkış Yap'),
+                onTap: () async {
+                  Navigator.pop(sheetCtx);
+                  await ref.read(authControllerProvider.notifier).signOut();
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -252,12 +304,11 @@ class _ExpiredBanner extends StatelessWidget {
   }
 }
 
-/// Dar ekranda soldan açılan menü — tüm bölümler ve çıkış.
-///
-/// Liste `ListView` olduğu için kaç öğe olursa olsun kaydırılır; hiçbir madde
-/// ekranın altında kesilip kalmaz.
-class _NavDrawer extends ConsumerWidget {
-  const _NavDrawer({
+/// Geniş ekranda tek kurumsal sol menü — banka / telekom portalları gibi
+/// net hiyerarşi: UBS marka başlığı, yatay ikon+etiket satırları ve oturum
+/// özeti.
+class _CorporateSidebar extends ConsumerWidget {
+  const _CorporateSidebar({
     required this.destinations,
     required this.location,
     required this.onSelect,
@@ -269,25 +320,40 @@ class _NavDrawer extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Drawer(
-      backgroundColor: context.colors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.rightXl),
+    final Session session = ref.watch(currentSessionProvider);
+    final String tenantName = session.tenantOrNull?.name ?? '';
+    final String userName = session is SessionActive
+        ? session.user.displayName
+        : '';
+
+    return Container(
+      width: 242,
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        border: Border(right: BorderSide(color: context.colors.outline)),
+      ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.md,
-                AppSpacing.md,
-              ),
+              padding: const EdgeInsets.fromLTRB(20, 20, 16, 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const UbsLogo.mark(),
-                  const SizedBox(height: 10),
+                  const UbsLogo.mark(width: 128),
+                  if (tenantName.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      tenantName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
+                      ).copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Container(
@@ -299,7 +365,7 @@ class _NavDrawer extends ConsumerWidget {
                       Expanded(
                         child: Container(
                           height: 1,
-                          color: context.colors.outlineVariant,
+                          color: context.colors.outline,
                         ),
                       ),
                     ],
@@ -310,12 +376,12 @@ class _NavDrawer extends ConsumerWidget {
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.sm,
+                  horizontal: 12,
+                  vertical: 4,
                 ),
                 children: <Widget>[
                   for (final NavDestination destination in destinations)
-                    _DrawerTile(
+                    _SidebarTile(
                       destination: destination,
                       selected: _AppShellState._isActive(
                         destination.path,
@@ -328,17 +394,50 @@ class _NavDrawer extends ConsumerWidget {
             ),
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.all(AppSpacing.sm),
-              child: ListTile(
-                leading: const Icon(Icons.logout_rounded),
-                title: const Text('Çıkış Yap'),
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AppRadius.allMd,
-                ),
-                onTap: () async {
-                  Scaffold.of(context).closeDrawer();
-                  await ref.read(authControllerProvider.notifier).signOut();
-                },
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (userName.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 2, 10, 6),
+                      child: Text(
+                        userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption(
+                          context.colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  InkWell(
+                    borderRadius: AppRadius.allSm,
+                    onTap: () =>
+                        ref.read(authControllerProvider.notifier).signOut(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.logout_rounded,
+                            size: 18,
+                            color: context.colors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Çıkış Yap',
+                            style: AppTypography.small(
+                              context.colors.onSurfaceVariant,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -348,9 +447,8 @@ class _NavDrawer extends ConsumerWidget {
   }
 }
 
-/// Menüdeki tek satır — seçili bölüm vurgulanır.
-class _DrawerTile extends StatelessWidget {
-  const _DrawerTile({
+class _SidebarTile extends StatelessWidget {
+  const _SidebarTile({
     required this.destination,
     required this.selected,
     required this.onTap,
@@ -362,99 +460,46 @@ class _DrawerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = selected
-        ? context.colors.primary
+    final bool dark = context.isDark;
+    final Color activeBg = dark
+        ? AppColors.primarySurfaceDark
+        : AppColors.primarySurface;
+    final Color fg = selected
+        ? (dark ? AppColors.primaryOnDark : AppColors.navy)
         : context.colors.onSurfaceVariant;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+      padding: const EdgeInsets.only(bottom: 3),
       child: Material(
-        color: selected ? context.colors.primaryContainer : Colors.transparent,
-        borderRadius: AppRadius.allMd,
+        color: selected ? activeBg : Colors.transparent,
+        borderRadius: AppRadius.allSm,
         child: InkWell(
-          borderRadius: AppRadius.allMd,
+          borderRadius: AppRadius.allSm,
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             child: Row(
               children: <Widget>[
                 Icon(
                   selected ? destination.selectedIcon : destination.icon,
-                  size: 22,
-                  color: color,
+                  size: 20,
+                  color: fg,
                 ),
-                AppSpacing.hSm,
-                Text(
-                  destination.label,
-                  style: selected
-                      ? AppTypography.bodyStrong(color)
-                      : AppTypography.body(color),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Geniş ekranlarda görünen yan menü.
-class _SideRail extends ConsumerWidget {
-  const _SideRail({
-    required this.destinations,
-    required this.selectedIndex,
-    required this.onSelect,
-  });
-
-  final List<NavDestination> destinations;
-  final int selectedIndex;
-  final ValueChanged<int> onSelect;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SingleChildScrollView(
-      child: IntrinsicHeight(
-        child: NavigationRail(
-          minWidth: 108,
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onSelect,
-          labelType: NavigationRailLabelType.all,
-          leading: Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSpacing.xs,
-              AppSpacing.md,
-              AppSpacing.xs,
-              AppSpacing.sm,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const UbsLogo(),
-                const SizedBox(height: 10),
-                Container(
-                  width: 36,
-                  height: 2,
-                  decoration: BoxDecoration(
-                    color: AppColors.brandAccent,
-                    borderRadius: BorderRadius.circular(1),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    destination.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: (selected
+                            ? AppTypography.bodyStrong(fg)
+                            : AppTypography.body(fg))
+                        .copyWith(fontSize: 13.5),
                   ),
                 ),
               ],
             ),
           ),
-          destinations: destinations
-              .map(
-                (destination) => NavigationRailDestination(
-                  icon: Icon(destination.icon),
-                  selectedIcon: Icon(destination.selectedIcon),
-                  label: Text(destination.label),
-                ),
-              )
-              .toList(growable: false),
         ),
       ),
     );

@@ -20,21 +20,25 @@ import 'package:flutter/material.dart';
 /// başına renk farkı yeterli olmazdı.
 abstract final class AppColors {
   // ─────────────────────────── Vurgu (Primary) ───────────────────────────
-  /// Birincil vurgu rengi. Kurumsal lacivert: ağırbaşlı, prestijli ve
-  /// giriş/çıkış renkleriyle yarışmayan ana kurumsal ton.
-  static const Color primary = Color(0xFF1E3A8A);
+  /// Birincil vurgu rengi. Ağırbaşlı kurumsal lacivert: bankacılık ve telekom
+  /// standartlarında yüksek güven verir, yeşil/kırmızı ile yarışmaz.
+  static const Color primary = Color(0xFF163A70);
 
   /// Hover / basılı durum.
-  static const Color primaryHover = Color(0xFF172554);
+  static const Color primaryHover = Color(0xFF0F294A);
+
+  /// Kurumsal imza kart / üst bant derin laciverti.
+  static const Color navy = Color(0xFF0F2744);
+  static const Color navyDeep = Color(0xFF091B32);
 
   /// Koyu zemin üzerinde okunabilir vurgu tonu.
   static const Color primaryOnDark = Color(0xFF60A5FA);
 
   /// Açık ikon arkaplanı (light tema).
-  static const Color primarySurface = Color(0xFFEFF6FF);
+  static const Color primarySurface = Color(0xFFEEF3FA);
 
   /// Koyu tema ikon arkaplanı (primary @ %20 opaklık).
-  static const Color primarySurfaceDark = Color(0x331E3A8A);
+  static const Color primarySurfaceDark = Color(0x33163A70);
 
   /// UBS logo markası ile uyumlu kurumsal kırmızı vurgu çizgisi.
   static const Color brandAccent = Color(0xFFC81E1E);
@@ -56,11 +60,12 @@ abstract final class AppColors {
   static const Color gray950 = Color(0xFF030712);
 
   // ─────────────────────────── Açık tema yüzeyleri ───────────────────────────
+  static const Color canvas = Color(0xFFF3F5F8);
   static const Color surface = white;
-  static const Color surfaceAlt = gray50;
+  static const Color surfaceAlt = Color(0xFFF8FAFC);
   static const Color surfaceMuted = gray100;
-  static const Color border = gray200;
-  static const Color borderStrong = gray300;
+  static const Color border = Color(0xFFE2E6EE);
+  static const Color borderStrong = Color(0xFFCBD5E1);
 
   static const Color textPrimary = gray900;
   static const Color textBody = gray600;
@@ -123,7 +128,7 @@ abstract final class AppColors {
   static const Color exitOnDark = Color(0xFFFCA5A5);
 
   // ─────────────────────────── Gölge ───────────────────────────
-  static const Color shadow = Color(0x14000000);
-  static const Color shadowStrong = Color(0x1F000000);
+  static const Color shadow = Color(0x0E0F172A);
+  static const Color shadowStrong = Color(0x1F0F172A);
   static const Color scrim = Color(0x66030712);
 }

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
+import 'package:ubsoft_pdks/core/theme/app_shadows.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
+import 'package:ubsoft_pdks/presentation/widgets/ubs_logo.dart';
 
 /// Giriş, şifre sıfırlama ve erişim engeli ekranlarının ortak yerleşimi.
 ///
@@ -30,7 +32,7 @@ class AuthLayout extends StatelessWidget {
     return Scaffold(
       backgroundColor: context.isDark
           ? AppColors.surfaceDark
-          : AppColors.surfaceAlt,
+          : AppColors.canvas,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -39,30 +41,28 @@ class AuthLayout extends StatelessWidget {
               vertical: AppSpacing.xl,
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
+              constraints: const BoxConstraints(maxWidth: 420),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: <Widget>[
+                  const Center(child: UbsLogo.mark(width: 172)),
+                  AppSpacing.vMd,
                   Center(
                     child: Container(
-                      width: 56,
-                      height: 56,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: AppRadius.allLg,
-                      ),
-                      child: Icon(icon, size: 28, color: AppColors.white),
+                      width: 44,
+                      height: 2,
+                      color: AppColors.brandAccent,
                     ),
                   ),
-                  AppSpacing.vLg,
+                  AppSpacing.vMd,
                   Text(
                     title,
                     textAlign: TextAlign.center,
                     style: AppTypography.h1(context.colors.onSurface),
                   ),
                   if (subtitle case final String value) ...<Widget>[
-                    AppSpacing.vXs,
+                    AppSpacing.vXxs,
                     Text(
                       value,
                       textAlign: TextAlign.center,
@@ -71,13 +71,16 @@ class AuthLayout extends StatelessWidget {
                       ),
                     ),
                   ],
-                  AppSpacing.vXl,
+                  AppSpacing.vLg,
                   Container(
                     padding: const EdgeInsets.all(AppSpacing.lg),
                     decoration: BoxDecoration(
                       color: context.colors.surface,
-                      borderRadius: AppRadius.allXl,
+                      borderRadius: AppRadius.allMd,
                       border: Border.all(color: context.colors.outline),
+                      boxShadow: context.isDark
+                          ? AppShadows.none
+                          : AppShadows.subtle,
                     ),
                     child: child,
                   ),

@@ -8,6 +8,11 @@ import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 abstract final class AppShadows {
   static const List<BoxShadow> none = <BoxShadow>[];
 
+  /// Kurumsal kartların sayfadan ayrışması için çok hafif derinlik.
+  static const List<BoxShadow> subtle = <BoxShadow>[
+    BoxShadow(color: AppColors.shadow, blurRadius: 8, offset: Offset(0, 2)),
+  ];
+
   /// Hover'da kartın yükselmesi.
   static const List<BoxShadow> card = <BoxShadow>[
     BoxShadow(color: AppColors.shadow, blurRadius: 16, offset: Offset(0, 4)),

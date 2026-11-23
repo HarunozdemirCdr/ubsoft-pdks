@@ -1363,47 +1363,44 @@ class _AnalyticsKpi extends StatelessWidget {
   @override
   Widget build(BuildContext context) => AppCard(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    child: IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            width: 3,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(2),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: AppTypography.eyebrow(context.colors.onSurfaceVariant),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: AppTypography.h2(context.colors.onSurface).copyWith(
-                    fontSize: 18,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  sub,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTypography.caption(context.colors.onSurfaceVariant),
-                ),
-              ],
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.eyebrow(context.colors.onSurfaceVariant),
+              ),
             ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: AppTypography.h2(context.colors.onSurface).copyWith(
+            fontSize: 18,
+            fontFeatures: const [FontFeature.tabularFigures()],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          sub,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: AppTypography.caption(context.colors.onSurfaceVariant),
+        ),
+      ],
     ),
   );
 }
@@ -1746,17 +1743,22 @@ class _RawLedgerRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isEntry = event.type.isEntry;
     final Color color = isEntry ? AppColors.entry : AppColors.exit;
+    final Color surface = isEntry
+        ? AppColors.entrySurface
+        : AppColors.exitSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Container(
-            width: 3,
-            height: 28,
-            decoration: BoxDecoration(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(color: surface, shape: BoxShape.circle),
+            child: Icon(
+              isEntry ? Icons.login_rounded : Icons.logout_rounded,
+              size: 16,
               color: color,
-              borderRadius: BorderRadius.circular(2),
             ),
           ),
           const SizedBox(width: 12),

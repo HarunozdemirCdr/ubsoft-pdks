@@ -86,10 +86,10 @@ class DormMetricGrid extends StatelessWidget {
                   onTap: m.onTap,
                   borderColor: m.selected ? m.color : null,
                   background: m.selected
-                      ? m.color.withValues(alpha: 0.05)
+                      ? m.color.withValues(alpha: 0.04)
                       : null,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm + 2,
+                    horizontal: AppSpacing.sm + 4,
                     vertical: AppSpacing.sm + 2,
                   ),
                   child: Row(
@@ -99,9 +99,9 @@ class DormMetricGrid extends StatelessWidget {
                         height: 34,
                         decoration: BoxDecoration(
                           color: m.color.withValues(alpha: 0.09),
-                          borderRadius: AppRadius.allMd,
+                          shape: BoxShape.circle,
                         ),
-                        child: Icon(m.icon, size: 18, color: m.color),
+                        child: Icon(m.icon, size: 17, color: m.color),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -117,7 +117,7 @@ class DormMetricGrid extends StatelessWidget {
                                       AppTypography.h1(
                                         context.colors.onSurface,
                                       ).copyWith(
-                                        fontSize: 22,
+                                        fontSize: 21,
                                         height: 1.05,
                                         fontFeatures: const [
                                           FontFeature.tabularFigures(),
@@ -126,10 +126,10 @@ class DormMetricGrid extends StatelessWidget {
                                 ),
                                 const Spacer(),
                                 Icon(
-                                  Icons.north_east_rounded,
-                                  size: 13,
+                                  Icons.chevron_right_rounded,
+                                  size: 16,
                                   color: context.colors.onSurfaceVariant
-                                      .withValues(alpha: 0.5),
+                                      .withValues(alpha: 0.55),
                                 ),
                               ],
                             ),
@@ -333,10 +333,10 @@ class _DirectionBadge extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: surface,
-        borderRadius: AppRadius.allMd,
+        shape: BoxShape.circle,
         border: Border.all(color: color.withValues(alpha: borderAlpha)),
       ),
-      child: Icon(icon, size: 18, color: color),
+      child: Icon(icon, size: 17, color: color),
     ),
   );
 }
@@ -655,152 +655,130 @@ class DormMovementTile extends StatelessWidget {
         : AppColors.exitSurface;
     return Container(
       key: ValueKey('movement-${event.id}'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: context.colors.surface,
         borderRadius: AppRadius.allMd,
-        border: Border.all(
-          color: context.colors.outline.withValues(alpha: 0.65),
-        ),
+        border: Border.all(color: context.colors.outline),
       ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 3,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: const BorderRadius.horizontal(
-                  left: Radius.circular(10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: surface,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  event.type.isEntry
+                      ? Icons.login_rounded
+                      : Icons.logout_rounded,
+                  color: color,
+                  size: 18,
                 ),
               ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
+              const SizedBox(width: 12),
+              Expanded(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: surface,
-                            borderRadius: AppRadius.allMd,
-                          ),
-                          child: Icon(
-                            event.type.isEntry
-                                ? Icons.login_rounded
-                                : Icons.logout_rounded,
-                            color: color,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                event.type.label,
-                                style: AppTypography.label(color),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                event.checkpointName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppTypography.caption(
-                                  context.colors.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          AppDate.time(event.at),
-                          style: AppTypography.h2(color).copyWith(
-                            fontSize: 20,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                        ),
-                        if (onVoid != null)
-                          SizedBox(
-                            width: 48,
-                            height: 48,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              tooltip: 'Yanlış kaydı geçersiz kıl',
-                              icon: Icon(
-                                Icons.more_horiz_rounded,
-                                size: 21,
-                                color: context.colors.onSurfaceVariant,
-                              ),
-                              onPressed: onVoid,
-                            ),
-                          ),
-                      ],
+                    Text(
+                      event.type.label,
+                      style: AppTypography.label(color),
                     ),
-                    if (showName)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 7),
-                        child: Text(
-                          event.userName,
-                          style: AppTypography.small(context.colors.onSurface),
-                        ),
+                    const SizedBox(height: 2),
+                    Text(
+                      event.checkpointName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
                       ),
-                    if (event.lateMinutes > 0 ||
-                        event.earlyExit ||
-                        event.earlyEntry ||
-                        event.permitted ||
-                        event.verdict.needsAttention)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 9),
-                        child: Wrap(
-                          spacing: 5,
-                          runSpacing: 5,
-                          children: [
-                            if (event.lateMinutes > 0)
-                              StatusChip(
-                                label: '${event.lateMinutes} dk geç giriş',
-                                tone: StatusTone.warning,
-                                compact: true,
-                              ),
-                            if (event.earlyExit)
-                              const StatusChip(
-                                label: 'Erken çıkış',
-                                tone: StatusTone.warning,
-                                compact: true,
-                              ),
-                            if (event.earlyEntry)
-                              const StatusChip(
-                                label: 'Erken giriş',
-                                tone: StatusTone.warning,
-                                compact: true,
-                              ),
-                            if (event.permitted)
-                              const StatusChip(
-                                label: 'İzinli',
-                                tone: StatusTone.info,
-                                compact: true,
-                              ),
-                            if (onVoid != null && event.verdict.needsAttention)
-                              StatusChip(
-                                label: event.verdict.label,
-                                tone: StatusTone.warning,
-                                compact: true,
-                              ),
-                          ],
-                        ),
-                      ),
+                    ),
                   ],
                 ),
               ),
+              Text(
+                AppDate.time(event.at),
+                style: AppTypography.h2(color).copyWith(
+                  fontSize: 18,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+              if (onVoid != null)
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    tooltip: 'Yanlış kaydı geçersiz kıl',
+                    icon: Icon(
+                      Icons.more_horiz_rounded,
+                      size: 20,
+                      color: context.colors.onSurfaceVariant,
+                    ),
+                    onPressed: onVoid,
+                  ),
+                ),
+            ],
+          ),
+          if (showName)
+            Padding(
+              padding: const EdgeInsets.only(top: 7),
+              child: Text(
+                event.userName,
+                style: AppTypography.small(context.colors.onSurface),
+              ),
             ),
-          ],
-        ),
+          if (event.lateMinutes > 0 ||
+              event.earlyExit ||
+              event.earlyEntry ||
+              event.permitted ||
+              event.verdict.needsAttention)
+            Padding(
+              padding: const EdgeInsets.only(top: 9),
+              child: Wrap(
+                spacing: 5,
+                runSpacing: 5,
+                children: [
+                  if (event.lateMinutes > 0)
+                    StatusChip(
+                      label: '${event.lateMinutes} dk geç giriş',
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (event.earlyExit)
+                    const StatusChip(
+                      label: 'Erken çıkış',
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (event.earlyEntry)
+                    const StatusChip(
+                      label: 'Erken giriş',
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                  if (event.permitted)
+                    const StatusChip(
+                      label: 'İzinli',
+                      tone: StatusTone.info,
+                      compact: true,
+                    ),
+                  if (onVoid != null && event.verdict.needsAttention)
+                    StatusChip(
+                      label: event.verdict.label,
+                      tone: StatusTone.warning,
+                      compact: true,
+                    ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

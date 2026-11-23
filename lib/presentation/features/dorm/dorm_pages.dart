@@ -378,39 +378,100 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SectionHeader(
-                    eyebrow: 'GENEL BAKIŞ',
-                    title: tenant.name,
-                    description: '${AppDate.date(now)} · ${AppDate.dayName(now)}',
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 18,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AppColors.navy,
+                      borderRadius: AppRadius.allMd,
+                    ),
+                    child: Wrap(
+                      spacing: 16,
+                      runSpacing: 12,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'KURUMSAL YURT YÖNETİMİ',
+                              style: AppTypography.eyebrow(
+                                AppColors.white.withValues(alpha: 0.72),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              tenant.name,
+                              style: AppTypography.h2(AppColors.white),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${AppDate.date(now)} · ${AppDate.dayName(now)}',
+                              style: AppTypography.small(
+                                AppColors.white.withValues(alpha: 0.78),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withValues(alpha: 0.1),
+                            borderRadius: AppRadius.allSm,
+                            border: Border.all(
+                              color: AppColors.white.withValues(alpha: 0.18),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                'ANLIK DOLULUK',
+                                style: AppTypography.eyebrow(
+                                  AppColors.white.withValues(alpha: 0.72),
+                                ).copyWith(fontSize: 10),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$inside / ${students.length} içeride',
+                                style: AppTypography.bodyStrong(AppColors.white)
+                                    .copyWith(
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures(),
+                                      ],
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
+                  buildMetrics(forceTwoColumns: false),
+                  const SizedBox(height: 20),
                   LayoutBuilder(
                     builder: (context, bounds) {
-                      if (bounds.maxWidth >= 900) {
+                      if (bounds.maxWidth >= 960) {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(flex: 11, child: studentsSection),
+                            Expanded(flex: 12, child: studentsSection),
                             const SizedBox(width: 24),
-                            Expanded(
-                              flex: 9,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  buildMetrics(forceTwoColumns: true),
-                                  const SizedBox(height: 20),
-                                  recentLogsSection,
-                                ],
-                              ),
-                            ),
+                            Expanded(flex: 9, child: recentLogsSection),
                           ],
                         );
                       }
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          buildMetrics(forceTwoColumns: false),
-                          const SizedBox(height: 20),
                           studentsSection,
                           const SizedBox(height: 20),
                           recentLogsSection,
@@ -598,106 +659,147 @@ class StudentHomePage extends ConsumerWidget {
           AppSpacing.vSm,
           AsyncValueView<Presence>(
             value: ref.watch(myPresenceProvider),
-            builder: (p) => AppCard(
-              padding: const EdgeInsets.all(AppSpacing.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: (p.inside == null
-                                  ? AppColors.neutral
-                                  : p.inside!
-                                      ? AppColors.entry
-                                      : AppColors.exit)
-                              .withValues(alpha: 0.12),
-                          borderRadius: AppRadius.allMd,
+            builder: (p) {
+              final Duration? ongoing = DormDurationCalculator.ongoingDuration(
+                p,
+                now,
+              );
+              final Color badgeColor = p.inside == null
+                  ? AppColors.gray300
+                  : p.inside!
+                  ? AppColors.entryOnDark
+                  : AppColors.exitOnDark;
+              return Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: AppColors.navy,
+                  borderRadius: AppRadius.allMd,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: AppColors.white.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            p.inside == null
+                                ? Icons.help_outline_rounded
+                                : p.inside!
+                                ? Icons.login_rounded
+                                : Icons.logout_rounded,
+                            size: 20,
+                            color: badgeColor,
+                          ),
                         ),
-                        child: Icon(
-                          p.inside == null
-                              ? Icons.help_outline_rounded
-                              : p.inside!
-                                  ? Icons.login_rounded
-                                  : Icons.logout_rounded,
-                          size: 26,
-                          color: p.inside == null
-                              ? AppColors.neutral
-                              : p.inside!
-                                  ? AppColors.entry
-                                  : AppColors.exit,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'YURTTAKİ DURUMUNUZ',
+                                style: AppTypography.eyebrow(
+                                  AppColors.white.withValues(alpha: 0.72),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                p.label,
+                                style: AppTypography.h2(AppColors.white),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (ongoing != null)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.white.withValues(alpha: 0.12),
+                              borderRadius: AppRadius.allSm,
+                            ),
+                            child: Text(
+                              DormDurationCalculator.formatDuration(ongoing),
+                              style: AppTypography.caption(
+                                AppColors.white,
+                              ).copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Divider(
+                      height: 1,
+                      color: AppColors.white.withValues(alpha: 0.14),
+                    ),
+                    const SizedBox(height: 14),
+                    if (p.at != null)
+                      Text(
+                        'Son hareket: ${AppDate.dateTime(p.at!)}',
+                        style: AppTypography.small(
+                          AppColors.white.withValues(alpha: 0.85),
                         ),
                       ),
-                      AppSpacing.hMd,
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'YURTTAKİ DURUMUNUZ',
-                              style: AppTypography.eyebrow(
-                                context.colors.onSurfaceVariant,
-                              ),
-                            ),
-                            AppSpacing.vXxs,
-                            Text(
-                              p.label,
-                              style: AppTypography.h2(
-                                p.inside == null
-                                    ? context.colors.onSurface
-                                    : p.inside!
-                                        ? AppColors.entry
-                                        : AppColors.exit,
-                              ),
-                            ),
-                          ],
+                    if (p.inside == null)
+                      Text(
+                        'İlk giriş veya çıkış okutmanızla durumunuz belirlenir.',
+                        style: AppTypography.small(
+                          AppColors.white.withValues(alpha: 0.85),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  if (p.at != null)
-                    Text(
-                      'Son hareket: ${AppDate.dateTime(p.at!)}',
-                      style: AppTypography.body(context.colors.onSurfaceVariant),
+                    for (final w in p.warnings)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          w,
+                          style: AppTypography.small(AppColors.warningOnDark),
+                        ),
+                      ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.white,
+                          foregroundColor: AppColors.navy,
+                          elevation: 0,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadius.allMd,
+                          ),
+                          textStyle: AppTypography.label(AppColors.navy),
+                        ),
+                        onPressed: () => context.push(AppRoutes.scanPath),
+                        icon: const Icon(Icons.qr_code_scanner_rounded, size: 20),
+                        label: Text(
+                          p.inside == true
+                              ? 'Çıkış QR kodunu okut'
+                              : p.inside == false
+                              ? 'Giriş QR kodunu okut'
+                              : 'Giriş / çıkış QR kodunu okut',
+                        ),
+                      ),
                     ),
-                  if (p.inside == null)
-                    Text(
-                      'İlk giriş veya çıkış okutmanızla durumunuz belirlenir.',
-                      style: AppTypography.body(context.colors.onSurfaceVariant),
-                    ),
-                  for (final w in p.warnings)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                    const SizedBox(height: 10),
+                    Center(
                       child: Text(
-                        w,
-                        style: AppTypography.small(AppColors.warning),
+                        'Girişte giriş QR’ını, çıkışta çıkış QR’ını kullanın.',
+                        style: AppTypography.caption(
+                          AppColors.white.withValues(alpha: 0.68),
+                        ),
                       ),
                     ),
-                  const SizedBox(height: 20),
-                  AppButton.primaryWide(
-                    label: p.inside == true
-                        ? 'Çıkış QR kodunu okut'
-                        : p.inside == false
-                            ? 'Giriş QR kodunu okut'
-                            : 'Giriş / çıkış QR kodunu okut',
-                    onPressed: () => context.push(AppRoutes.scanPath),
-                  ),
-                  const SizedBox(height: 10),
-                  Center(
-                    child: Text(
-                      'Girişte giriş QR’ını, çıkışta çıkış QR’ını kullanın.',
-                      style: AppTypography.caption(
-                        context.colors.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+                  ],
+                ),
+              );
+            },
           ),
           const SizedBox(height: 16),
           AsyncValueView<List<StudentLeave>>(
@@ -1126,38 +1228,34 @@ class _StatPill extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => IntrinsicHeight(
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 3,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2),
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: 8,
+        height: 8,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+      const SizedBox(width: 8),
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: AppTypography.caption(context.colors.onSurfaceVariant),
           ),
-        ),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: AppTypography.caption(context.colors.onSurfaceVariant),
+          const SizedBox(height: 1),
+          Text(
+            value,
+            style: AppTypography.bodyStrong(context.colors.onSurface).copyWith(
+              fontSize: 13.5,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
-            const SizedBox(height: 1),
-            Text(
-              value,
-              style: AppTypography.bodyStrong(context.colors.onSurface).copyWith(
-                fontSize: 13.5,
-                fontFeatures: const [FontFeature.tabularFigures()],
-              ),
-            ),
-          ],
-        ),
-      ],
-    ),
+          ),
+        ],
+      ),
+    ],
   );
 }
 

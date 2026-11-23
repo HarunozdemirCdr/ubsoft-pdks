@@ -69,7 +69,7 @@ abstract final class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: surface,
+      scaffoldBackgroundColor: isDark ? surface : AppColors.canvas,
       canvasColor: surface,
       textTheme: textTheme,
       fontFamily: AppTypography.fontFamily,
@@ -92,7 +92,8 @@ abstract final class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        titleTextStyle: AppTypography.h2(textPrimary),
+        shape: Border(bottom: BorderSide(color: border)),
+        titleTextStyle: AppTypography.h2(textPrimary).copyWith(fontSize: 18),
         systemOverlayStyle: isDark
             ? SystemUiOverlayStyle.light
             : SystemUiOverlayStyle.dark,
@@ -106,14 +107,12 @@ abstract final class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.allLg,
+          borderRadius: AppRadius.allMd,
           side: BorderSide(color: border),
         ),
       ),
 
-      // ─────────── Butonlar: pill (tam yuvarlak), 48px yükseklik ───────────
-      //
-      // UBSoft kurumsal tasarım dili standardı: StadiumBorder (Pill).
+      // ─────────── Butonlar: klasik kurumsal yuvarlatılmış dikdörtgen ───────────
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
@@ -125,19 +124,20 @@ abstract final class AppTheme {
           elevation: 0,
           minimumSize: const Size(0, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-          shape: const StadiumBorder(),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.allMd),
           textStyle: AppTypography.label(AppColors.white),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          backgroundColor: isDark ? Colors.transparent : surface,
           foregroundColor: textPrimary,
           minimumSize: const Size(0, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
           side: BorderSide(
             color: isDark ? AppColors.borderStrongDark : AppColors.borderStrong,
           ),
-          shape: const StadiumBorder(),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.allMd),
           textStyle: AppTypography.label(textPrimary),
         ),
       ),
@@ -146,7 +146,7 @@ abstract final class AppTheme {
           foregroundColor: accent,
           minimumSize: const Size(0, AppSpacing.touchTarget),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
-          shape: const StadiumBorder(),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.allSm),
           textStyle: AppTypography.label(accent),
         ),
       ),
@@ -163,7 +163,7 @@ abstract final class AppTheme {
       // ─────────────── Form alanları ───────────────
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: isDark ? AppColors.surfaceAltDark : AppColors.surfaceAlt,
+        fillColor: isDark ? AppColors.surfaceAltDark : surface,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppSpacing.md,
           vertical: AppSpacing.sm + 2,
