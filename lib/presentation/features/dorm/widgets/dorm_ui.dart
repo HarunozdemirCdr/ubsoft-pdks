@@ -8,6 +8,7 @@ import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
+import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
 import 'package:ubsoft_pdks/presentation/widgets/punch_time.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
@@ -372,9 +373,19 @@ class DormStudentCard extends StatelessWidget {
         : inside
         ? AppColors.entrySurface
         : AppColors.exitSurface;
+    final Duration? elapsed = DormDurationCalculator.ongoingDuration(
+      presence,
+      now,
+    );
+    final String? durationText = elapsed == null
+        ? null
+        : inside
+        ? '${DormDurationCalculator.formatDuration(elapsed)} içeride'
+        : '${DormDurationCalculator.formatDuration(elapsed)} dışarıda';
     final meta = [
       if (user.room.isNotEmpty) 'Oda ${user.room}',
       if (user.studentNumber.isNotEmpty) 'No ${user.studentNumber}',
+      ?durationText,
     ].join(' · ');
     final detail = presence.at == null
         ? [if (meta.isNotEmpty) meta, 'İlk okutma bekleniyor'].join(' · ')
@@ -813,6 +824,10 @@ class DormDaySummary extends StatelessWidget {
     final alert = events.any(
       (e) => e.lateMinutes > 0 || e.earlyExit || e.earlyEntry,
     );
+    final summary = DormDurationCalculator.summarize(sorted);
+    final hasDurations =
+        summary.insideDuration > Duration.zero ||
+        summary.outsideDuration > Duration.zero;
     return Semantics(
       button: true,
       expanded: expanded,
@@ -887,6 +902,29 @@ class DormDaySummary extends StatelessWidget {
                   ),
                 ],
               ),
+              if (hasDurations) ...[
+                const SizedBox(height: 7),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  children: [
+                    if (summary.insideDuration > Duration.zero)
+                      Text(
+                        'İçeride: ${DormDurationCalculator.formatDuration(summary.insideDuration)}',
+                        style: AppTypography.caption(
+                          AppColors.entry,
+                        ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                    if (summary.outsideDuration > Duration.zero)
+                      Text(
+                        'Dışarıda: ${DormDurationCalculator.formatDuration(summary.outsideDuration)}',
+                        style: AppTypography.caption(
+                          AppColors.exit,
+                        ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -1069,4 +1107,130 @@ class _StudentDialogState extends State<_StudentDialog> {
       ],
     );
   }
+}
+
+class DormSegmentedOption<T> {
+  const DormSegmentedOption(this.value, this.label, {this.icon});
+
+  final T value;
+  final String label;
+  final IconData? icon;
+}
+
+/// Kurumsal segmente sekme / filtre çubuğu.
+///
+/// Dağınık yuvarlak çip kümeleri yerine tek, hizalı, nötr çerçeveli bir seçim
+/// şeridi sunar.
+class DormSegmentedBar<T> extends StatelessWidget {
+  const DormSegmentedBar({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    super.key,
+  });
+
+  final T value;
+  final List<DormSegmentedOption<T>> options;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool dark = context.isDark;
+    final Color barBg = dark ? AppColors.surfaceAltDark : AppColors.gray50;
+    final Color barBorder = dark ? AppColors.borderDark : AppColors.border;
+    final Color activeBg = dark ? AppColors.surfaceDark : AppColors.white;
+    final Color activeBorder = dark
+        ? AppColors.borderStrongDark
+        : AppColors.borderStrong;
+    final Color activeFg = dark ? AppColors.primaryOnDark : AppColors.primary;
+
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: barBg,
+        borderRadius: AppRadius.allMd,
+        border: Border.all(color: barBorder),
+      ),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: [
+          for (final opt in options)
+            _SegmentedItem<T>(
+              option: opt,
+              selected: opt.value == value,
+              activeBg: activeBg,
+              activeBorder: activeBorder,
+              activeFg: activeFg,
+              inactiveFg: context.colors.onSurfaceVariant,
+              onTap: () => onChanged(opt.value),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SegmentedItem<T> extends StatelessWidget {
+  const _SegmentedItem({
+    required this.option,
+    required this.selected,
+    required this.activeBg,
+    required this.activeBorder,
+    required this.activeFg,
+    required this.inactiveFg,
+    required this.onTap,
+  });
+
+  final DormSegmentedOption<T> option;
+  final bool selected;
+  final Color activeBg;
+  final Color activeBorder;
+  final Color activeFg;
+  final Color inactiveFg;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    selected: selected,
+    child: Material(
+      color: selected ? activeBg : Colors.transparent,
+      borderRadius: AppRadius.allSm,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.allSm,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.allSm,
+            border: Border.all(
+              color: selected ? activeBorder : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (option.icon != null) ...[
+                Icon(
+                  option.icon,
+                  size: 15,
+                  color: selected ? activeFg : inactiveFg,
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                option.label,
+                style:
+                    (selected
+                            ? AppTypography.label(activeFg)
+                            : AppTypography.small(inactiveFg))
+                        .copyWith(fontSize: 12.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

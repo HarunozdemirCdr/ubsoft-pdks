@@ -276,19 +276,37 @@ class _NavDrawer extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
                 AppSpacing.lg,
                 AppSpacing.lg,
                 AppSpacing.md,
                 AppSpacing.md,
               ),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: UbsLogo.mark(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const UbsLogo.mark(),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 2,
+                        color: AppColors.brandAccent,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Container(
+                          height: 1,
+                          color: context.colors.outlineVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const Divider(height: 1),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(
@@ -405,12 +423,28 @@ class _SideRail extends ConsumerWidget {
           selectedIndex: selectedIndex,
           onDestinationSelected: onSelect,
           labelType: NavigationRailLabelType.all,
-          leading: const Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacing.xs,
-              vertical: AppSpacing.md,
+          leading: Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.xs,
+              AppSpacing.md,
+              AppSpacing.xs,
+              AppSpacing.sm,
             ),
-            child: UbsLogo(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const UbsLogo(),
+                const SizedBox(height: 10),
+                Container(
+                  width: 36,
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: AppColors.brandAccent,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ],
+            ),
           ),
           destinations: destinations
               .map(

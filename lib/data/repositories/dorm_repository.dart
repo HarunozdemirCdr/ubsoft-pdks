@@ -52,6 +52,11 @@ final class DormRepository extends FirestoreRepositoryBase {
     until: _date(m['until'])!,
     reason: m['reason'] as String? ?? '',
     revoked: m['revoked'] == true,
+    category: m['category'] as String? ?? '',
+    destination: m['destination'] as String? ?? '',
+    contactName: m['contactName'] as String? ?? '',
+    contactRelation: m['contactRelation'] as String? ?? '',
+    contactPhone: m['contactPhone'] as String? ?? '',
   );
   Stream<Presence> watchPresence(String tid, String uid) => guardStream(
     subcollection(
@@ -186,6 +191,16 @@ final class DormRepository extends FirestoreRepositoryBase {
         'from': Timestamp.fromDate(value.from),
         'until': Timestamp.fromDate(value.until),
         'reason': value.reason.trim(),
+        if (value.category.trim().isNotEmpty)
+          'category': value.category.trim(),
+        if (value.destination.trim().isNotEmpty)
+          'destination': value.destination.trim(),
+        if (value.contactName.trim().isNotEmpty)
+          'contactName': value.contactName.trim(),
+        if (value.contactRelation.trim().isNotEmpty)
+          'contactRelation': value.contactRelation.trim(),
+        if (value.contactPhone.trim().isNotEmpty)
+          'contactPhone': value.contactPhone.trim(),
         'revoked': false,
         'actor': actor,
         'updatedAt': FieldValue.serverTimestamp(),

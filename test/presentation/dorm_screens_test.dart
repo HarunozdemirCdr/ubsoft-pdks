@@ -58,7 +58,7 @@ void main() {
       );
       await settle(tester);
       expect(find.text('Başlangıç kaydı yok'), findsOneWidget);
-      expect(find.text('Bugünkü hareketlerim'), findsOneWidget);
+      expect(find.text('Bugünkü Hareketlerim'), findsOneWidget);
       expect(find.textContaining('çalışma'), findsNothing);
       expect(find.text('Tamamlandı'), findsNothing);
       expect(tester.takeException(), isNull);

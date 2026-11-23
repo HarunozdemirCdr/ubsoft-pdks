@@ -34,6 +34,10 @@ abstract final class AppRoutes {
   static const String today = '/bugun';
   static const String todayName = 'today';
 
+  /// Odalar görünümü — oda bazlı canlı doluluk ve öğrenci geçmişi.
+  static const String rooms = '/odalar';
+  static const String roomsName = 'rooms';
+
   /// Geçmiş — gün seç, öğrenci listesi.
   static const String history = '/gecmis';
   static const String historyName = 'history';

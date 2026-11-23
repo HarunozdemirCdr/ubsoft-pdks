@@ -176,6 +176,11 @@ class StudentLeave {
     required this.reason,
     this.id = '',
     this.revoked = false,
+    this.category = '',
+    this.destination = '',
+    this.contactName = '',
+    this.contactRelation = '',
+    this.contactPhone = '',
   });
   final String id;
   final String userId;
@@ -183,6 +188,15 @@ class StudentLeave {
   final DateTime until;
   final String reason;
   final bool revoked;
+  final String category;
+  final String destination;
+  final String contactName;
+  final String contactRelation;
+  final String contactPhone;
+
+  Duration get duration =>
+      until.isAfter(from) ? until.difference(from) : Duration.zero;
+
   bool covers(DateTime at) =>
       !revoked && !at.isBefore(from) && !at.isAfter(until);
 }

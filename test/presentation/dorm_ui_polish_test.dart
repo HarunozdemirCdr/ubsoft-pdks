@@ -152,9 +152,9 @@ void main() {
       expect(
         find.descendant(
           of: find.byType(DormStudentCard),
-          matching: find.textContaining('sa'),
+          matching: find.textContaining('içeride'),
         ),
-        findsNothing,
+        findsWidgets,
       );
       expect(
         tester.getTopLeft(find.text('16:45').first).dy,

@@ -16,6 +16,7 @@ import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_form_pa
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_list_page.dart';
 import 'package:ubsoft_pdks/presentation/features/checkpoints/checkpoint_qr_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_pages.dart';
+import 'package:ubsoft_pdks/presentation/features/dorm/dorm_rooms_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_settings_page.dart';
 import 'package:ubsoft_pdks/presentation/features/legal/privacy_page.dart';
 import 'package:ubsoft_pdks/presentation/features/misc/not_found_page.dart';
@@ -110,6 +111,12 @@ final Provider<GoRouter> routerProvider = Provider<GoRouter>((ref) {
             name: AppRoutes.todayName,
             pageBuilder: (context, state) =>
                 _fade(state, const DormDashboardPage()),
+          ),
+          GoRoute(
+            path: AppRoutes.rooms,
+            name: AppRoutes.roomsName,
+            pageBuilder: (context, state) =>
+                _fade(state, const DormRoomsPage()),
           ),
           GoRoute(
             path: AppRoutes.history,

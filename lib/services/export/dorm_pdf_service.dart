@@ -2,14 +2,17 @@ import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
+import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
+import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
 
 abstract final class DormPdfService {
   static Future<Uint8List> build(
     String dorm,
     String range,
-    List<AttendanceEvent> events,
-  ) async {
+    List<AttendanceEvent> events, {
+    Map<String, AppUser> usersById = const <String, AppUser>{},
+  }) async {
     final regular = pw.Font.ttf(
       await rootBundle.load('assets/fonts/PlusJakartaSans-Regular.ttf'),
     );
@@ -25,6 +28,17 @@ abstract final class DormPdfService {
     }
     final doc = pw.Document(title: 'Yurt giriş–çıkış raporu', author: dorm);
     final sorted = [...events]..sort((a, b) => b.at.compareTo(a.at));
+    final byUser = <String, List<AttendanceEvent>>{};
+    for (final e in events) {
+      byUser.putIfAbsent(e.userId, () => <AttendanceEvent>[]).add(e);
+    }
+    Duration totalInside = Duration.zero;
+    Duration totalOutside = Duration.zero;
+    for (final entry in byUser.entries) {
+      final s = DormDurationCalculator.summarize(entry.value, userId: entry.key);
+      totalInside += s.insideDuration;
+      totalOutside += s.outsideDuration;
+    }
     doc.addPage(
       pw.MultiPage(
         maxPages: 500,
@@ -57,17 +71,18 @@ abstract final class DormPdfService {
           ),
           pw.SizedBox(height: 12),
           pw.Text(
-            '${events.length} hareket · ${events.where((e) => e.lateMinutes > 0).length} geç giriş · ${events.where((e) => e.earlyExit).length} erken çıkış',
+            '${events.length} hareket · ${events.where((e) => e.lateMinutes > 0).length} geç giriş · ${events.where((e) => e.earlyExit).length} erken çıkış · İçeride: ${DormDurationCalculator.formatDuration(totalInside)} · Dışarıda: ${DormDurationCalculator.formatDuration(totalOutside)}',
           ),
           pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(
-            headers: ['Öğrenci', 'Tarih / saat', 'İşlem', 'Nokta', 'Açıklama'],
+            headers: ['Öğrenci', 'Oda', 'Tarih / saat', 'İşlem', 'Nokta', 'Açıklama'],
             cellStyle: const pw.TextStyle(fontSize: 8),
             headerStyle: pw.TextStyle(font: bold, fontSize: 8),
             data: sorted
                 .map(
                   (e) => [
                     e.userName,
+                    usersById[e.userId]?.room ?? '',
                     AppDate.dateTime(e.at),
                     e.type.label,
                     e.checkpointName,

@@ -55,6 +55,16 @@ abstract final class AppNavigation {
       ],
     ),
     NavDestination(
+      label: 'Odalar',
+      icon: Icons.meeting_room_outlined,
+      selectedIcon: Icons.meeting_room_rounded,
+      path: AppRoutes.rooms,
+      requiresAll: <AppPermission>[
+        AppPermission.dashboardView,
+        AppPermission.attendanceViewAll,
+      ],
+    ),
+    NavDestination(
       label: 'Okut',
       icon: Icons.qr_code_scanner_outlined,
       selectedIcon: Icons.qr_code_scanner_rounded,

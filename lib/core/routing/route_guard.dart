@@ -59,6 +59,10 @@ abstract final class RouteGuard {
           AppPermission.dashboardView,
           AppPermission.attendanceViewAll,
         ],
+        AppRoutes.rooms: <AppPermission>[
+          AppPermission.dashboardView,
+          AppPermission.attendanceViewAll,
+        ],
       };
 
   static List<AppPermission>? _matchIn(

@@ -20,21 +20,24 @@ import 'package:flutter/material.dart';
 /// başına renk farkı yeterli olmazdı.
 abstract final class AppColors {
   // ─────────────────────────── Vurgu (Primary) ───────────────────────────
-  /// Birincil vurgu rengi. Butonlar, aktif durumlar, bağlantılar.
-  /// UBSoft kurumsal tasarım dili standardı: Canlı Kraliyet Mavisi.
-  static const Color primary = Color(0xFF2563EB);
+  /// Birincil vurgu rengi. Kurumsal lacivert: ağırbaşlı, prestijli ve
+  /// giriş/çıkış renkleriyle yarışmayan ana kurumsal ton.
+  static const Color primary = Color(0xFF1E3A8A);
 
   /// Hover / basılı durum.
-  static const Color primaryHover = Color(0xFF1D4ED8);
+  static const Color primaryHover = Color(0xFF172554);
 
   /// Koyu zemin üzerinde okunabilir vurgu tonu.
   static const Color primaryOnDark = Color(0xFF60A5FA);
 
   /// Açık ikon arkaplanı (light tema).
-  static const Color primarySurface = Color(0xFFDBEAFE);
+  static const Color primarySurface = Color(0xFFEFF6FF);
 
   /// Koyu tema ikon arkaplanı (primary @ %20 opaklık).
-  static const Color primarySurfaceDark = Color(0x332563EB);
+  static const Color primarySurfaceDark = Color(0x331E3A8A);
+
+  /// UBS logo markası ile uyumlu kurumsal kırmızı vurgu çizgisi.
+  static const Color brandAccent = Color(0xFFC81E1E);
 
   // ─────────────────────────── Nötr skala ───────────────────────────
   //
@@ -108,11 +111,15 @@ abstract final class AppColors {
   /// küçük punto saat metninde okunaklı kalması gerekir.
   static const Color entry = Color(0xFF047857);
   static const Color entrySurface = Color(0xFFD1FAE5);
+  static const Color entrySoft = Color(0xFFF2FBF7);
+  static const Color entryBorder = Color(0xFFA7F3D0);
   static const Color entryOnDark = Color(0xFF6EE7B7);
 
   /// Çıkış okutması.
   static const Color exit = Color(0xFFB91C1C);
   static const Color exitSurface = Color(0xFFFEE2E2);
+  static const Color exitSoft = Color(0xFFFEF4F4);
+  static const Color exitBorder = Color(0xFFFECACA);
   static const Color exitOnDark = Color(0xFFFCA5A5);
 
   // ─────────────────────────── Gölge ───────────────────────────
