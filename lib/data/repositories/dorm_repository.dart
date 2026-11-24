@@ -103,7 +103,7 @@ final class DormRepository extends FirestoreRepositoryBase {
     String from,
     String to, {
     String? uid,
-    int limit = 250,
+    int limit = 500,
     DocumentSnapshot<Map<String, dynamic>>? startAfter,
   }) => guard(() async {
     Query<Map<String, dynamic>> q = subcollection(tid, 'attendance')

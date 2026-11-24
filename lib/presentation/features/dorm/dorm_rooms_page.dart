@@ -34,6 +34,7 @@ class DormRoomsPage extends ConsumerStatefulWidget {
 class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
   final TextEditingController _search = TextEditingController();
   String _filter = 'all';
+  String _capacityFilter = 'all';
 
   @override
   void dispose() {
@@ -127,6 +128,14 @@ class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
 
               final List<String> roomKeys = allRooms.keys.where((String room) {
                 final List<AppUser> list = allRooms[room]!;
+                final bool capMatches = switch (_capacityFilter) {
+                  '1' => list.length == 1,
+                  '2' => list.length == 2,
+                  '4' => list.length == 4,
+                  '6' => list.length == 6,
+                  _ => true,
+                };
+                if (!capMatches) return false;
                 final bool roomMatches =
                     q.isEmpty ||
                     dormSearchKey(room).contains(q) ||
@@ -209,29 +218,78 @@ class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _search,
-                          onChanged: (_) => setState(() {}),
-                          decoration: InputDecoration(
-                            hintText: 'Oda no, öğrenci adı veya öğrenci no ara...',
-                            prefixIcon: const Icon(Icons.search_rounded),
-                            suffixIcon: _search.text.isEmpty
-                                ? null
-                                : IconButton(
-                                    tooltip: 'Temizle',
-                                    onPressed: () {
-                                      _search.clear();
-                                      setState(() {});
-                                    },
-                                    icon: const Icon(Icons.close_rounded),
-                                  ),
-                          ),
+                  LayoutBuilder(
+                    builder: (context, bounds) {
+                      final searchField = TextField(
+                        controller: _search,
+                        onChanged: (_) => setState(() {}),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Oda no, öğrenci adı veya öğrenci no ara...',
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          suffixIcon: _search.text.isEmpty
+                              ? null
+                              : IconButton(
+                                  tooltip: 'Temizle',
+                                  onPressed: () {
+                                    _search.clear();
+                                    setState(() {});
+                                  },
+                                  icon: const Icon(Icons.close_rounded),
+                                ),
                         ),
-                      ),
-                    ],
+                      );
+                      final capSelect = DormSelect<String>(
+                        label: 'Oda tipi',
+                        value: _capacityFilter,
+                        options: const [
+                          DormOption(
+                            'all',
+                            'Tüm odalar',
+                            Icons.meeting_room_outlined,
+                          ),
+                          DormOption(
+                            '1',
+                            '1 kişilik odalar',
+                            Icons.person_outline_rounded,
+                          ),
+                          DormOption(
+                            '2',
+                            '2 kişilik odalar',
+                            Icons.group_outlined,
+                          ),
+                          DormOption(
+                            '4',
+                            '4 kişilik odalar',
+                            Icons.groups_outlined,
+                          ),
+                          DormOption(
+                            '6',
+                            '6 kişilik odalar',
+                            Icons.apartment_outlined,
+                          ),
+                        ],
+                        onChanged: (v) => setState(() => _capacityFilter = v),
+                      );
+                      if (bounds.maxWidth >= 680) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 7, child: searchField),
+                            const SizedBox(width: 12),
+                            Expanded(flex: 4, child: capSelect),
+                          ],
+                        );
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          searchField,
+                          const SizedBox(height: 10),
+                          capSelect,
+                        ],
+                      );
+                    },
                   ),
                   const SizedBox(height: 10),
                   DormSegmentedBar<String>(
@@ -254,10 +312,15 @@ class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
                       message: students.isEmpty
                           ? 'Öğrenciler bölümünden oda numaralarıyla öğrenci ekleyin.'
                           : 'Farklı bir oda numarası veya filtre seçin.',
-                      onReset: (_search.text.isNotEmpty || _filter != 'all')
+                      onReset: (_search.text.isNotEmpty ||
+                              _filter != 'all' ||
+                              _capacityFilter != 'all')
                           ? () {
                               _search.clear();
-                              setState(() => _filter = 'all');
+                              setState(() {
+                                _filter = 'all';
+                                _capacityFilter = 'all';
+                              });
                             }
                           : null,
                     )
@@ -281,6 +344,11 @@ class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
                                 width: width,
                                 child: _RoomCard(
                                   roomName: roomKey,
+                                  totalStudentsInRoom: allRooms[roomKey]!.length,
+                                  totalInsideInRoom: allRooms[roomKey]!
+                                      .where((AppUser u) =>
+                                          presenceOf(u).inside == true)
+                                      .length,
                                   students:
                                       allRooms[roomKey]!
                                           .where(
@@ -324,6 +392,8 @@ class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
 class _RoomCard extends StatelessWidget {
   const _RoomCard({
     required this.roomName,
+    required this.totalStudentsInRoom,
+    required this.totalInsideInRoom,
     required this.students,
     required this.presenceOf,
     required this.isOverdue,
@@ -333,6 +403,8 @@ class _RoomCard extends StatelessWidget {
   });
 
   final String roomName;
+  final int totalStudentsInRoom;
+  final int totalInsideInRoom;
   final List<AppUser> students;
   final Presence Function(AppUser u) presenceOf;
   final bool Function(AppUser u) isOverdue;
@@ -342,9 +414,6 @@ class _RoomCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int insideCount = students
-        .where((AppUser u) => presenceOf(u).inside == true)
-        .length;
     final bool isUnassigned = roomName.isEmpty;
 
     return AppCard(
@@ -364,7 +433,9 @@ class _RoomCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      '${students.length} kayıtlı öğrenci',
+                      isUnassigned
+                          ? '$totalStudentsInRoom öğrenci'
+                          : '$totalStudentsInRoom kişilik oda',
                       style: AppTypography.caption(
                         context.colors.onSurfaceVariant,
                       ),
@@ -373,10 +444,11 @@ class _RoomCard extends StatelessWidget {
                 ),
               ),
               StatusChip(
-                label: '$insideCount / ${students.length} içeride',
-                tone: insideCount == students.length && students.isNotEmpty
+                label: '$totalInsideInRoom / $totalStudentsInRoom içeride',
+                tone: totalInsideInRoom == totalStudentsInRoom &&
+                        totalStudentsInRoom > 0
                     ? StatusTone.success
-                    : insideCount == 0
+                    : totalInsideInRoom == 0
                     ? StatusTone.neutral
                     : StatusTone.info,
                 compact: true,
