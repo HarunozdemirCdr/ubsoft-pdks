@@ -935,6 +935,17 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
         ? null
         : DormDurationCalculator.ongoingDuration(selectedPresence, rawNow);
 
+    final eventsAsync = ref.watch(
+      movementsProvider((from: from, to: to, uid: uid)),
+    );
+    final Duration personOutsideTotal = uid == null
+        ? Duration.zero
+        : DormDurationCalculator.summarize(
+            eventsAsync.value ?? const <AttendanceEvent>[],
+            userId: uid,
+            now: rawNow,
+          ).outsideDuration;
+
     return AppScaffold(
       title: uid == null ? 'Hareket Geçmişi' : 'Öğrenci Geçmişi',
       showBackButton: widget.userId != null,
@@ -944,48 +955,14 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (uid != null) ...[
-            Text(
-              selected?.displayName ?? user?.displayName ?? 'Öğrenci',
-              style: AppTypography.h2(context.colors.onSurface),
-            ),
-            if (selected != null &&
-                (selected.studentNumber.isNotEmpty || selected.room.isNotEmpty))
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  selected.subtitle,
-                  style: AppTypography.small(context.colors.onSurfaceVariant),
-                ),
-              ),
-            if (selectedPresence != null && selectedPresence.inside != null) ...[
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: [
-                  StatusChip(
-                    label:
-                        '${selectedPresence.label}${ongoing == null ? '' : ' · ${DormDurationCalculator.formatDuration(ongoing)}'}',
-                    icon: selectedPresence.inside == true
-                        ? Icons.login_rounded
-                        : Icons.logout_rounded,
-                    tone: selectedPresence.inside == true
-                        ? StatusTone.success
-                        : StatusTone.danger,
-                  ),
-                  if (selectedPresence.at != null)
-                    StatusChip(
-                      label:
-                          'Son okutma: ${AppDate.dateTime(selectedPresence.at!)}',
-                      tone: StatusTone.neutral,
-                    ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 8),
-            Text(
-              'Bir güne dokunarak o günkü giriş–çıkışları ve kalma sürelerini açın.',
-              style: AppTypography.small(context.colors.onSurfaceVariant),
+            _PersonProfileCard(
+              name: selected?.displayName ?? user?.displayName ?? 'Öğrenci',
+              room: selected?.room ?? user?.room ?? '',
+              studentNumber:
+                  selected?.studentNumber ?? user?.studentNumber ?? '',
+              presence: selectedPresence,
+              ongoing: ongoing,
+              outsideDuration: personOutsideTotal,
             ),
             const SizedBox(height: 14),
           ] else ...[
@@ -1025,7 +1002,20 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
               setState(() => _range = r);
             },
           ),
-          if (uid == null) ...[
+          if (uid != null) ...[
+            const SizedBox(height: 12),
+            DormSegmentedBar<String>(
+              value: _focus,
+              options: const [
+                DormSegmentedOption('all', 'Tümü'),
+                DormSegmentedOption('entry', 'Giriş'),
+                DormSegmentedOption('exit', 'Çıkış'),
+                DormSegmentedOption('late', 'Geç dönüş'),
+                DormSegmentedOption('earlyExit', 'Erken çıkış'),
+              ],
+              onChanged: (v) => setState(() => _focus = v),
+            ),
+          ] else ...[
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('history-search'),
@@ -1064,7 +1054,7 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
             onRetry: () => ref.invalidate(
               movementsProvider((from: from, to: to, uid: uid)),
             ),
-            value: ref.watch(movementsProvider((from: from, to: to, uid: uid))),
+            value: eventsAsync,
             builder: (events) {
               final q = dormSearchKey(_search.text);
               final filtered = events.where((e) {
@@ -1077,49 +1067,21 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
                       dormSearchKey(stu?.studentNumber ?? '').contains(q);
                   if (!hit) return false;
                 }
-                if (uid == null) {
-                  final matchFocus = switch (_focus) {
-                    'late' => e.lateMinutes > 0,
-                    'earlyExit' => e.earlyExit,
-                    'leave' => e.permitted,
-                    'location' => e.verdict.needsAttention,
-                    _ => true,
-                  };
-                  if (!matchFocus) return false;
-                }
-                return true;
+                final matchFocus = switch (_focus) {
+                  'entry' => e.type.isEntry,
+                  'exit' => e.type.isExit,
+                  'late' => e.lateMinutes > 0,
+                  'earlyExit' => e.earlyExit,
+                  'leave' => e.permitted,
+                  'location' => e.verdict.needsAttention,
+                  _ => true,
+                };
+                return matchFocus;
               }).toList();
-
-              final overall = _computeAggregateSummary(
-                filtered,
-                now: rawNow,
-                singleUser: uid != null,
-              );
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (filtered.isNotEmpty) ...[
-                    _HistorySummaryStrip(
-                      studentCount: filtered
-                          .map((e) => e.userId)
-                          .toSet()
-                          .length,
-                      eventCount: filtered.length,
-                      insideDuration: overall.inside,
-                      outsideDuration: overall.outside,
-                      warningCount: filtered
-                          .where(
-                            (e) =>
-                                e.lateMinutes > 0 ||
-                                e.earlyExit ||
-                                e.earlyEntry ||
-                                e.verdict.needsAttention,
-                          )
-                          .length,
-                    ),
-                    const SizedBox(height: 14),
-                  ],
                   const DormMovementLegend(),
                   const SizedBox(height: 12),
                   DormGroupedMovements(
@@ -1143,119 +1105,192 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
   }
 }
 
-({Duration inside, Duration outside}) _computeAggregateSummary(
-  List<AttendanceEvent> events, {
-  required DateTime now,
-  required bool singleUser,
-}) {
-  if (events.isEmpty) return (inside: Duration.zero, outside: Duration.zero);
-  final byUser = <String, List<AttendanceEvent>>{};
-  for (final e in events) {
-    byUser.putIfAbsent(e.userId, () => []).add(e);
-  }
-  Duration inside = Duration.zero;
-  Duration outside = Duration.zero;
-  for (final entry in byUser.entries) {
-    final s = DormDurationCalculator.summarize(
-      entry.value,
-      userId: entry.key,
-      now: now,
-      includeOngoing: singleUser,
-    );
-    inside += s.insideDuration;
-    outside += s.outsideDuration;
-  }
-  return (inside: inside, outside: outside);
-}
-
-class _HistorySummaryStrip extends StatelessWidget {
-  const _HistorySummaryStrip({
-    required this.studentCount,
-    required this.eventCount,
-    required this.insideDuration,
+class _PersonProfileCard extends StatelessWidget {
+  const _PersonProfileCard({
+    required this.name,
+    required this.room,
+    required this.studentNumber,
+    required this.presence,
+    required this.ongoing,
     required this.outsideDuration,
-    required this.warningCount,
   });
 
-  final int studentCount;
-  final int eventCount;
-  final Duration insideDuration;
+  final String name;
+  final String room;
+  final String studentNumber;
+  final Presence? presence;
+  final Duration? ongoing;
   final Duration outsideDuration;
-  final int warningCount;
 
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-    child: Wrap(
-      spacing: 18,
-      runSpacing: 8,
-      children: [
-        _StatPill(
-          label: 'Hareket',
-          value: '$eventCount ($studentCount öğrenci)',
-          color: AppColors.primary,
-        ),
-        _StatPill(
-          label: 'Toplam içeride',
-          value: DormDurationCalculator.formatDuration(insideDuration),
-          color: AppColors.entry,
-        ),
-        _StatPill(
-          label: 'Toplam dışarıda',
-          value: DormDurationCalculator.formatDuration(outsideDuration),
-          color: AppColors.exit,
-        ),
-        if (warningCount > 0)
-          _StatPill(
-            label: 'Uyarı',
-            value: '$warningCount',
-            color: AppColors.warning,
+  Widget build(BuildContext context) {
+    final bool? inside = presence?.inside;
+    return AppCard(
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  color: AppColors.primarySurface,
+                  borderRadius: AppRadius.allMd,
+                ),
+                child: const Icon(
+                  Icons.person_outline_rounded,
+                  size: 26,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: AppTypography.h2(context.colors.onSurface),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 4,
+                      children: [
+                        if (room.isNotEmpty)
+                          _IconMeta(
+                            icon: Icons.meeting_room_outlined,
+                            text: 'Oda $room',
+                          ),
+                        if (studentNumber.isNotEmpty)
+                          _IconMeta(
+                            icon: Icons.badge_outlined,
+                            text: 'No $studentNumber',
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (inside != null)
+                StatusChip(
+                  label:
+                      '${presence!.label}${ongoing == null ? '' : ' · ${DormDurationCalculator.formatDuration(ongoing!)}'}',
+                  icon: inside ? Icons.login_rounded : Icons.logout_rounded,
+                  tone: inside ? StatusTone.success : StatusTone.danger,
+                ),
+            ],
           ),
-      ],
-    ),
-  );
+          const Divider(height: 24),
+          LayoutBuilder(
+            builder: (context, bounds) {
+              final lastScanItem = _ProfileMetricBox(
+                icon: Icons.access_time_rounded,
+                label: 'SON OKUTMA',
+                value: presence?.at == null
+                    ? 'Henüz okutma yok'
+                    : AppDate.dateTime(presence!.at!),
+              );
+              final outsideItem = _ProfileMetricBox(
+                icon: Icons.logout_rounded,
+                label: 'DIŞARIDA TOPLAM SÜRE',
+                value: DormDurationCalculator.formatDuration(outsideDuration),
+              );
+              if (bounds.maxWidth >= 460) {
+                return Row(
+                  children: [
+                    Expanded(child: lastScanItem),
+                    const SizedBox(width: 12),
+                    Expanded(child: outsideItem),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  lastScanItem,
+                  const SizedBox(height: 8),
+                  outsideItem,
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _StatPill extends StatelessWidget {
-  const _StatPill({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
+class _IconMeta extends StatelessWidget {
+  const _IconMeta({required this.icon, required this.text});
 
-  final String label;
-  final String value;
-  final Color color;
+  final IconData icon;
+  final String text;
 
   @override
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      Container(
-        width: 8,
-        height: 8,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-      ),
-      const SizedBox(width: 8),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: AppTypography.caption(context.colors.onSurfaceVariant),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            value,
-            style: AppTypography.bodyStrong(context.colors.onSurface).copyWith(
-              fontSize: 13.5,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
-          ),
-        ],
+      Icon(icon, size: 15, color: context.colors.onSurfaceVariant),
+      const SizedBox(width: 4),
+      Text(
+        text,
+        style: AppTypography.small(context.colors.onSurfaceVariant),
       ),
     ],
+  );
+}
+
+class _ProfileMetricBox extends StatelessWidget {
+  const _ProfileMetricBox({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    decoration: BoxDecoration(
+      color: context.isDark ? AppColors.surfaceAltDark : AppColors.surfaceAlt,
+      borderRadius: AppRadius.allSm,
+      border: Border.all(color: context.colors.outline),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 18, color: AppColors.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: AppTypography.eyebrow(
+                  context.colors.onSurfaceVariant,
+                ).copyWith(fontSize: 10),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.bodyStrong(context.colors.onSurface)
+                    .copyWith(
+                      fontSize: 13.5,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
@@ -1333,6 +1368,7 @@ class DormGroupedMovements extends StatefulWidget {
     this.usersById = const <String, AppUser>{},
     this.orderedUserIds,
     this.now,
+    this.showDurationChips = false,
     this.onOpenStudent,
     super.key,
   });
@@ -1341,6 +1377,7 @@ class DormGroupedMovements extends StatefulWidget {
   final Map<String, AppUser> usersById;
   final List<String>? orderedUserIds;
   final DateTime? now;
+  final bool showDurationChips;
   final ValueChanged<String>? onOpenStudent;
   @override
   State<DormGroupedMovements> createState() => _DormGroupedMovementsState();
@@ -1441,11 +1478,12 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
                                           context.colors.onSurfaceVariant,
                                         ),
                                       ),
-                                      if (summary.insideDuration >
-                                              Duration.zero ||
-                                          summary.outsideDuration >
-                                              Duration.zero ||
-                                          summary.warningCount > 0) ...[
+                                      if (widget.showDurationChips &&
+                                          (summary.insideDuration >
+                                                  Duration.zero ||
+                                              summary.outsideDuration >
+                                                  Duration.zero ||
+                                              summary.warningCount > 0)) ...[
                                         const SizedBox(height: 6),
                                         Wrap(
                                           spacing: 6,
@@ -1929,154 +1967,214 @@ class _LeaveCard extends StatelessWidget {
     ].join(' ');
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: LayoutBuilder(
+        builder: (context, bounds) {
+          final Widget studentCard = AppCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student?.displayName ?? fallbackName,
-                        style: AppTypography.bodyStrong(context.colors.onSurface),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primarySurface,
+                        borderRadius: AppRadius.allMd,
                       ),
-                      if (student != null &&
-                          (student!.room.isNotEmpty ||
-                              student!.studentNumber.isNotEmpty))
-                        Text(
-                          [
-                            if (student!.room.isNotEmpty)
-                              'Oda ${student!.room}',
-                            if (student!.studentNumber.isNotEmpty)
-                              'No ${student!.studentNumber}',
-                          ].join(' · '),
-                          style: AppTypography.caption(
-                            context.colors.onSurfaceVariant,
+                      child: const Icon(
+                        Icons.person_outline_rounded,
+                        size: 22,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            student?.displayName ?? fallbackName,
+                            style: AppTypography.bodyStrong(
+                              context.colors.onSurface,
+                            ),
                           ),
-                        ),
-                    ],
-                  ),
+                          const SizedBox(height: 4),
+                          if (student != null && student!.room.isNotEmpty)
+                            _IconMeta(
+                              icon: Icons.meeting_room_outlined,
+                              text: 'Oda ${student!.room}',
+                            ),
+                          if (student != null &&
+                              student!.studentNumber.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            _IconMeta(
+                              icon: Icons.badge_outlined,
+                              text: 'No ${student!.studentNumber}',
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
                 StatusChip(label: statusLabel, tone: statusTone, compact: true),
               ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
+          );
+
+          final Widget leaveDetailCard = AppCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  '${AppDate.dateTime(leave.from)} — ${AppDate.dateTime(leave.until)}',
-                  style: AppTypography.small(context.colors.onSurface),
-                ),
-                StatusChip(
-                  label:
-                      'Süre: ${DormDurationCalculator.formatDuration(leave.duration)}',
-                  icon: Icons.timelapse_rounded,
-                  tone: StatusTone.info,
-                  compact: true,
-                ),
-                if (leave.category.isNotEmpty)
-                  StatusChip(
-                    label: leave.category,
-                    tone: StatusTone.neutral,
-                    compact: true,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              leave.reason,
-              style: AppTypography.body(context.colors.onSurface),
-            ),
-            if (leave.destination.isNotEmpty || contactSummary.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: context.colors.surfaceContainerLowest,
-                  borderRadius: AppRadius.allMd,
-                  border: Border.all(
-                    color: context.colors.outline.withValues(alpha: 0.45),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    if (leave.destination.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on_outlined,
-                            size: 15,
-                            color: context.colors.primary,
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (leave.category.isNotEmpty)
+                          StatusChip(
+                            label: leave.category,
+                            tone: StatusTone.neutral,
+                            compact: true,
                           ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Gideceği yer: ${leave.destination}',
-                              style: AppTypography.caption(
-                                context.colors.onSurface,
-                              ),
-                            ),
-                          ),
-                        ],
+                        StatusChip(
+                          label:
+                              'Süre: ${DormDurationCalculator.formatDuration(leave.duration)}',
+                          icon: Icons.timelapse_rounded,
+                          tone: StatusTone.info,
+                          compact: true,
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '${AppDate.dateTime(leave.from)} — ${AppDate.dateTime(leave.until)}',
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
+                      ).copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
-                    if (leave.destination.isNotEmpty &&
-                        contactSummary.isNotEmpty)
-                      const SizedBox(height: 4),
-                    if (contactSummary.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.phone_outlined,
-                            size: 15,
-                            color: context.colors.primary,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              'Gideceği kişi / iletişim: $contactSummary',
-                              style: AppTypography.caption(
-                                context.colors.onSurface,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    ),
                   ],
                 ),
-              ),
-            ],
-            if (canManage) ...[
-              const SizedBox(height: 4),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                const SizedBox(height: 10),
+                Text(
+                  leave.reason,
+                  style: AppTypography.body(context.colors.onSurface),
+                ),
+                if (leave.destination.isNotEmpty ||
+                    contactSummary.isNotEmpty) ...[
+                  const Divider(height: 20),
+                  Wrap(
+                    spacing: 16,
+                    runSpacing: 8,
+                    children: [
+                      if (leave.destination.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_on_outlined,
+                              size: 16,
+                              color: context.colors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Gideceği yer: ${leave.destination}',
+                                style: AppTypography.small(
+                                  context.colors.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      if (contactSummary.isNotEmpty)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.phone_outlined,
+                              size: 16,
+                              color: context.colors.primary,
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Yakın / İletişim: $contactSummary',
+                                style: AppTypography.small(
+                                  context.colors.onSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ],
+                if (canManage) ...[
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      if (!leave.revoked && leave.until.isAfter(now))
+                        TextButton(
+                          onPressed: busy ? null : onRevoke,
+                          child: const Text('İzni iptal et'),
+                        ),
+                      if (leave.revoked || !leave.until.isAfter(now))
+                        TextButton.icon(
+                          onPressed: busy ? null : onDelete,
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.danger,
+                          ),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 18,
+                          ),
+                          label: const Text('Sil'),
+                        ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          );
+
+          if (bounds.maxWidth >= 600) {
+            return IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!leave.revoked && leave.until.isAfter(now))
-                    TextButton(
-                      onPressed: busy ? null : onRevoke,
-                      child: const Text('İzni iptal et'),
-                    ),
-                  if (leave.revoked || !leave.until.isAfter(now))
-                    TextButton.icon(
-                      onPressed: busy ? null : onDelete,
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppColors.danger,
-                      ),
-                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                      label: const Text('Sil'),
-                    ),
+                  SizedBox(width: 230, child: studentCard),
+                  const SizedBox(width: 12),
+                  Expanded(child: leaveDetailCard),
                 ],
               ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              studentCard,
+              const SizedBox(height: 8),
+              leaveDetailCard,
             ],
-          ],
-        ),
+          );
+        },
       ),
     );
   }

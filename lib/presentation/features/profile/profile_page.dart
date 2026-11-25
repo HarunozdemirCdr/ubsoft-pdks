@@ -6,6 +6,7 @@ import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/core/config/company_info.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
 import 'package:ubsoft_pdks/core/routing/app_routes.dart';
+import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
@@ -41,54 +42,90 @@ class ProfilePage extends ConsumerWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          AppSpacing.vLg,
-          Center(
-            child: Column(
-              children: <Widget>[
-                Container(
-                  width: 72,
-                  height: 72,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: context.colors.primaryContainer,
-                    borderRadius: AppRadius.allXl,
-                  ),
-                  child: Text(
-                    user.initials,
-                    style: AppTypography.h1(context.colors.primary),
-                  ),
-                ),
-                AppSpacing.vMd,
-                Text(
-                  user.displayName,
-                  style: AppTypography.h2(context.colors.onSurface),
-                ),
-                AppSpacing.vXxs,
-                Text(
-                  user.email,
-                  style: AppTypography.small(context.colors.onSurfaceVariant),
-                ),
-                AppSpacing.vXs,
-                StatusChip(label: user.role.label, tone: StatusTone.info),
-              ],
-            ),
-          ),
-          AppSpacing.vXl,
-
           AppCard(
+            padding: const EdgeInsets.all(20),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                if (tenant != null) _InfoRow(label: 'Yurt', value: tenant.name),
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primarySurface,
+                        borderRadius: AppRadius.allMd,
+                      ),
+                      child: const Icon(
+                        Icons.person_outline_rounded,
+                        size: 28,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            user.displayName,
+                            style: AppTypography.h2(context.colors.onSurface),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user.email,
+                            style: AppTypography.small(
+                              context.colors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          StatusChip(
+                            label: user.role.label,
+                            tone: StatusTone.info,
+                            compact: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 28),
+                if (tenant != null)
+                  _InfoRow(
+                    icon: Icons.apartment_outlined,
+                    label: 'Yurt',
+                    value: tenant.name,
+                  ),
                 if (user.studentNumber.isNotEmpty)
-                  _InfoRow(label: 'Öğrenci no', value: user.studentNumber),
+                  _InfoRow(
+                    icon: Icons.badge_outlined,
+                    label: 'Öğrenci no',
+                    value: user.studentNumber,
+                  ),
                 if (user.room.isNotEmpty)
-                  _InfoRow(label: 'Oda', value: user.room),
+                  _InfoRow(
+                    icon: Icons.meeting_room_outlined,
+                    label: 'Oda',
+                    value: user.room,
+                  ),
                 if ((user.note ?? '').isNotEmpty)
-                  _InfoRow(label: 'Açıklama', value: user.note!),
+                  _InfoRow(
+                    icon: Icons.info_outline_rounded,
+                    label: 'Açıklama',
+                    value: user.note!,
+                  ),
                 if ((user.phone ?? '').isNotEmpty)
-                  _InfoRow(label: 'Telefon', value: user.phone!),
+                  _InfoRow(
+                    icon: Icons.phone_outlined,
+                    label: 'Telefon',
+                    value: user.phone!,
+                  ),
                 if (user.lastLoginAt case final DateTime value)
-                  _InfoRow(label: 'Son giriş', value: AppDate.dateTime(value)),
+                  _InfoRow(
+                    icon: Icons.access_time_rounded,
+                    label: 'Son giriş',
+                    value: AppDate.dateTime(value),
+                  ),
               ],
             ),
           ),
@@ -106,6 +143,7 @@ class ProfilePage extends ConsumerWidget {
                   contentPadding: EdgeInsets.zero,
                   onTap: () => context.go(AppRoutes.changePasswordPath),
                 ),
+                const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.privacy_tip_outlined),
                   title: const Text('KVKK aydınlatma metni'),
@@ -153,20 +191,27 @@ class ProfilePage extends ConsumerWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
+  final IconData icon;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpacing.xxs),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          Icon(icon, size: 17, color: context.colors.onSurfaceVariant),
+          const SizedBox(width: 10),
           SizedBox(
-            width: 100,
+            width: 96,
             child: Text(
               label,
               style: AppTypography.small(context.colors.onSurfaceVariant),
@@ -175,7 +220,9 @@ class _InfoRow extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: AppTypography.body(context.colors.onSurface),
+              style: AppTypography.bodyStrong(
+                context.colors.onSurface,
+              ).copyWith(fontSize: 13.5),
             ),
           ),
         ],

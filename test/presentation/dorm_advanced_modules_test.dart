@@ -318,7 +318,7 @@ void main() {
       );
       await settle(tester);
 
-      expect(find.text('Toplam içeride'), findsOneWidget);
+      expect(find.text('Toplam içeride'), findsNothing);
       expect(find.byKey(const ValueKey('student-group-s1')), findsOneWidget);
       expect(find.byKey(const ValueKey('student-group-s2')), findsOneWidget);
 
@@ -329,6 +329,19 @@ void main() {
       await settle(tester);
       expect(find.byKey(const ValueKey('student-group-s1')), findsNothing);
       expect(find.byKey(const ValueKey('student-group-s2')), findsOneWidget);
+
+      // 1b. Kişi geçmişi kartı + dışarıda toplam süre + hareket filtresi
+      await tester.pumpWidget(
+        wrapPage(
+          const DormHistoryPage(userId: 's1'),
+          container: scope.container,
+          size: const Size(1280, 900),
+        ),
+      );
+      await settle(tester);
+      expect(find.text('DIŞARIDA TOPLAM SÜRE'), findsOneWidget);
+      expect(find.text('SON OKUTMA'), findsOneWidget);
+      expect(find.text('Geç dönüş'), findsOneWidget);
 
       // 2. Gelişmiş Raporlar analiz sekmeleri kontrolü
       await tester.binding.setSurfaceSize(const Size(1280, 900));

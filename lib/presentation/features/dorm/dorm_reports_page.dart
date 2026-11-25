@@ -549,63 +549,108 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 10,
-                      alignment: WrapAlignment.spaceBetween,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${analytics.studentSummaries.length} öğrenci · ${events.length} hareket',
-                              style: AppTypography.bodyStrong(
-                                context.colors.onSurface,
+                    AppCard(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: LayoutBuilder(
+                        builder: (context, barBounds) {
+                          final summaryInfo = Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primarySurface,
+                                  borderRadius: AppRadius.allSm,
+                                ),
+                                child: const Icon(
+                                  Icons.assessment_outlined,
+                                  size: 19,
+                                  color: AppColors.primary,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${analytics.totalEntries} giriş · ${analytics.totalExits} çıkış · İçeride: ${DormDurationCalculator.formatDuration(analytics.totalInside)} · Dışarıda: ${DormDurationCalculator.formatDuration(analytics.totalOutside)}',
-                              style: AppTypography.caption(
-                                context.colors.onSurfaceVariant,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '${analytics.studentSummaries.length} öğrenci · ${events.length} kayıt',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.bodyStrong(
+                                        context.colors.onSurface,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${analytics.totalEntries} giriş · ${analytics.totalExits} çıkış',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTypography.caption(
+                                        context.colors.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            AppButton(
-                              label: 'Excel (CSV)',
-                              icon: Icons.table_chart_outlined,
-                              variant: AppButtonVariant.outline,
-                              size: AppButtonSize.small,
-                              onPressed: events.isEmpty
-                                  ? null
-                                  : () => _exportCsv(
-                                      events,
-                                      analytics,
-                                      usersById,
-                                    ),
-                            ),
-                            AppButton(
-                              label: 'PDF indir',
-                              icon: Icons.file_download_outlined,
-                              size: AppButtonSize.small,
-                              isLoading: _exporting,
-                              onPressed: events.isEmpty
-                                  ? null
-                                  : () => _exportPdf(
-                                      events,
-                                      '${dormDisplayDate(from)} — ${dormDisplayDate(to)} · ${dormFocusLabel(_focus)}${_uid == null ? '' : ' · ${names[_uid] ?? 'Seçili öğrenci'}'}',
-                                      usersById,
-                                    ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          );
+                          final csvBtn = AppButton(
+                            label: 'Excel (CSV)',
+                            icon: Icons.table_chart_outlined,
+                            variant: AppButtonVariant.outline,
+                            size: AppButtonSize.small,
+                            onPressed: events.isEmpty
+                                ? null
+                                : () => _exportCsv(
+                                    events,
+                                    analytics,
+                                    usersById,
+                                  ),
+                          );
+                          final pdfBtn = AppButton(
+                            label: 'PDF indir',
+                            icon: Icons.file_download_outlined,
+                            size: AppButtonSize.small,
+                            isLoading: _exporting,
+                            onPressed: events.isEmpty
+                                ? null
+                                : () => _exportPdf(
+                                    events,
+                                    '${dormDisplayDate(from)} — ${dormDisplayDate(to)} · ${dormFocusLabel(_focus)}${_uid == null ? '' : ' · ${names[_uid] ?? 'Seçili öğrenci'}'}',
+                                    usersById,
+                                  ),
+                          );
+                          if (barBounds.maxWidth >= 540) {
+                            return Row(
+                              children: [
+                                Expanded(child: summaryInfo),
+                                const SizedBox(width: 12),
+                                csvBtn,
+                                const SizedBox(width: 8),
+                                pdfBtn,
+                              ],
+                            );
+                          }
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              summaryInfo,
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(child: csvBtn),
+                                  const SizedBox(width: 8),
+                                  Expanded(child: pdfBtn),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(height: 14),
                     DormSegmentedBar<String>(
@@ -668,6 +713,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                         usersById: usersById,
                         orderedUserIds: analytics.orderedUserIds,
                         now: rawNow,
+                        showDurationChips: true,
                       ),
                     ],
                     if (_hasMore) ...[

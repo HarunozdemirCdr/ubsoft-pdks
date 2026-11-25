@@ -104,6 +104,28 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     return Scaffold(
       key: _scaffoldKey,
+      drawerEnableOpenDragGesture: false,
+      drawer: overflows
+          ? Drawer(
+              width: 276,
+              backgroundColor: context.colors.surface,
+              shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.horizontal(
+                  right: Radius.circular(14),
+                ),
+              ),
+              child: _CorporateSidebarContent(
+                destinations: destinations,
+                location: location,
+                onSelect: (destination) {
+                  _scaffoldKey.currentState?.closeDrawer();
+                  context.go(destination.path);
+                },
+                onBeforeSignOut: () =>
+                    _scaffoldKey.currentState?.closeDrawer(),
+              ),
+            )
+          : null,
       body: body,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -126,7 +148,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             selectedIndex: index,
             onDestinationSelected: (i) {
               if (overflows && i == primary.length) {
-                _openMoreSheet(context, destinations, location);
+                _scaffoldKey.currentState?.openDrawer();
                 return;
               }
               context.go(primary[i].path);
@@ -141,66 +163,11 @@ class _AppShellState extends ConsumerState<AppShell> {
               if (overflows)
                 NavigationDestination(
                   icon: Icon(
-                    inOverflow ? Icons.grid_view_rounded : Icons.grid_view_outlined,
+                    inOverflow ? Icons.menu_open_rounded : Icons.menu_rounded,
                   ),
-                  selectedIcon: const Icon(Icons.grid_view_rounded),
+                  selectedIcon: const Icon(Icons.menu_open_rounded),
                   label: 'İşlemler',
                 ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _openMoreSheet(
-    BuildContext context,
-    List<NavDestination> destinations,
-    String location,
-  ) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetCtx) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  const UbsLogo(width: 90),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Tüm Modüller',
-                      style: AppTypography.h3(sheetCtx.colors.onSurface),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              const SizedBox(height: 8),
-              for (final NavDestination destination in destinations)
-                _SidebarTile(
-                  destination: destination,
-                  selected: _isActive(destination.path, location),
-                  onTap: () {
-                    Navigator.pop(sheetCtx);
-                    context.go(destination.path);
-                  },
-                ),
-              const Divider(height: 16),
-              ListTile(
-                leading: const Icon(Icons.logout_rounded, size: 20),
-                title: const Text('Çıkış Yap'),
-                onTap: () async {
-                  Navigator.pop(sheetCtx);
-                  await ref.read(authControllerProvider.notifier).signOut();
-                },
-              ),
             ],
           ),
         ),
@@ -307,7 +274,7 @@ class _ExpiredBanner extends StatelessWidget {
 /// Geniş ekranda tek kurumsal sol menü — banka / telekom portalları gibi
 /// net hiyerarşi: UBS marka başlığı, yatay ikon+etiket satırları ve oturum
 /// özeti.
-class _CorporateSidebar extends ConsumerWidget {
+class _CorporateSidebar extends StatelessWidget {
   const _CorporateSidebar({
     required this.destinations,
     required this.location,
@@ -319,6 +286,36 @@ class _CorporateSidebar extends ConsumerWidget {
   final ValueChanged<NavDestination> onSelect;
 
   @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 242,
+      decoration: BoxDecoration(
+        color: context.colors.surface,
+        border: Border(right: BorderSide(color: context.colors.outline)),
+      ),
+      child: _CorporateSidebarContent(
+        destinations: destinations,
+        location: location,
+        onSelect: onSelect,
+      ),
+    );
+  }
+}
+
+class _CorporateSidebarContent extends ConsumerWidget {
+  const _CorporateSidebarContent({
+    required this.destinations,
+    required this.location,
+    required this.onSelect,
+    this.onBeforeSignOut,
+  });
+
+  final List<NavDestination> destinations;
+  final String location;
+  final ValueChanged<NavDestination> onSelect;
+  final VoidCallback? onBeforeSignOut;
+
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final Session session = ref.watch(currentSessionProvider);
     final String tenantName = session.tenantOrNull?.name ?? '';
@@ -326,122 +323,126 @@ class _CorporateSidebar extends ConsumerWidget {
         ? session.user.displayName
         : '';
 
-    return Container(
-      width: 242,
-      decoration: BoxDecoration(
-        color: context.colors.surface,
-        border: Border(right: BorderSide(color: context.colors.outline)),
-      ),
-      child: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const UbsLogo.mark(width: 128),
-                  if (tenantName.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      tenantName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTypography.caption(
-                        context.colors.onSurfaceVariant,
-                      ).copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 2,
-                        color: AppColors.brandAccent,
-                      ),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Container(
-                          height: 1,
-                          color: context.colors.outline,
-                        ),
-                      ),
-                    ],
+    return SafeArea(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const UbsLogo.mark(width: 128),
+                if (tenantName.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    tenantName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTypography.caption(
+                      context.colors.onSurfaceVariant,
+                    ).copyWith(fontWeight: FontWeight.w600),
                   ),
                 ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 2,
+                      color: AppColors.brandAccent,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Container(
+                        height: 1,
+                        color: context.colors.outline,
+                      ),
+                    ),
+                  ],
                 ),
-                children: <Widget>[
-                  for (final NavDestination destination in destinations)
-                    _SidebarTile(
-                      destination: destination,
-                      selected: _AppShellState._isActive(
-                        destination.path,
-                        location,
-                      ),
-                      onTap: () => onSelect(destination),
-                    ),
-                ],
-              ),
+              ],
             ),
-            const Divider(height: 1),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (userName.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 2, 10, 6),
-                      child: Text(
-                        userName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption(
-                          context.colors.onSurfaceVariant,
-                        ),
-                      ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              children: <Widget>[
+                for (final NavDestination destination in destinations)
+                  _SidebarTile(
+                    destination: destination,
+                    selected: _AppShellState._isActive(
+                      destination.path,
+                      location,
                     ),
-                  InkWell(
-                    borderRadius: AppRadius.allSm,
-                    onTap: () =>
-                        ref.read(authControllerProvider.notifier).signOut(),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.logout_rounded,
-                            size: 18,
-                            color: context.colors.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            'Çıkış Yap',
-                            style: AppTypography.small(
+                    onTap: () => onSelect(destination),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (userName.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 2, 10, 6),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.person_outline_rounded,
+                          size: 16,
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            userName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.caption(
                               context.colors.onSurfaceVariant,
                             ).copyWith(fontWeight: FontWeight.w600),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                InkWell(
+                  borderRadius: AppRadius.allSm,
+                  onTap: () {
+                    onBeforeSignOut?.call();
+                    ref.read(authControllerProvider.notifier).signOut();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.logout_rounded,
+                          size: 18,
+                          color: context.colors.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Çıkış Yap',
+                          style: AppTypography.small(
+                            context.colors.onSurfaceVariant,
+                          ).copyWith(fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

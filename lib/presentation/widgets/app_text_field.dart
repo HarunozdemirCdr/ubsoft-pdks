@@ -64,9 +64,11 @@ class AppTextField extends StatelessWidget {
       children: <Widget>[
         Row(
           children: <Widget>[
-            Text(
-              label,
-              style: AppTypography.label(context.colors.onSurfaceVariant),
+            Flexible(
+              child: Text(
+                label,
+                style: AppTypography.label(context.colors.onSurfaceVariant),
+              ),
             ),
             if (isRequired)
               Text(' *', style: AppTypography.label(context.colors.error)),

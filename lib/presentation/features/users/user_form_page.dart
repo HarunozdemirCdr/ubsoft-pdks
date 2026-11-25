@@ -6,6 +6,8 @@ import 'package:ubsoft_pdks/application/user/user_providers.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/core/routing/app_routes.dart';
+import 'package:ubsoft_pdks/core/theme/app_colors.dart';
+import 'package:ubsoft_pdks/core/theme/app_radius.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/validators.dart';
@@ -19,6 +21,7 @@ import 'package:ubsoft_pdks/presentation/widgets/app_text_field.dart';
 import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
 import 'package:ubsoft_pdks/presentation/widgets/info_hint.dart';
 import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
+import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 
 /// Öğrenci oluşturma ve düzenleme.
@@ -155,88 +158,192 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            AppSpacing.vSm,
-            const SectionHeader(title: 'Kimlik', dense: true),
-            AppSpacing.vMd,
-
-            AppTextField(
-              label: 'Ad Soyad',
-              controller: _name,
-              isRequired: true,
-              validator: (String? v) =>
-                  Validators.required(v, field: 'Ad Soyad'),
-            ),
-            AppSpacing.vMd,
-
-            AppTextField(
-              label: 'E-posta',
-              controller: _email,
-              isRequired: true,
-              enabled: _isNew,
-              keyboardType: TextInputType.emailAddress,
-              helper: _isNew
-                  ? 'Öğrenci bu adresle giriş yapacak.'
-                  : 'E-posta adresi hesabın kimliğidir, değiştirilemez.',
-              validator: _isNew ? Validators.email : null,
-            ),
-
-            if (_isNew) ...<Widget>[
-              AppSpacing.vMd,
-              AppPasswordField(
-                label: 'Geçici şifre',
-                controller: _password,
-                validator: Validators.password,
+            AppCard(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: <Widget>[
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: AppRadius.allMd,
+                    ),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 26,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          _isNew
+                              ? 'Yeni Öğrenci Kaydı'
+                              : (existing?.displayName ?? 'Öğrenci Profili'),
+                          style: AppTypography.h3(context.colors.onSurface),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _isNew
+                              ? 'Kimlik ve yurt yerleşim bilgilerini eksiksiz tanımlayın.'
+                              : [
+                                  if ((existing?.room ?? '').isNotEmpty)
+                                    'Oda ${existing!.room}',
+                                  if ((existing?.studentNumber ?? '').isNotEmpty)
+                                    'No ${existing!.studentNumber}',
+                                  existing?.email ?? '',
+                                ].where((s) => s.isNotEmpty).join(' · '),
+                          style: AppTypography.caption(
+                            context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (existing != null)
+                    StatusChip(
+                      label: existing.status.isActive ? 'Etkin' : 'Pasif',
+                      tone: existing.status.isActive
+                          ? StatusTone.success
+                          : StatusTone.neutral,
+                      compact: true,
+                    ),
+                ],
               ),
-              AppSpacing.vXs,
-              const InfoNote(
-                message:
-                    'Bu şifreyi öğrenciye iletin. Kendi şifresini profil '
-                    'ekranından değiştirebilir.',
+            ),
+            AppSpacing.vMd,
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const SectionHeader(title: 'Kimlik bilgileri', dense: true),
+                  AppSpacing.vMd,
+                  AppTextField(
+                    label: 'Ad Soyad',
+                    controller: _name,
+                    prefixIcon: Icons.person_outline_rounded,
+                    isRequired: true,
+                    validator: (String? v) =>
+                        Validators.required(v, field: 'Ad Soyad'),
+                  ),
+                  AppSpacing.vMd,
+                  AppTextField(
+                    label: 'E-posta',
+                    controller: _email,
+                    prefixIcon: Icons.mail_outline_rounded,
+                    isRequired: true,
+                    enabled: _isNew,
+                    keyboardType: TextInputType.emailAddress,
+                    helper: _isNew
+                        ? 'Öğrenci bu adresle giriş yapacak.'
+                        : 'E-posta adresi hesabın kimliğidir, değiştirilemez.',
+                    validator: _isNew ? Validators.email : null,
+                  ),
+                  if (_isNew) ...<Widget>[
+                    AppSpacing.vMd,
+                    AppPasswordField(
+                      label: 'Geçici şifre',
+                      controller: _password,
+                      validator: Validators.password,
+                    ),
+                    AppSpacing.vXs,
+                    const InfoNote(
+                      message:
+                          'Bu şifreyi öğrenciye iletin. Kendi şifresini profil '
+                          'ekranından değiştirebilir.',
+                    ),
+                  ],
+                ],
               ),
-            ],
-
-            AppSpacing.vLg,
-            const SectionHeader(title: 'Yurt bilgileri', dense: true),
-            AppSpacing.vMd,
-
-            AppTextField(label: 'Öğrenci numarası', controller: _number),
-            AppSpacing.vMd,
-            AppTextField(label: 'Oda', controller: _room),
-            AppSpacing.vMd,
-            AppTextField(
-              label: 'Açıklama',
-              controller: _note,
-              hint: 'Oda / öğrenim notu',
-              helper: 'Listelerde ve raporun öğrenci başlığında görünür.',
-              validator: (String? v) =>
-                  Validators.maxLength(v, 60, field: 'Açıklama'),
             ),
             AppSpacing.vMd,
-
-            AppTextField(
-              label: 'Telefon',
-              controller: _phone,
-              keyboardType: TextInputType.phone,
-              validator: Validators.phone,
-            ),
-
-            AppSpacing.vLg,
-            const SectionHeader(title: 'Rol', dense: true),
-            AppSpacing.vSm,
-            _RoleSelector(
-              value: _role,
-              enabled: canAssignRole && !isSelf,
-              onChanged: (UserRole value) => setState(() => _role = value),
-            ),
-            if (isSelf) ...<Widget>[
-              AppSpacing.vXs,
-              const InfoNote(
-                message:
-                    'Kendi rolünüzü değiştiremezsiniz. Aksi hâlde son '
-                    'yönetici kendini öğrenciye düşürüp yurdu yönetimsiz '
-                    'bırakabilirdi.',
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const SectionHeader(title: 'Yurt bilgileri', dense: true),
+                  AppSpacing.vMd,
+                  LayoutBuilder(
+                    builder: (context, bounds) {
+                      final numberField = AppTextField(
+                        label: 'Öğrenci numarası',
+                        controller: _number,
+                        prefixIcon: Icons.badge_outlined,
+                      );
+                      final roomField = AppTextField(
+                        label: 'Oda numarası',
+                        controller: _room,
+                        prefixIcon: Icons.meeting_room_outlined,
+                      );
+                      if (bounds.maxWidth >= 520) {
+                        return Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: numberField),
+                            const SizedBox(width: 12),
+                            Expanded(child: roomField),
+                          ],
+                        );
+                      }
+                      return Column(
+                        children: [
+                          numberField,
+                          AppSpacing.vMd,
+                          roomField,
+                        ],
+                      );
+                    },
+                  ),
+                  AppSpacing.vMd,
+                  AppTextField(
+                    label: 'Telefon',
+                    controller: _phone,
+                    prefixIcon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                    validator: Validators.phone,
+                  ),
+                  AppSpacing.vMd,
+                  AppTextField(
+                    label: 'Açıklama',
+                    controller: _note,
+                    prefixIcon: Icons.notes_rounded,
+                    hint: 'Oda / öğrenim notu',
+                    helper: 'Listelerde ve raporun öğrenci başlığında görünür.',
+                    validator: (String? v) =>
+                        Validators.maxLength(v, 60, field: 'Açıklama'),
+                  ),
+                ],
               ),
-            ],
+            ),
+            AppSpacing.vMd,
+            AppCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: <Widget>[
+                  const SectionHeader(title: 'Sistem rolü', dense: true),
+                  AppSpacing.vSm,
+                  _RoleSelector(
+                    value: _role,
+                    enabled: canAssignRole && !isSelf,
+                    onChanged: (UserRole value) =>
+                        setState(() => _role = value),
+                  ),
+                  if (isSelf) ...<Widget>[
+                    AppSpacing.vXs,
+                    const InfoNote(
+                      message:
+                          'Kendi rolünüzü değiştiremezsiniz. Aksi hâlde son '
+                          'yönetici kendini öğrenciye düşürüp yurdu yönetimsiz '
+                          'bırakabilirdi.',
+                    ),
+                  ],
+                ],
+              ),
+            ),
 
             if (existing != null) ...<Widget>[
               AppSpacing.vLg,

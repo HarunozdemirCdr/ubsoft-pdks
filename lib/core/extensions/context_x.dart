@@ -15,10 +15,11 @@ extension ContextX on BuildContext {
   bool get isMobile => breakpoint.isMobile;
   bool get isWide => breakpoint.isWide;
 
-  /// Ekran genişliğine uygun sayfa kenar boşluğu.
-  EdgeInsets get pagePadding => EdgeInsets.symmetric(
-    horizontal: isMobile ? AppSpacing.pageH : AppSpacing.pageHWide,
-  );
+  /// Ekran genişliğine uygun sayfa kenar boşluğu (üst/alt güvenli nefes payı dahil).
+  EdgeInsets get pagePadding {
+    final double h = isMobile ? AppSpacing.pageH : AppSpacing.pageHWide;
+    return EdgeInsets.fromLTRB(h, AppSpacing.md, h, AppSpacing.lg);
+  }
 
   /// Klavye açıkken alt boşluk (mobil tarayıcıda form kaymasın).
   double get keyboardInset => MediaQuery.viewInsetsOf(this).bottom;

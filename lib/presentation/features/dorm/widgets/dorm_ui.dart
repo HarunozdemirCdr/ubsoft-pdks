@@ -1097,8 +1097,8 @@ class DormSegmentedOption<T> {
 
 /// Kurumsal segmente sekme / filtre çubuğu.
 ///
-/// Dağınık yuvarlak çip kümeleri yerine tek, hizalı, nötr çerçeveli bir seçim
-/// şeridi sunar.
+/// Öğeleri mevcut genişliğe eşit aralıklarla tam sığdırır; dar ekranda eşit
+/// sütunlu ızgaraya bölünerek sağda boşluk veya düzensiz taşma bırakmaz.
 class DormSegmentedBar<T> extends StatelessWidget {
   const DormSegmentedBar({
     required this.value,
@@ -1129,21 +1129,52 @@ class DormSegmentedBar<T> extends StatelessWidget {
         borderRadius: AppRadius.allMd,
         border: Border.all(color: barBorder),
       ),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [
-          for (final opt in options)
-            _SegmentedItem<T>(
-              option: opt,
-              selected: opt.value == value,
-              activeBg: activeBg,
-              activeBorder: activeBorder,
-              activeFg: activeFg,
-              inactiveFg: context.colors.onSurfaceVariant,
-              onTap: () => onChanged(opt.value),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, bounds) {
+          const double gap = 4;
+          final bool hasLongLabel = options.any((o) => o.label.length >= 15);
+          final double minPerItem = hasLongLabel ? 156 : 94;
+          final bool singleRow =
+              bounds.maxWidth.isFinite &&
+              bounds.maxWidth >=
+                  options.length * minPerItem + gap * (options.length - 1);
+
+          Widget buildTile(DormSegmentedOption<T> opt) => _SegmentedItem<T>(
+            option: opt,
+            selected: opt.value == value,
+            activeBg: activeBg,
+            activeBorder: activeBorder,
+            activeFg: activeFg,
+            inactiveFg: context.colors.onSurfaceVariant,
+            onTap: () => onChanged(opt.value),
+          );
+
+          if (singleRow) {
+            return Row(
+              children: [
+                for (int i = 0; i < options.length; i++) ...[
+                  Expanded(child: buildTile(options[i])),
+                  if (i < options.length - 1) const SizedBox(width: gap),
+                ],
+              ],
+            );
+          }
+
+          final int cols = options.length == 4
+              ? 2
+              : (bounds.maxWidth >= 340 && !hasLongLabel ? 3 : 2);
+          final double cellW =
+              (bounds.maxWidth - gap * (cols - 1)).clamp(60, 2000) / cols;
+
+          return Wrap(
+            spacing: gap,
+            runSpacing: gap,
+            children: [
+              for (final opt in options)
+                SizedBox(width: cellW, child: buildTile(opt)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -1179,7 +1210,7 @@ class _SegmentedItem<T> extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppRadius.allSm,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             borderRadius: AppRadius.allSm,
             border: Border.all(
@@ -1187,7 +1218,7 @@ class _SegmentedItem<T> extends StatelessWidget {
             ),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (option.icon != null) ...[
                 Icon(
@@ -1195,15 +1226,20 @@ class _SegmentedItem<T> extends StatelessWidget {
                   size: 15,
                   color: selected ? activeFg : inactiveFg,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
               ],
-              Text(
-                option.label,
-                style:
-                    (selected
-                            ? AppTypography.label(activeFg)
-                            : AppTypography.small(inactiveFg))
-                        .copyWith(fontSize: 12.5),
+              Flexible(
+                child: Text(
+                  option.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style:
+                      (selected
+                              ? AppTypography.label(activeFg)
+                              : AppTypography.small(inactiveFg))
+                          .copyWith(fontSize: 12.5),
+                ),
               ),
             ],
           ),
