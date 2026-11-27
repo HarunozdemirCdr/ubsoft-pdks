@@ -6,6 +6,7 @@ import 'package:ubsoft_pdks/data/repositories/dorm_repository.dart';
 import 'package:ubsoft_pdks/domain/entities/announcement.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
+import 'package:ubsoft_pdks/domain/entities/attention_resolution.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_attention.dart';
 
@@ -153,8 +154,31 @@ final unreadAnnouncementsCountProvider = Provider<int>((ref) {
   return visible.where((a) => !readIds.contains(a.id)).length;
 });
 
-/// Yönetici için dikkat edilmesi gereken tüm yurt durumları (izni bitip
-/// dönmeyenler, dönüşü gecikenler, saat/konum uyarıları, kayıtsızlar).
+/// Yönetici tarafından "Çözüldü" olarak kapatılan uyarı kayıtları (log).
+final attentionLogsProvider = StreamProvider<List<AttentionResolution>>((ref) {
+  final user = ref.watch(
+    currentUserProvider.select(
+      (u) => u == null
+          ? null
+          : (tenantId: u.tenantId, isAdmin: u.role.isAdmin || u.role.isSuperAdmin),
+    ),
+  );
+  if (user == null || !user.isAdmin) {
+    return Stream.value(const <AttentionResolution>[]);
+  }
+  return ref.watch(dormRepositoryProvider).watchAttentionLogs(user.tenantId);
+});
+
+/// Belirli bir öğrencinin geçmiş uyarı/çözüm notları (en yeniden eskiye).
+final studentAttentionLogsProvider =
+    Provider.family<List<AttentionResolution>, String>((ref, uid) {
+      final List<AttentionResolution> all =
+          ref.watch(attentionLogsProvider).value ??
+          const <AttentionResolution>[];
+      return all.where((l) => l.userId == uid).toList(growable: false);
+    });
+
+/// Yönetici için dikkat edilmesi gereken aktif (henüz çözülmemiş) yurt durumları.
 final dormAttentionItemsProvider = Provider<List<DormAttentionItem>>((ref) {
   final tenant = ref.watch(currentTenantProvider);
   if (tenant == null) return const <DormAttentionItem>[];
@@ -163,6 +187,9 @@ final dormAttentionItemsProvider = Provider<List<DormAttentionItem>>((ref) {
       ref.watch(residentsProvider).value ?? const <Presence>[];
   final List<StudentLeave> leaves =
       ref.watch(dormLeavesProvider).value ?? const <StudentLeave>[];
+  final List<AttentionResolution> logs =
+      ref.watch(attentionLogsProvider).value ?? const <AttentionResolution>[];
+  final Set<String> resolvedKeys = logs.map((l) => l.incidentKey).toSet();
   final DateTime now = ref.watch(dormNowProvider);
   final Map<String, Presence> byId = <String, Presence>{
     for (final Presence p in states) p.userId: p,
@@ -173,10 +200,11 @@ final dormAttentionItemsProvider = Provider<List<DormAttentionItem>>((ref) {
     leaves: leaves,
     policy: tenant.settings.dormPolicy,
     now: now,
+    resolvedIncidentKeys: resolvedKeys,
   );
 });
 
-/// Menüde rozet olarak gösterilen kritik/dikkat gerektiren durum sayısı.
+/// Menüde rozet olarak gösterilen açık (çözülmemiş) dikkat gerektiren durum sayısı.
 final dormAttentionCountProvider = Provider<int>(
   (ref) => ref.watch(dormAttentionItemsProvider).length,
 );

@@ -17,16 +17,14 @@ import 'package:ubsoft_pdks/presentation/widgets/app_scaffold.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_text_field.dart';
 import 'package:ubsoft_pdks/presentation/widgets/async_value_view.dart';
 import 'package:ubsoft_pdks/presentation/widgets/confirm_dialog.dart';
-import 'package:ubsoft_pdks/presentation/widgets/section_header.dart';
 import 'package:ubsoft_pdks/presentation/widgets/status_chip.dart';
 import 'package:ubsoft_pdks/services/notification/toast_service.dart';
 import 'package:ubsoft_pdks/services/notification/web_notification_service.dart';
 
 /// Duyurular modülü (`/duyurular`).
 ///
-/// Yönetici genel, kat bazlı veya oda bazlı duyuru yayınlar; öğrenci yalnızca
-/// kendisini ilgilendiren duyuruları görür, tarayıcı bildirim iznini açabilir
-/// ve okunmamış duyuruları okundu olarak işaretler.
+/// Yurt Durumu ile birebir aynı üst kurumsal başlık bandı, metrik kartları ve
+/// dairesel ikon rozetli kart mimarisini kullanır.
 class DormAnnouncementsPage extends ConsumerStatefulWidget {
   const DormAnnouncementsPage({super.key});
 
@@ -36,9 +34,16 @@ class DormAnnouncementsPage extends ConsumerStatefulWidget {
 }
 
 class _DormAnnouncementsPageState extends ConsumerState<DormAnnouncementsPage> {
+  final TextEditingController _search = TextEditingController();
   String _filter = 'all';
   bool _busy = false;
   String _notifPermission = WebNotificationService.permission;
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
 
   Future<void> _requestBrowserPermission() async {
     final String status = await WebNotificationService.requestPermission();
@@ -135,183 +140,264 @@ class _DormAnnouncementsPageState extends ConsumerState<DormAnnouncementsPage> {
 
     return AppScaffold(
       title: 'Duyurular',
-      maxContentWidth: AppWidths.wide,
+      maxContentWidth: AppWidths.page,
       scrollable: true,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          LayoutBuilder(
-            builder: (context, bounds) {
-              final header = SectionHeader(
+      body: AsyncValueView<List<DormAnnouncement>>(
+        value: ref.watch(dormAnnouncementsProvider),
+        builder: (all) {
+          final List<DormAnnouncement> applicable = all
+              .where((a) => a.appliesTo(user))
+              .toList();
+          final int generalCount = applicable
+              .where((a) => a.targetType == 'all')
+              .length;
+          final int floorCount = applicable
+              .where((a) => a.targetType == 'floor')
+              .length;
+          final int roomCount = applicable
+              .where((a) => a.targetType == 'room')
+              .length;
+          final int urgentCount = applicable.where((a) => a.isUrgent).length;
+          final int unreadTotal = isAdmin
+              ? 0
+              : applicable.where((a) => !readIds.contains(a.id)).length;
+
+          final String q = dormSearchKey(_search.text);
+          final List<DormAnnouncement> visible = applicable.where((a) {
+            final bool typeMatch = switch (_filter) {
+              'general' => a.targetType == 'all',
+              'floor' => a.targetType == 'floor',
+              'room' => a.targetType == 'room',
+              'urgent' => a.isUrgent,
+              _ => true,
+            };
+            if (!typeMatch) return false;
+            if (q.isEmpty) return true;
+            return dormSearchKey(
+              '${a.title} ${a.body} ${a.targetLabel} ${a.createdByName}',
+            ).contains(q);
+          }).toList();
+
+          final List<String> unreadVisibleIds = !isAdmin
+              ? visible
+                    .where((a) => !readIds.contains(a.id))
+                    .map((a) => a.id)
+                    .toList()
+              : const <String>[];
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DormPageBanner(
                 eyebrow: 'YURT İLETİŞİM MERKEZİ',
                 title: 'Duyurular',
-                description: isAdmin
-                    ? 'Tüm yurda, belirli bir kata veya belirli bir odaya anlık duyuru yayınlayın.'
-                    : 'Yönetim tarafından yayınlanan genel, kat ve oda duyuruları.',
-              );
-              if (!isAdmin) return header;
-              final btn = AppButton(
-                label: 'Yeni duyuru yayınla',
-                icon: Icons.campaign_outlined,
-                size: bounds.maxWidth >= 600
-                    ? AppButtonSize.small
-                    : AppButtonSize.medium,
-                isLoading: _busy,
-                onPressed: () => _openCreateDialog(students),
-              );
-              if (bounds.maxWidth >= 600) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: header),
-                    const SizedBox(width: 16),
-                    btn,
-                  ],
-                );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [header, const SizedBox(height: 12), btn],
-              );
-            },
-          ),
-          if (!isAdmin &&
-              WebNotificationService.isSupported &&
-              _notifPermission == 'default') ...[
-            const SizedBox(height: 14),
-            AppCard(
-              background: AppColors.primarySurface,
-              borderColor: AppColors.primary.withValues(alpha: 0.25),
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.notifications_active_outlined,
-                    color: AppColors.primary,
-                    size: 22,
+                subtitle: isAdmin
+                    ? 'Tüm yurda, belirli bir kata veya odaya anlık kurumsal duyuru yayınlayın'
+                    : 'Yönetim tarafından yayınlanan genel, kat ve oda duyuruları',
+                statLabel: isAdmin ? 'YAYINDAKİ DUYURU' : 'OKUNMAMIŞ',
+                statValue: isAdmin
+                    ? '${applicable.length} duyuru · $urgentCount acil'
+                    : '$unreadTotal / ${applicable.length} duyuru',
+                action: isAdmin
+                    ? ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.white,
+                          foregroundColor: AppColors.navy,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadius.allSm,
+                          ),
+                          textStyle: AppTypography.label(AppColors.navy),
+                        ),
+                        onPressed: _busy
+                            ? null
+                            : () => _openCreateDialog(students),
+                        icon: const Icon(Icons.campaign_outlined, size: 18),
+                        label: const Text('Yeni duyuru'),
+                      )
+                    : null,
+              ),
+              const SizedBox(height: 16),
+              DormMetricGrid(
+                metrics: [
+                  DormMetric(
+                    'Toplam duyuru',
+                    applicable.length,
+                    Icons.campaign_outlined,
+                    AppColors.primary,
+                    'Yayındaki duyurular',
+                    () => setState(() => _filter = 'all'),
+                    selected: _filter == 'all',
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Anlık duyuru bildirimlerini açın',
-                          style: AppTypography.bodyStrong(
-                            context.colors.onSurface,
-                          ),
-                        ),
-                        Text(
-                          'Yönetim yeni bir duyuru paylaştığında cihazınıza bildirim düşsün.',
-                          style: AppTypography.caption(
-                            context.colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                  DormMetric(
+                    'Acil / Önemli',
+                    urgentCount,
+                    Icons.priority_high_rounded,
+                    AppColors.exit,
+                    'Öncelikli bildirimler',
+                    () => setState(
+                      () => _filter = _filter == 'urgent' ? 'all' : 'urgent',
                     ),
+                    selected: _filter == 'urgent',
                   ),
-                  const SizedBox(width: 8),
-                  AppButton(
-                    label: 'İzin ver',
-                    size: AppButtonSize.small,
-                    onPressed: _requestBrowserPermission,
+                  DormMetric(
+                    'Genel duyuru',
+                    generalCount,
+                    Icons.public_rounded,
+                    AppColors.entry,
+                    'Tüm yurt kapsamı',
+                    () => setState(
+                      () => _filter = _filter == 'general' ? 'all' : 'general',
+                    ),
+                    selected: _filter == 'general',
+                  ),
+                  DormMetric(
+                    'Kat & Oda özel',
+                    floorCount + roomCount,
+                    Icons.meeting_room_outlined,
+                    AppColors.warning,
+                    '$floorCount kat · $roomCount oda',
+                    () => setState(
+                      () => _filter = _filter == 'floor' ? 'all' : 'floor',
+                    ),
+                    selected: _filter == 'floor' || _filter == 'room',
                   ),
                 ],
               ),
-            ),
-          ],
-          const SizedBox(height: 14),
-          DormSegmentedBar<String>(
-            value: _filter,
-            options: const [
-              DormSegmentedOption('all', 'Tümü'),
-              DormSegmentedOption(
-                'general',
-                'Genel',
-                dotColor: AppColors.primary,
+              if (!isAdmin &&
+                  WebNotificationService.isSupported &&
+                  _notifPermission == 'default') ...[
+                const SizedBox(height: 12),
+                AppCard(
+                  background: AppColors.primarySurface.withValues(alpha: 0.45),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  child: Row(
+                    children: [
+                      const DormCircleBadge(
+                        icon: Icons.notifications_active_outlined,
+                        color: AppColors.primary,
+                        surface: AppColors.primarySurface,
+                        size: 34,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Yeni duyurular yayınlandığında tarayıcı bildirimi almak ister misiniz?',
+                          style: AppTypography.small(context.colors.onSurface),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      AppButton(
+                        label: 'İzin ver',
+                        size: AppButtonSize.small,
+                        onPressed: _requestBrowserPermission,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              TextField(
+                controller: _search,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Duyuru başlığı, metni, kat veya oda ara...',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  isDense: true,
+                  suffixIcon: _search.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Temizle',
+                          onPressed: () {
+                            _search.clear();
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                ),
               ),
-              DormSegmentedOption(
-                'floor',
-                'Kat Bazlı',
-                dotColor: AppColors.entry,
+              const SizedBox(height: 10),
+              DormSegmentedBar<String>(
+                value: _filter,
+                options: const [
+                  DormSegmentedOption('all', 'Tümü'),
+                  DormSegmentedOption(
+                    'general',
+                    'Genel',
+                    dotColor: AppColors.primary,
+                  ),
+                  DormSegmentedOption(
+                    'floor',
+                    'Kat Bazlı',
+                    dotColor: AppColors.entry,
+                  ),
+                  DormSegmentedOption(
+                    'room',
+                    'Oda Bazlı',
+                    dotColor: AppColors.warning,
+                  ),
+                ],
+                onChanged: (v) => setState(() => _filter = v),
               ),
-              DormSegmentedOption(
-                'room',
-                'Oda Bazlı',
-                dotColor: AppColors.warning,
-              ),
+              const SizedBox(height: 14),
+              if (unreadVisibleIds.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => _markRead(unreadVisibleIds),
+                      icon: const Icon(Icons.done_all_rounded, size: 18),
+                      label: Text(
+                        'Tümünü okundu işaretle (${unreadVisibleIds.length})',
+                      ),
+                    ),
+                  ),
+                ),
+              if (visible.isEmpty)
+                DormEmpty(
+                  title: applicable.isEmpty
+                      ? 'Henüz duyuru yok'
+                      : 'Bu filtreye uygun duyuru bulunamadı',
+                  message: applicable.isEmpty
+                      ? 'Yurt yönetimi yeni bir duyuru yayınladığında burada görünür.'
+                      : 'Arama metnini veya filtreyi temizleyebilirsiniz.',
+                  onReset: (_search.text.isNotEmpty || _filter != 'all')
+                      ? () {
+                          _search.clear();
+                          setState(() => _filter = 'all');
+                        }
+                      : null,
+                )
+              else
+                for (final a in visible)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: _AnnouncementCard(
+                      announcement: a,
+                      isAdmin: isAdmin,
+                      unread: !isAdmin && !readIds.contains(a.id),
+                      onMarkRead: () => _markRead([a.id]),
+                      onDelete: () => _deleteAnnouncement(a),
+                    ),
+                  ),
             ],
-            onChanged: (v) => setState(() => _filter = v),
-          ),
-          const SizedBox(height: 16),
-          AsyncValueView<List<DormAnnouncement>>(
-            value: ref.watch(dormAnnouncementsProvider),
-            builder: (all) {
-              final List<DormAnnouncement> visible = all
-                  .where((a) => a.appliesTo(user))
-                  .where((a) {
-                    return switch (_filter) {
-                      'general' => a.targetType == 'all',
-                      'floor' => a.targetType == 'floor',
-                      'room' => a.targetType == 'room',
-                      _ => true,
-                    };
-                  })
-                  .toList();
-
-              final List<String> unreadVisibleIds = !isAdmin
-                  ? visible
-                        .where((a) => !readIds.contains(a.id))
-                        .map((a) => a.id)
-                        .toList()
-                  : const <String>[];
-
-              if (visible.isEmpty) {
-                return const DormEmpty(
-                  title: 'Henüz duyuru yok',
-                  message:
-                      'Yurt yönetimi yeni bir duyuru yayınladığında burada görünür.',
-                );
-              }
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (unreadVisibleIds.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => _markRead(unreadVisibleIds),
-                          icon: const Icon(Icons.done_all_rounded, size: 18),
-                          label: Text(
-                            'Tümünü okundu işaretle (${unreadVisibleIds.length})',
-                          ),
-                        ),
-                      ),
-                    ),
-                  for (final a in visible)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _AnnouncementCard(
-                        announcement: a,
-                        isAdmin: isAdmin,
-                        unread: !isAdmin && !readIds.contains(a.id),
-                        onMarkRead: () => _markRead([a.id]),
-                        onDelete: () => _deleteAnnouncement(a),
-                      ),
-                    ),
-                ],
-              );
-            },
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
 
+/// Yurt Durumu'ndaki `DormStudentCard` ile birebir aynı tasarım dilini taşıyan
+/// duyuru kartı.
 class _AnnouncementCard extends StatelessWidget {
   const _AnnouncementCard({
     required this.announcement,
@@ -329,121 +415,137 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = announcement.isUrgent
+    final Color color = announcement.isUrgent
         ? AppColors.exit
         : switch (announcement.targetType) {
             'floor' => AppColors.entry,
             'room' => AppColors.warning,
             _ => AppColors.primary,
           };
+    final Color surface = announcement.isUrgent
+        ? AppColors.exitSurface
+        : switch (announcement.targetType) {
+            'floor' => AppColors.entrySurface,
+            'room' => AppColors.warningSurface,
+            _ => AppColors.primarySurface,
+          };
+    final IconData icon = announcement.isUrgent
+        ? Icons.priority_high_rounded
+        : switch (announcement.targetType) {
+            'floor' => Icons.layers_outlined,
+            'room' => Icons.meeting_room_outlined,
+            _ => Icons.campaign_outlined,
+          };
+
+    final String metaLine = <String>[
+      announcement.targetLabel,
+      if (announcement.createdByName.isNotEmpty) announcement.createdByName,
+      AppDate.dateTime(announcement.createdAt),
+    ].join(' · ');
 
     return AppCard(
       onTap: unread ? onMarkRead : null,
-      padding: EdgeInsets.zero,
-      child: ClipRRect(
-        borderRadius: AppRadius.allMd,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
             children: [
-              Container(width: 5, color: accent),
+              DormCircleBadge(
+                icon: icon,
+                color: color,
+                surface: surface,
+                tooltip: announcement.targetLabel,
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Wrap(
-                              spacing: 6,
-                              runSpacing: 6,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                StatusChip(
-                                  label: announcement.targetLabel,
-                                  tone: switch (announcement.targetType) {
-                                    'floor' => StatusTone.success,
-                                    'room' => StatusTone.warning,
-                                    _ => StatusTone.info,
-                                  },
-                                  compact: true,
-                                ),
-                                if (announcement.isUrgent)
-                                  const StatusChip(
-                                    label: 'Acil',
-                                    tone: StatusTone.danger,
-                                    compact: true,
-                                  ),
-                                if (unread)
-                                  const StatusChip(
-                                    label: 'Yeni',
-                                    tone: StatusTone.danger,
-                                    compact: true,
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            AppDate.dateTime(announcement.createdAt),
-                            style: AppTypography.caption(
-                              context.colors.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      announcement.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.bodyStrong(
+                        context.colors.onSurface,
+                      ).copyWith(fontSize: 13.5),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      metaLine,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        announcement.title,
-                        style: AppTypography.h3(context.colors.onSurface),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        announcement.body,
-                        style: AppTypography.body(context.colors.onSurface),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              announcement.createdByName.isEmpty
-                                  ? 'Yurt Yönetimi'
-                                  : announcement.createdByName,
-                              style: AppTypography.caption(
-                                context.colors.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                          if (unread)
-                            TextButton.icon(
-                              onPressed: onMarkRead,
-                              icon: const Icon(Icons.check_rounded, size: 17),
-                              label: const Text('Okudum'),
-                            ),
-                          if (isAdmin)
-                            TextButton.icon(
-                              onPressed: onDelete,
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppColors.danger,
-                              ),
-                              icon: const Icon(
-                                Icons.delete_outline_rounded,
-                                size: 17,
-                              ),
-                              label: const Text('Sil'),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
+              if (isAdmin)
+                IconButton(
+                  tooltip: 'Duyuruyu sil',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onDelete,
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 19,
+                    color: context.colors.onSurfaceVariant,
+                  ),
+                ),
             ],
           ),
-        ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              StatusChip(
+                label: announcement.targetLabel,
+                tone: announcement.targetType == 'floor'
+                    ? StatusTone.success
+                    : announcement.targetType == 'room'
+                    ? StatusTone.warning
+                    : StatusTone.info,
+                compact: true,
+              ),
+              if (announcement.isUrgent)
+                const StatusChip(
+                  label: 'Acil',
+                  icon: Icons.priority_high_rounded,
+                  tone: StatusTone.danger,
+                  compact: true,
+                ),
+              if (unread)
+                const StatusChip(
+                  label: 'Yeni',
+                  tone: StatusTone.danger,
+                  compact: true,
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            announcement.body,
+            style: AppTypography.small(
+              context.colors.onSurface,
+            ).copyWith(height: 1.48),
+          ),
+          if (unread) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                ),
+                onPressed: onMarkRead,
+                icon: const Icon(Icons.check_rounded, size: 16),
+                label: const Text('Okundu işaretle'),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

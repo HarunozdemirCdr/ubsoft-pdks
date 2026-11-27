@@ -13,6 +13,7 @@ import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
+import 'package:ubsoft_pdks/domain/entities/attention_resolution.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_attention.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
@@ -941,6 +942,12 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
     );
     final tenant = ref.watch(currentTenantProvider);
     final leaves = ref.watch(dormLeavesProvider).value ?? const <StudentLeave>[];
+    final List<AttentionResolution> allAttentionLogs =
+        ref.watch(attentionLogsProvider).value ??
+        const <AttentionResolution>[];
+    final List<AttentionResolution> personLogs = uid == null
+        ? const <AttentionResolution>[]
+        : allAttentionLogs.where((l) => l.userId == uid).toList();
     final List<StudentLeave> selectedLeaves = uid == null
         ? const <StudentLeave>[]
         : leaves.where((l) => l.userId == uid).toList();
@@ -956,6 +963,12 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
             userLeaves: selectedLeaves,
             policy: tenant.settings.dormPolicy,
             now: rawNow,
+          );
+    final AttentionResolution? resolvedActiveLog = personAttention == null
+        ? null
+        : personLogs.cast<AttentionResolution?>().firstWhere(
+            (l) => l?.incidentKey == personAttention.incidentKey,
+            orElse: () => null,
           );
 
     return AppScaffold(
@@ -975,11 +988,16 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
               presence: selectedPresence,
               ongoing: ongoing,
               attention: personAttention,
+              resolvedActiveLog: resolvedActiveLog,
               activeLeave: activePersonLeave,
               onOpenDetail: user?.role.isAdmin == true
                   ? () => context.push(AppRoutes.userEditPath(uid))
                   : null,
             ),
+            if (personLogs.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _StudentResolutionLogsCard(logs: personLogs),
+            ],
             const SizedBox(height: 14),
           ] else ...[
             const SectionHeader(
@@ -1105,6 +1123,7 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
                     events: filtered,
                     byStudent: uid == null,
                     usersById: usersById,
+                    attentionLogs: uid == null ? allAttentionLogs : personLogs,
                     now: rawNow,
                     onOpenStudent: uid == null
                         ? (studentId) =>
@@ -1129,6 +1148,7 @@ class _PersonProfileCard extends StatelessWidget {
     required this.presence,
     required this.ongoing,
     this.attention,
+    this.resolvedActiveLog,
     this.activeLeave,
     this.onOpenDetail,
   });
@@ -1139,6 +1159,7 @@ class _PersonProfileCard extends StatelessWidget {
   final Presence? presence;
   final Duration? ongoing;
   final DormAttentionItem? attention;
+  final AttentionResolution? resolvedActiveLog;
   final StudentLeave? activeLeave;
   final VoidCallback? onOpenDetail;
 
@@ -1265,7 +1286,57 @@ class _PersonProfileCard extends StatelessWidget {
               );
             },
           ),
-          if (attention != null && attention!.isCritical) ...[
+          if (resolvedActiveLog != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.isDark
+                    ? AppColors.entry.withValues(alpha: 0.14)
+                    : AppColors.entrySoft,
+                borderRadius: AppRadius.allSm,
+                border: Border.all(
+                  color: context.isDark
+                      ? AppColors.entry.withValues(alpha: 0.4)
+                      : AppColors.entryBorder,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.fact_check_outlined,
+                    size: 18,
+                    color: AppColors.entry,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Çözüldü · ${resolvedActiveLog!.title}',
+                          style: AppTypography.bodyStrong(AppColors.entry),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          resolvedActiveLog!.resolutionNote,
+                          style: AppTypography.small(context.colors.onSurface),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${resolvedActiveLog!.resolvedByName.isEmpty ? 'Yönetici' : resolvedActiveLog!.resolvedByName} · ${AppDate.dateTime(resolvedActiveLog!.resolvedAt)}',
+                          style: AppTypography.caption(
+                            context.colors.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (attention != null && attention!.isCritical) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1363,6 +1434,102 @@ class _PersonProfileCard extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _StudentResolutionLogsCard extends StatelessWidget {
+  const _StudentResolutionLogsCard({required this.logs});
+
+  final List<AttentionResolution> logs;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const DormCircleBadge(
+                icon: Icons.fact_check_outlined,
+                color: AppColors.primary,
+                surface: AppColors.primarySurface,
+                size: 32,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Uyarı ve Çözüm Kayıtları (${logs.length})',
+                      style: AppTypography.bodyStrong(
+                        context.colors.onSurface,
+                      ).copyWith(fontSize: 13.5),
+                    ),
+                    Text(
+                      'Yönetici tarafından not eklenerek kapatılan geçmiş uyarılar',
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 18),
+          for (int i = 0; i < logs.length; i++) ...[
+            if (i > 0) const Divider(height: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    StatusChip(
+                      label: logs[i].title,
+                      tone: StatusTone.info,
+                      compact: true,
+                    ),
+                    Text(
+                      AppDate.dateTime(logs[i].resolvedAt),
+                      style: AppTypography.caption(
+                        context.colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                if (logs[i].summary.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    logs[i].summary,
+                    style: AppTypography.caption(
+                      context.colors.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 4),
+                Text(
+                  logs[i].resolutionNote,
+                  style: AppTypography.small(context.colors.onSurface),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Çözen: ${logs[i].resolvedByName.isEmpty ? 'Yönetici' : logs[i].resolvedByName}',
+                  style: AppTypography.caption(
+                    context.colors.onSurfaceVariant,
+                  ).copyWith(fontSize: 10.5),
+                ),
+              ],
             ),
           ],
         ],
@@ -1520,6 +1687,7 @@ class DormGroupedMovements extends StatefulWidget {
     required this.events,
     required this.byStudent,
     this.usersById = const <String, AppUser>{},
+    this.attentionLogs = const <AttentionResolution>[],
     this.orderedUserIds,
     this.now,
     this.showDurationChips = false,
@@ -1529,6 +1697,7 @@ class DormGroupedMovements extends StatefulWidget {
   final List<AttendanceEvent> events;
   final bool byStudent;
   final Map<String, AppUser> usersById;
+  final List<AttentionResolution> attentionLogs;
   final List<String>? orderedUserIds;
   final DateTime? now;
   final bool showDurationChips;
@@ -1714,31 +1883,49 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
 
     return [
       for (final date in visibleDates)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: AppCard(
-            padding: EdgeInsets.zero,
-            background: context.colors.surfaceContainerLowest,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DormDaySummary(
-                  key: ValueKey('day-group-${events.first.userId}-$date'),
-                  events: groups[date]!,
-                  expanded: _days.contains('${events.first.userId}-$date'),
-                  onTap: () => _toggle(_days, '${events.first.userId}-$date'),
-                ),
-                if (_days.contains('${events.first.userId}-$date'))
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-                    child: _EventList(
-                      events: [...groups[date]!]
-                        ..sort((a, b) => b.at.compareTo(a.at)),
+        Builder(
+          builder: (context) {
+            final String uid = events.first.userId;
+            final List<AttendanceEvent> dayEvents = [...groups[date]!]
+              ..sort((a, b) => b.at.compareTo(a.at));
+            final Set<String> dayEventIds = dayEvents.map((e) => e.id).toSet();
+            final List<AttentionResolution> dayLogs = widget.attentionLogs
+                .where(
+                  (l) =>
+                      l.userId == uid &&
+                      ((l.eventId.isNotEmpty &&
+                              dayEventIds.contains(l.eventId)) ||
+                          l.dateKey == date),
+                )
+                .toList();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: AppCard(
+                padding: EdgeInsets.zero,
+                background: context.colors.surfaceContainerLowest,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    DormDaySummary(
+                      key: ValueKey('day-group-$uid-$date'),
+                      events: groups[date]!,
+                      hasResolutionNote: dayLogs.isNotEmpty,
+                      expanded: _days.contains('$uid-$date'),
+                      onTap: () => _toggle(_days, '$uid-$date'),
                     ),
-                  ),
-              ],
-            ),
-          ),
+                    if (_days.contains('$uid-$date'))
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                        child: _EventList(
+                          events: dayEvents,
+                          attentionLogs: dayLogs,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       if (clipped && studentId != null)
         Align(
@@ -1754,8 +1941,12 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
 }
 
 class _EventList extends ConsumerWidget {
-  const _EventList({required this.events});
+  const _EventList({
+    required this.events,
+    this.attentionLogs = const <AttentionResolution>[],
+  });
   final List<AttendanceEvent> events;
+  final List<AttentionResolution> attentionLogs;
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final admin =
@@ -1768,14 +1959,26 @@ class _EventList extends ConsumerWidget {
             'Giriş veya çıkış QR kodunu okuttuğunuzda kaydınız burada görünür.',
       );
     }
+    final Set<String> eventIds = events.map((e) => e.id).toSet();
     return Column(
       children: [
-        for (final e in events)
+        for (int i = 0; i < events.length; i++)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: DormMovementTile(
-              event: e,
-              onVoid: admin ? () => _void(context, ref, e) : null,
+              event: events[i],
+              resolutionLogs: attentionLogs
+                  .where(
+                    (l) =>
+                        (l.eventId.isNotEmpty && l.eventId == events[i].id) ||
+                        ((l.eventId.isEmpty ||
+                                !eventIds.contains(l.eventId)) &&
+                            i == 0 &&
+                            l.userId == events[i].userId &&
+                            l.dateKey == events[i].dateKey),
+                  )
+                  .toList(),
+              onVoid: admin ? () => _void(context, ref, events[i]) : null,
             ),
           ),
       ],

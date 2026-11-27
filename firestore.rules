@@ -182,6 +182,31 @@ service cloud.firestore {
              serverTime('updatedAt');
     }
 
+    function isValidAttentionLog(data) {
+      let fields = [
+        'incidentKey', 'userId', 'userName', 'room', 'kind', 'title',
+        'summary', 'resolutionNote', 'eventId', 'dateKey',
+        'resolvedBy', 'resolvedByName', 'resolvedAt'
+      ];
+      return data.keys().hasOnly(fields) &&
+             data.keys().hasAll(fields) &&
+             data.incidentKey is string && data.incidentKey.size() > 0 && data.incidentKey.size() <= 160 &&
+             data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+             data.userName is string && data.userName.size() > 0 && data.userName.size() <= 120 &&
+             data.room is string && data.room.size() <= 32 &&
+             data.kind is string && data.kind in [
+               'leaveExpiredStillOutside', 'curfewOverdue', 'scanWarning', 'uninitialized'
+             ] &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 120 &&
+             data.summary is string && data.summary.size() <= 400 &&
+             data.resolutionNote is string && data.resolutionNote.trim().size() > 0 && data.resolutionNote.size() <= 1000 &&
+             data.eventId is string && data.eventId.size() <= 128 &&
+             data.dateKey is string && data.dateKey.size() <= 16 &&
+             data.resolvedBy is string && data.resolvedBy == request.auth.uid &&
+             data.resolvedByName is string && data.resolvedByName.size() <= 120 &&
+             data.resolvedAt is timestamp && data.resolvedAt == request.time;
+    }
+
 
     // ═══════════════ Koleksiyon grubu: kendi kaydını bulma ═══════════════
     //
@@ -476,6 +501,33 @@ service cloud.firestore {
                                  request.auth.uid == uid &&
                                  isValidAnnouncementReads(request.resource.data);
         allow delete: if (isAdminOf(tid) && writable(tid)) || isSuperAdmin();
+      }
+
+      // ─────────────────────── Dikkat / Çözüm Kayıtları ───────────────────────
+      //
+      // Assumed Data Model:
+      //   Collection: tenants/{tid}/attentionLogs/{logId}
+      //   Fields (all required, immutable audit trail — update disabled):
+      //     - incidentKey: string (1..160)
+      //     - userId: string (1..128)
+      //     - userName: string (1..120)
+      //     - room: string (0..32)
+      //     - kind: string ('leaveExpiredStillOutside' | 'curfewOverdue' | 'scanWarning' | 'uninitialized')
+      //     - title: string (1..120)
+      //     - summary: string (0..400)
+      //     - resolutionNote: string (1..1000, non-blank)
+      //     - eventId: string (0..128)
+      //     - dateKey: string (0..16)
+      //     - resolvedBy: string (must equal request.auth.uid)
+      //     - resolvedByName: string (0..120)
+      //     - resolvedAt: timestamp (must equal request.time)
+      match /attentionLogs/{logId} {
+        allow read: if isAdminOf(tid) || isSuperAdmin();
+        allow create: if (isAdminOf(tid) || isSuperAdmin()) &&
+                         writable(tid) &&
+                         isValidAttentionLog(request.resource.data);
+        allow update: if false;
+        allow delete: if (isAdminOf(tid) || isSuperAdmin()) && writable(tid);
       }
     }
 

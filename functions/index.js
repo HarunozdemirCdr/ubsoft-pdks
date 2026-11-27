@@ -353,6 +353,7 @@ exports.deleteUserAccount = onCall({ timeoutSeconds: 60 }, async request => {
   await deleteQueryInBatches(db.collection(`tenants/${tid}/leaves`).where('userId', '==', uid));
   await deleteQueryInBatches(db.collection(`tenants/${tid}/attendance`).where('userId', '==', uid));
   await deleteQueryInBatches(db.collection(`tenants/${tid}/attendanceDays`).where('userId', '==', uid));
+  await deleteQueryInBatches(db.collection(`tenants/${tid}/attentionLogs`).where('userId', '==', uid));
 
   const batch = db.batch();
   batch.delete(userRef);

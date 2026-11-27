@@ -443,6 +443,50 @@ void main() {
       expect(find.text('Sümeyye Şahin'), findsOneWidget);
       expect(find.text('İzni bitti · Dönmedi'), findsWidgets);
       expect(find.textContaining('Fatma Şahin'), findsOneWidget);
+
+      // Çözüldü akışı: zorunlu not girmeden kapanmaz, not girilince aktif
+      // listeden düşer ve hem Çözülenler logunda hem öğrenci geçmişinde görünür.
+      final resolveBtn = find.byKey(const ValueKey('resolve-s4'));
+      await tester.ensureVisible(resolveBtn);
+      await tester.tap(resolveBtn);
+      await settle(tester);
+
+      await tester.tap(find.byKey(const ValueKey('resolve-confirm-btn')));
+      await settle(tester);
+      expect(find.text('Çözüm notu girmek zorunludur.'), findsOneWidget);
+
+      await tester.enterText(
+        find.byKey(const ValueKey('resolve-note-field')),
+        'Annesi Fatma Hanım ile görüşüldü, yarın sabah giriş yapacak.',
+      );
+      await tester.tap(find.byKey(const ValueKey('resolve-confirm-btn')));
+      await settle(tester);
+
+      expect(find.text('Açık dikkat gerektiren durum yok'), findsOneWidget);
+
+      final resolvedTab = find.text('Çözülenler (1)');
+      await tester.ensureVisible(resolvedTab);
+      await tester.tap(resolvedTab);
+      await settle(tester);
+      expect(
+        find.textContaining('Annesi Fatma Hanım ile görüşüldü'),
+        findsOneWidget,
+      );
+
+      // Öğrenci geçmişinde çözüm notu ve kayıt kartı görünür.
+      await tester.pumpWidget(
+        wrapPage(
+          const DormHistoryPage(userId: 's4'),
+          container: scope.container,
+          size: const Size(1280, 900),
+        ),
+      );
+      await settle(tester);
+      expect(find.text('Uyarı ve Çözüm Kayıtları (1)'), findsOneWidget);
+      expect(
+        find.textContaining('Annesi Fatma Hanım ile görüşüldü'),
+        findsWidgets,
+      );
     },
   );
 
@@ -505,6 +549,7 @@ void main() {
 
       final markAllBtn = find.textContaining('okundu işaretle');
       expect(markAllBtn, findsOneWidget);
+      await tester.ensureVisible(markAllBtn);
       await tester.tap(markAllBtn);
       await settle(tester);
       expect(find.text('Yeni'), findsNothing);

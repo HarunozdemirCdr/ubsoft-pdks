@@ -7,6 +7,7 @@ import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
+import 'package:ubsoft_pdks/domain/entities/attention_resolution.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_card.dart';
@@ -308,6 +309,149 @@ class DormEmpty extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// Tüm yurt modüllerinin ortak derin lacivert üst kurumsal başlık bandı.
+///
+/// Yurt Durumu, Dikkat Edilmesi Gerekenler ve Duyurular ekranlarında birebir
+/// aynı hiyerarşiyi, gölgeyi ve özet kutusunu üretir.
+class DormPageBanner extends StatelessWidget {
+  const DormPageBanner({
+    required this.eyebrow,
+    required this.title,
+    required this.subtitle,
+    this.statLabel,
+    this.statValue,
+    this.action,
+    super.key,
+  });
+
+  final String eyebrow;
+  final String title;
+  final String subtitle;
+  final String? statLabel;
+  final String? statValue;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      decoration: const BoxDecoration(
+        color: AppColors.navy,
+        borderRadius: AppRadius.allMd,
+      ),
+      child: Wrap(
+        spacing: 16,
+        runSpacing: 12,
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eyebrow,
+                style: AppTypography.eyebrow(
+                  AppColors.white.withValues(alpha: 0.72),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(title, style: AppTypography.h2(AppColors.white)),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: AppTypography.small(
+                  AppColors.white.withValues(alpha: 0.78),
+                ),
+              ),
+            ],
+          ),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              if (statLabel != null && statValue != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.white.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.allSm,
+                    border: Border.all(
+                      color: AppColors.white.withValues(alpha: 0.18),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        statLabel!,
+                        style: AppTypography.eyebrow(
+                          AppColors.white.withValues(alpha: 0.72),
+                        ).copyWith(fontSize: 10),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        statValue!,
+                        style: AppTypography.bodyStrong(AppColors.white)
+                            .copyWith(
+                              fontFeatures: const [
+                                FontFeature.tabularFigures(),
+                              ],
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              ?action,
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Yurt Durumu kartlarındaki dairesel ikon rozeti — tüm liste kartlarında
+/// ortak tasarım dili sağlar.
+class DormCircleBadge extends StatelessWidget {
+  const DormCircleBadge({
+    required this.icon,
+    required this.color,
+    this.surface,
+    this.tooltip,
+    this.size = 36,
+    this.borderAlpha = 0.25,
+    super.key,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color? surface;
+  final String? tooltip;
+  final double size;
+  final double borderAlpha;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget badge = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: surface ?? color.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: borderAlpha)),
+      ),
+      child: Icon(icon, size: 17, color: color),
+    );
+    if (tooltip == null || tooltip!.isEmpty) return badge;
+    return Tooltip(message: tooltip!, child: badge);
+  }
 }
 
 class _DirectionBadge extends StatelessWidget {
@@ -642,11 +786,13 @@ class DormMovementTile extends StatelessWidget {
     required this.event,
     this.onVoid,
     this.showName = false,
+    this.resolutionLogs = const <AttentionResolution>[],
     super.key,
   });
   final AttendanceEvent event;
   final VoidCallback? onVoid;
   final bool showName;
+  final List<AttentionResolution> resolutionLogs;
   @override
   Widget build(BuildContext context) {
     final color = event.type.isEntry ? AppColors.entry : AppColors.exit;
@@ -778,6 +924,66 @@ class DormMovementTile extends StatelessWidget {
                 ],
               ),
             ),
+          if (resolutionLogs.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            for (final log in resolutionLogs)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: context.isDark
+                        ? AppColors.primarySurfaceDark
+                        : AppColors.primarySurface,
+                    borderRadius: AppRadius.allSm,
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(
+                        Icons.fact_check_outlined,
+                        size: 16,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Uyarı çözüm notu · ${log.title}',
+                              style: AppTypography.caption(
+                                AppColors.primary,
+                              ).copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              log.resolutionNote,
+                              style: AppTypography.small(
+                                context.colors.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${log.resolvedByName.isEmpty ? 'Yönetici' : log.resolvedByName} · ${AppDate.dateTime(log.resolvedAt)}',
+                              style: AppTypography.caption(
+                                context.colors.onSurfaceVariant,
+                              ).copyWith(fontSize: 10.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -789,11 +995,13 @@ class DormDaySummary extends StatelessWidget {
     required this.events,
     required this.expanded,
     required this.onTap,
+    this.hasResolutionNote = false,
     super.key,
   });
   final List<AttendanceEvent> events;
   final bool expanded;
   final VoidCallback onTap;
+  final bool hasResolutionNote;
   @override
   Widget build(BuildContext context) {
     final sorted = [...events]..sort((a, b) => a.at.compareTo(b.at));
@@ -829,6 +1037,18 @@ class DormDaySummary extends StatelessWidget {
                       ).copyWith(fontSize: 13),
                     ),
                   ),
+                  if (hasResolutionNote)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 6),
+                      child: Tooltip(
+                        message: 'Bu güne ait yönetici çözüm notu var',
+                        child: Icon(
+                          Icons.fact_check_outlined,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
                   if (alert)
                     const Padding(
                       padding: EdgeInsets.only(right: 6),

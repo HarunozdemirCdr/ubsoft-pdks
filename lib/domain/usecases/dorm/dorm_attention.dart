@@ -1,5 +1,7 @@
+import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
+import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
 
 enum DormAttentionKind {
   /// İzin süresi dolmuş fakat öğrenci hâlâ yurda dönmemiş (en kritik).
@@ -48,6 +50,43 @@ class DormAttentionItem {
     DormAttentionKind.scanWarning => 2,
     DormAttentionKind.uninitialized => 3,
   };
+
+  /// Bu spesifik olayı benzersiz tanımlayan anahtar. Yönetici "Çözüldü" olarak
+  /// işaretlediğinde bu anahtar `attentionLogs` koleksiyonuna kaydedilir; aynı
+  /// olay aktif listeden düşerken öğrencinin ilerideki yeni olayları yine
+  /// uyarı üretmeye devam eder.
+  String get incidentKey {
+    final String evId = presence.eventId ?? '';
+    final String evStamp = evId.isNotEmpty
+        ? evId
+        : (presence.at?.millisecondsSinceEpoch.toString() ?? 'none');
+    return switch (kind) {
+      DormAttentionKind.leaveExpiredStillOutside =>
+        'leave_${relatedLeave?.id.isNotEmpty == true ? relatedLeave!.id : '${user.uid}_${expectedReturnAt?.millisecondsSinceEpoch ?? evStamp}'}',
+      DormAttentionKind.curfewOverdue => 'curfew_${user.uid}_$evStamp',
+      DormAttentionKind.scanWarning => 'scan_${user.uid}_$evStamp',
+      DormAttentionKind.uninitialized => 'init_${user.uid}',
+    };
+  }
+
+  String get relatedEventId => presence.eventId ?? '';
+
+  String get relatedDateKey =>
+      presence.at == null ? '' : DormClock.key(presence.at!);
+
+  /// Çözüm loguna kaydedilecek okunabilir özet satırı.
+  String get detailLine {
+    if (kind == DormAttentionKind.leaveExpiredStillOutside &&
+        expectedReturnAt != null) {
+      return 'İzin bitişi: ${AppDate.dateTime(expectedReturnAt!)}'
+          '${overdueBy == null ? '' : ' · ${DormDurationCalculator.formatDuration(overdueBy!)} gecikti'}';
+    }
+    if (kind == DormAttentionKind.curfewOverdue && expectedReturnAt != null) {
+      return 'Beklenen dönüş: ${AppDate.dateTime(expectedReturnAt!)}'
+          '${overdueBy == null ? '' : ' · ${DormDurationCalculator.formatDuration(overdueBy!)} gecikti'}';
+    }
+    return summary;
+  }
 }
 
 /// 500+ öğrenci arasında gözden kaçabilecek kritik yurt durumlarını otomatik
@@ -150,6 +189,7 @@ abstract final class DormAttentionAnalyzer {
     required List<StudentLeave> leaves,
     required DormPolicy policy,
     required DateTime now,
+    Set<String> resolvedIncidentKeys = const <String>{},
   }) {
     final Map<String, List<StudentLeave>> byUser = <String, List<StudentLeave>>{};
     for (final StudentLeave l in leaves) {
@@ -166,7 +206,9 @@ abstract final class DormAttentionAnalyzer {
         policy: policy,
         now: now,
       );
-      if (item != null) items.add(item);
+      if (item != null && !resolvedIncidentKeys.contains(item.incidentKey)) {
+        items.add(item);
+      }
     }
 
     items.sort((a, b) {

@@ -19,6 +19,7 @@ import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/data/repositories/dorm_repository.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
+import 'package:ubsoft_pdks/domain/entities/attention_resolution.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_pages.dart';
@@ -196,6 +197,8 @@ class _DormReportState extends ConsumerState<DormReportPage> {
     final activeStudents = ref.watch(studentsProvider);
     final residents = ref.watch(residentsProvider).value ?? const <Presence>[];
     final attentionCount = ref.watch(dormAttentionCountProvider);
+    final attentionLogs =
+        ref.watch(attentionLogsProvider).value ?? const <AttentionResolution>[];
     final usersById = ref.watch(usersByIdProvider);
     final leaves = ref.watch(dormLeavesProvider).value ?? const <StudentLeave>[];
     final Map<String, Presence> presenceByUid = {
@@ -552,6 +555,17 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                   now: rawNow,
                 );
 
+                final Set<String> matchingStudentIds = events
+                    .map((e) => e.userId)
+                    .toSet();
+                final List<AttentionResolution> filteredLogs = attentionLogs
+                    .where(
+                      (l) => _uid != null
+                          ? l.userId == _uid
+                          : matchingStudentIds.contains(l.userId),
+                    )
+                    .toList();
+
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -615,6 +629,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                                     events,
                                     analytics,
                                     usersById,
+                                    filteredLogs,
                                   ),
                           );
                           final pdfBtn = AppButton(
@@ -628,6 +643,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                                     events,
                                     '${dormDisplayDate(from)} — ${dormDisplayDate(to)} · ${dormFocusLabel(_focus)}${_uid == null ? '' : ' · ${names[_uid] ?? 'Seçili öğrenci'}'}',
                                     usersById,
+                                    filteredLogs,
                                   ),
                           );
                           if (barBounds.maxWidth >= 540) {
@@ -693,6 +709,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                       _RawEventTableView(
                         events: events,
                         usersById: usersById,
+                        attentionLogs: filteredLogs,
                       )
                     else ...[
                       const DormMovementLegend(),
@@ -704,6 +721,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                         events: events,
                         byStudent: _uid == null,
                         usersById: usersById,
+                        attentionLogs: filteredLogs,
                         orderedUserIds: analytics.orderedUserIds,
                         now: rawNow,
                       ),
@@ -756,6 +774,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
     List<AttendanceEvent> events,
     String range,
     Map<String, AppUser> usersById,
+    List<AttentionResolution> attentionLogs,
   ) async {
     if (events.length > 10000) {
       Toast.error(
@@ -770,6 +789,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
         range,
         events,
         usersById: usersById,
+        attentionLogs: attentionLogs,
       );
       FileDownloadService.download(
         bytes: bytes,
@@ -788,13 +808,14 @@ class _DormReportState extends ConsumerState<DormReportPage> {
     List<AttendanceEvent> events,
     _ReportAnalytics analytics,
     Map<String, AppUser> usersById,
+    List<AttentionResolution> attentionLogs,
   ) {
     final buf = StringBuffer();
     String csvCell(String value) => '"${value.replaceAll('"', '""')}"';
 
     // Özet + öğrenci matrisi
     buf.writeln(
-      'Öğrenci;Oda No;Öğrenci No;Giriş;Çıkış;İçeride Süre;Dışarıda Süre;Geç Giriş Sayısı;Toplam Gecikme (dk);Erken Çıkış;Konum Uyarısı',
+      'Öğrenci;Oda No;Öğrenci No;Giriş;Çıkış;Geç Giriş Sayısı;Toplam Gecikme (dk);Erken Çıkış;Konum Uyarısı',
     );
     for (final row in analytics.studentSummaries) {
       final u = usersById[row.summary.userId];
@@ -805,8 +826,6 @@ class _DormReportState extends ConsumerState<DormReportPage> {
           csvCell(u?.studentNumber ?? ''),
           '${row.summary.entryCount}',
           '${row.summary.exitCount}',
-          csvCell(DormDurationCalculator.formatDuration(row.summary.insideDuration)),
-          csvCell(DormDurationCalculator.formatDuration(row.summary.outsideDuration)),
           '${row.summary.lateCount}',
           '${row.summary.lateMinutes}',
           '${row.summary.earlyExitCount}',
@@ -818,10 +837,20 @@ class _DormReportState extends ConsumerState<DormReportPage> {
     buf
       ..writeln()
       ..writeln(
-        'Tarih;Saat;Öğrenci;Oda No;Öğrenci No;İşlem;Nokta;Mesafe (m);Konum Durumu;Gecikme (dk);İzinli;Erken Çıkış;Erken Giriş',
+        'Tarih;Saat;Öğrenci;Oda No;Öğrenci No;İşlem;Nokta;Mesafe (m);Konum Durumu;Gecikme (dk);İzinli;Erken Çıkış;Erken Giriş;Uyarı Çözüm Notu',
       );
     for (final e in events) {
       final u = usersById[e.userId];
+      final String matchedNote = attentionLogs
+          .where(
+            (l) =>
+                (l.eventId.isNotEmpty && l.eventId == e.id) ||
+                (l.eventId.isEmpty &&
+                    l.userId == e.userId &&
+                    l.dateKey == e.dateKey),
+          )
+          .map((l) => '${l.title}: ${l.resolutionNote}')
+          .join(' | ');
       buf.writeln(
         [
           csvCell(AppDate.dateShort(e.at)),
@@ -837,8 +866,31 @@ class _DormReportState extends ConsumerState<DormReportPage> {
           e.permitted ? 'Evet' : 'Hayır',
           e.earlyExit ? 'Evet' : 'Hayır',
           e.earlyEntry ? 'Evet' : 'Hayır',
+          csvCell(matchedNote),
         ].join(';'),
       );
+    }
+
+    if (attentionLogs.isNotEmpty) {
+      buf
+        ..writeln()
+        ..writeln('Uyarı ve Çözüm Kayıtları')
+        ..writeln(
+          'Tarih;Öğrenci;Oda No;Uyarı;Özet;Çözüm Notu;Çözen Yönetici',
+        );
+      for (final l in attentionLogs) {
+        buf.writeln(
+          [
+            csvCell(AppDate.dateTime(l.resolvedAt)),
+            csvCell(l.userName),
+            csvCell(l.room),
+            csvCell(l.title),
+            csvCell(l.summary),
+            csvCell(l.resolutionNote),
+            csvCell(l.resolvedByName),
+          ].join(';'),
+        );
+      }
     }
 
     final bytes = Uint8List.fromList(<int>[0xEF, 0xBB, 0xBF, ...utf8.encode(buf.toString())]);
@@ -1353,10 +1405,12 @@ class _RawEventTableView extends StatefulWidget {
   const _RawEventTableView({
     required this.events,
     required this.usersById,
+    this.attentionLogs = const <AttentionResolution>[],
   });
 
   final List<AttendanceEvent> events;
   final Map<String, AppUser> usersById;
+  final List<AttentionResolution> attentionLogs;
 
   @override
   State<_RawEventTableView> createState() => _RawEventTableViewState();
@@ -1422,6 +1476,18 @@ class _RawEventTableViewState extends State<_RawEventTableView> {
                 _RawLedgerRow(
                   event: visible[i],
                   student: widget.usersById[visible[i].userId],
+                  resolutionLog: widget.attentionLogs
+                      .cast<AttentionResolution?>()
+                      .firstWhere(
+                        (l) =>
+                            l != null &&
+                            ((l.eventId.isNotEmpty &&
+                                    l.eventId == visible[i].id) ||
+                                (l.eventId.isEmpty &&
+                                    l.userId == visible[i].userId &&
+                                    l.dateKey == visible[i].dateKey)),
+                        orElse: () => null,
+                      ),
                 ),
                 if (i < visible.length - 1) const Divider(height: 1),
               ],
@@ -1443,10 +1509,15 @@ class _RawEventTableViewState extends State<_RawEventTableView> {
 }
 
 class _RawLedgerRow extends StatelessWidget {
-  const _RawLedgerRow({required this.event, this.student});
+  const _RawLedgerRow({
+    required this.event,
+    this.student,
+    this.resolutionLog,
+  });
 
   final AttendanceEvent event;
   final AppUser? student;
+  final AttentionResolution? resolutionLog;
 
   @override
   Widget build(BuildContext context) {
@@ -1497,6 +1568,15 @@ class _RawLedgerRow extends StatelessWidget {
                   ].join(' · '),
                   style: AppTypography.caption(context.colors.onSurfaceVariant),
                 ),
+                if (resolutionLog != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    'Çözüm notu: ${resolutionLog!.resolutionNote}',
+                    style: AppTypography.caption(
+                      AppColors.primary,
+                    ).copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ],
               ],
             ),
           ),

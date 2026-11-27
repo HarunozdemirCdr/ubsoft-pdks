@@ -8,6 +8,7 @@ import 'package:ubsoft_pdks/domain/entities/announcement.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
+import 'package:ubsoft_pdks/domain/entities/attention_resolution.dart';
 import 'package:ubsoft_pdks/domain/entities/checkpoint.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
 import 'package:ubsoft_pdks/domain/entities/scan_location.dart';
@@ -16,6 +17,7 @@ import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/usecases/attendance/resolve_punch.dart';
 import 'package:ubsoft_pdks/domain/usecases/attendance/summarize_day.dart';
 import 'package:ubsoft_pdks/domain/usecases/attendance/verify_location.dart';
+import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_attention.dart';
 
 final class ReportEventsPage {
   const ReportEventsPage({
@@ -620,4 +622,74 @@ final class DormRepository extends FirestoreRepositoryBase {
       SetOptions(merge: true),
     );
   });
+
+  // ─────────────── Uyarı Çözüm Kayıtları (Attention Logs) ───────────────
+
+  static AttentionResolution _attentionLog(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final Map<String, dynamic> d = doc.data();
+    return AttentionResolution(
+      id: doc.id,
+      incidentKey: d['incidentKey'] as String? ?? '',
+      userId: d['userId'] as String? ?? '',
+      userName: d['userName'] as String? ?? '',
+      room: d['room'] as String? ?? '',
+      kind: d['kind'] as String? ?? 'curfewOverdue',
+      title: d['title'] as String? ?? '',
+      summary: d['summary'] as String? ?? '',
+      resolutionNote: d['resolutionNote'] as String? ?? '',
+      eventId: d['eventId'] as String? ?? '',
+      dateKey: d['dateKey'] as String? ?? '',
+      resolvedBy: d['resolvedBy'] as String? ?? '',
+      resolvedByName: d['resolvedByName'] as String? ?? '',
+      resolvedAt: _date(d['resolvedAt']) ?? DateTime.now(),
+    );
+  }
+
+  Stream<List<AttentionResolution>> watchAttentionLogs(String tid) {
+    if (tid.isEmpty) return Stream.value(const <AttentionResolution>[]);
+    final Query<Map<String, dynamic>> q = subcollection(
+      tid,
+      'attentionLogs',
+    ).orderBy('resolvedAt', descending: true).limit(300);
+    List<AttentionResolution> mapSnap(QuerySnapshot<Map<String, dynamic>> s) =>
+        s.docs.map(_attentionLog).toList(growable: false);
+    return guardLiveStream(
+      q.snapshots(includeMetadataChanges: true).map(mapSnap),
+      loadInitial: () async =>
+          mapSnap(await q.get(const GetOptions(source: Source.server))),
+    );
+  }
+
+  Future<Result<void>> resolveAttentionItem({
+    required String tid,
+    required DormAttentionItem item,
+    required String resolutionNote,
+    required String resolvedBy,
+    required String resolvedByName,
+  }) => guardVoid(() async {
+    final String note = resolutionNote.trim();
+    if (note.isEmpty) {
+      throw const ValidationFailure('Çözüm notu girmek zorunludur.');
+    }
+    await subcollection(tid, 'attentionLogs').add(<String, Object?>{
+      'incidentKey': item.incidentKey,
+      'userId': item.user.uid,
+      'userName': item.user.displayName,
+      'room': item.user.room,
+      'kind': item.kind.name,
+      'title': item.title,
+      'summary': item.detailLine,
+      'resolutionNote': note,
+      'eventId': item.relatedEventId,
+      'dateKey': item.relatedDateKey,
+      'resolvedBy': resolvedBy,
+      'resolvedByName': resolvedByName.trim(),
+      'resolvedAt': FieldValue.serverTimestamp(),
+    });
+  });
+
+  Future<Result<void>> reopenAttentionLog(String tid, String logId) =>
+      guardVoid(() => subcollection(tid, 'attentionLogs').doc(logId).delete());
 }
