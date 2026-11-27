@@ -1,6 +1,10 @@
+import 'package:cloud_functions/cloud_functions.dart' hide Result;
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
+import 'package:ubsoft_pdks/application/turnstile/turnstile_providers.dart';
 import 'package:ubsoft_pdks/core/error/failure.dart';
 import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/core/utils/validators.dart';
@@ -191,23 +195,79 @@ class UserController extends AsyncNotifier<void> {
 
   Future<Result<void>> setActive(AppUser user, {required bool active}) async {
     state = const AsyncValue<void>.loading();
-    final Result<void> result = await _users.updateStatus(
-      tenantId: user.tenantId,
-      uid: user.uid,
-      status: active ? UserStatus.active : UserStatus.inactive,
-    );
+    final Result<void> result;
+    if (Firebase.apps.isNotEmpty) {
+      result = await _callUserAdminFunction(
+        'setUserActiveStatus',
+        <String, Object?>{
+          'tenantId': user.tenantId,
+          'uid': user.uid,
+          'active': active,
+        },
+      );
+    } else {
+      result = await _users.updateStatus(
+        tenantId: user.tenantId,
+        uid: user.uid,
+        status: active ? UserStatus.active : UserStatus.inactive,
+      );
+    }
     _finish(result);
     return result;
   }
 
   Future<Result<void>> deleteUser(AppUser user) async {
     state = const AsyncValue<void>.loading();
-    final Result<void> result = await _users.softDelete(
-      tenantId: user.tenantId,
-      uid: user.uid,
-    );
+    final Result<void> result;
+    if (Firebase.apps.isNotEmpty) {
+      result = await _callUserAdminFunction(
+        'deleteUserAccount',
+        <String, Object?>{'tenantId': user.tenantId, 'uid': user.uid},
+      );
+    } else {
+      result = await _users.softDelete(
+        tenantId: user.tenantId,
+        uid: user.uid,
+      );
+    }
     _finish(result);
     return result;
+  }
+
+  Future<Result<void>> _callUserAdminFunction(
+    String name,
+    Map<String, Object?> payload,
+  ) async {
+    try {
+      await ref
+          .read(turnstileFunctionsProvider)
+          .httpsCallable(name)
+          .call<Object?>(payload);
+      return const Ok<void>(null);
+    } on FirebaseFunctionsException catch (e) {
+      return Err<void>(
+        UnknownFailure(
+          message: e.message ?? 'İşlem sunucu tarafından tamamlanamadı.',
+          technical: e.toString(),
+          code: e.code,
+        ),
+      );
+    } on MissingPluginException {
+      return const Err<void>(
+        UnknownFailure(
+          message:
+              'Sunucu bağlantı bileşeni yüklenemedi. Sayfayı yenileyip tekrar deneyin.',
+        ),
+      );
+    } catch (e) {
+      return Err<void>(
+        UnknownFailure(
+          message:
+              'İşlem tamamlanamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.',
+          technical: e.toString(),
+        ),
+      );
+    }
   }
 
   Future<Result<void>> sendPasswordReset(AppUser user) async {

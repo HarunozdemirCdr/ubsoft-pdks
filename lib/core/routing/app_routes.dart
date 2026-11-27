@@ -38,6 +38,14 @@ abstract final class AppRoutes {
   static const String rooms = '/odalar';
   static const String roomsName = 'rooms';
 
+  /// Dikkat edilmesi gereken durumlar (izni bitenler, gecikenler, uyarılar).
+  static const String attention = '/uyarilar';
+  static const String attentionName = 'attention';
+
+  /// Yurt duyuruları (genel, kat bazlı, oda bazlı).
+  static const String announcements = '/duyurular';
+  static const String announcementsName = 'announcements';
+
   /// Geçmiş — gün seç, öğrenci listesi.
   static const String history = '/gecmis';
   static const String historyName = 'history';

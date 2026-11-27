@@ -10,6 +10,8 @@ import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/enums/user_role.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
+import 'package:ubsoft_pdks/presentation/features/dorm/dorm_announcements_page.dart';
+import 'package:ubsoft_pdks/presentation/features/dorm/dorm_attention_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_pages.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_rooms_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/widgets/dorm_ui.dart';
@@ -330,7 +332,7 @@ void main() {
       expect(find.byKey(const ValueKey('student-group-s1')), findsNothing);
       expect(find.byKey(const ValueKey('student-group-s2')), findsOneWidget);
 
-      // 1b. Kişi geçmişi kartı + dışarıda toplam süre + hareket filtresi
+      // 1b. Kişi geçmişi kartı + anlık durum + öğrenci detayı + hareket filtresi
       await tester.pumpWidget(
         wrapPage(
           const DormHistoryPage(userId: 's1'),
@@ -339,8 +341,10 @@ void main() {
         ),
       );
       await settle(tester);
-      expect(find.text('DIŞARIDA TOPLAM SÜRE'), findsOneWidget);
+      expect(find.text('DIŞARIDA TOPLAM SÜRE'), findsNothing);
+      expect(find.text('ANLIK DURUM'), findsOneWidget);
       expect(find.text('SON OKUTMA'), findsOneWidget);
+      expect(find.text('Öğrenci Detayı'), findsOneWidget);
       expect(find.text('Geç dönüş'), findsOneWidget);
 
       // 2. Gelişmiş Raporlar analiz sekmeleri kontrolü
@@ -357,22 +361,19 @@ void main() {
       await settle(tester);
 
       expect(find.text('Excel (CSV)'), findsOneWidget);
+      expect(find.text('Oda & Gün Kırılımı'), findsNothing);
       final hourlyTab = find.text('Özet & Saatlik Analiz');
       expect(hourlyTab, findsOneWidget);
       await tester.ensureVisible(hourlyTab);
       await tester.tap(hourlyTab);
       await settle(tester);
+      expect(find.text('ANLIK İÇERİDE'), findsOneWidget);
+      expect(find.text('ANLIK DIŞARIDA'), findsOneWidget);
+      expect(find.text('İÇERİDE SÜRE'), findsNothing);
       expect(
         find.text('Saatlik giriş–çıkış yoğunluğu (00:00 – 23:59)'),
         findsOneWidget,
       );
-
-      final roomTab = find.text('Oda & Gün Kırılımı');
-      await tester.ensureVisible(roomTab);
-      await tester.tap(roomTab);
-      await settle(tester);
-      expect(find.text('Oda 101'), findsOneWidget);
-      expect(find.text('Oda 202'), findsOneWidget);
 
       final rawTab = find.text('Ham Kayıt Tablosu');
       await tester.ensureVisible(rawTab);
@@ -380,6 +381,132 @@ void main() {
       await settle(tester);
       expect(find.textContaining('Ana Çıkış'), findsOneWidget);
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Dikkat Edilmesi Gerekenler izni bitip dönmeyen öğrenciyi kritik olarak gösterir',
+    (WidgetTester tester) async {
+      await initTestLocale();
+      final AppUser admin = TestData.user(
+        uid: TestData.adminUid,
+        name: 'Ayşe Demir',
+        role: UserRole.admin,
+      );
+      final AppUser sumeyye = TestData.user(uid: 's4', name: 'Sümeyye Şahin');
+      final TestScope scope = await buildScope(
+        signedInAs: admin,
+        extraUsers: <AppUser>[sumeyye],
+      );
+      addTearDown(scope.dispose);
+      await _setRoom(scope, 's4', room: '201', studentNumber: '2026006');
+
+      final now = DateTime.now();
+      await scope.firestore
+          .collection('tenants')
+          .doc(TestData.tenantId)
+          .collection('presence')
+          .doc('s4')
+          .set(<String, Object?>{
+            'userId': 's4',
+            'inside': false,
+            'at': Timestamp.fromDate(now.subtract(const Duration(days: 4))),
+            'checkpoint': 'Ana Çıkış',
+            'permitted': true,
+          });
+      await DormRepository(scope.firestore).saveLeave(
+        TestData.tenantId,
+        StudentLeave(
+          userId: 's4',
+          from: now.subtract(const Duration(days: 4)),
+          until: now.subtract(const Duration(hours: 18)),
+          reason: 'Evci izni',
+          category: 'Evci izni',
+          destination: 'Ankara / Çankaya',
+          contactName: 'Fatma Şahin',
+          contactRelation: 'Anne',
+          contactPhone: '0532 411 22 10',
+        ),
+        TestData.adminUid,
+      );
+
+      await tester.pumpWidget(
+        wrapRouted(
+          const DormAttentionPage(),
+          container: scope.container,
+          size: const Size(1280, 900),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Sümeyye Şahin'), findsOneWidget);
+      expect(find.text('İzni bitti · Dönmedi'), findsWidgets);
+      expect(find.textContaining('Fatma Şahin'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Duyurular modülü kat ve oda bazlı hedefleme ve okundu işaretini destekler',
+    (WidgetTester tester) async {
+      await initTestLocale();
+      final AppUser student = TestData.user(uid: 's1', name: 'Elif Yılmaz');
+      final TestScope scope = await buildScope(
+        signedInAs: student,
+      );
+      addTearDown(scope.dispose);
+      await _setRoom(scope, 's1', room: '201', studentNumber: '2026001');
+
+      final repo = DormRepository(scope.firestore);
+      await repo.createAnnouncement(
+        tid: TestData.tenantId,
+        title: 'Genel Toplantı',
+        body: 'Akşam 20:00 yemekhanede toplanıyoruz.',
+        targetType: 'all',
+        targetValue: '',
+        priority: 'urgent',
+        createdBy: TestData.adminUid,
+        createdByName: 'Ayşe Demir',
+      );
+      await repo.createAnnouncement(
+        tid: TestData.tenantId,
+        title: '2. Kat Bakım',
+        body: '2. katta su kesintisi olacaktır.',
+        targetType: 'floor',
+        targetValue: '2',
+        priority: 'normal',
+        createdBy: TestData.adminUid,
+        createdByName: 'Ayşe Demir',
+      );
+      await repo.createAnnouncement(
+        tid: TestData.tenantId,
+        title: '3. Kat Duyurusu',
+        body: 'Yalnızca 3. kat içindir.',
+        targetType: 'floor',
+        targetValue: '3',
+        priority: 'normal',
+        createdBy: TestData.adminUid,
+        createdByName: 'Ayşe Demir',
+      );
+
+      await tester.pumpWidget(
+        wrapPage(
+          const DormAnnouncementsPage(),
+          container: scope.container,
+          size: const Size(1000, 900),
+        ),
+      );
+      await settle(tester);
+
+      expect(find.text('Genel Toplantı'), findsOneWidget);
+      expect(find.text('2. Kat Bakım'), findsOneWidget);
+      expect(find.text('3. Kat Duyurusu'), findsNothing);
+      expect(find.text('Yeni'), findsNWidgets(2));
+
+      final markAllBtn = find.textContaining('okundu işaretle');
+      expect(markAllBtn, findsOneWidget);
+      await tester.tap(markAllBtn);
+      await settle(tester);
+      expect(find.text('Yeni'), findsNothing);
     },
   );
 }

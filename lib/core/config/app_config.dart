@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 /// Ortam değişkenleri `--dart-define` ile geçilir:
 /// `flutter build web --dart-define=USE_EMULATOR=true`
 abstract final class AppConfig {
-  static const String appName = 'UBSoft Yurt Kontrol';
+  static const String appName = 'UBS Yurt Yönetim Sistemi';
   static const String appVersion = '2.2.3';
 
   /// Yerel Firebase emulator'a bağlan (geliştirme ve kural testleri için).

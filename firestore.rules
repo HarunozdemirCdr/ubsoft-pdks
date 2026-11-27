@@ -155,6 +155,33 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
     }
 
+    function isValidAnnouncement(data) {
+      return data.keys().hasOnly([
+               'title', 'body', 'targetType', 'targetValue',
+               'priority', 'createdBy', 'createdByName', 'createdAt'
+             ]) &&
+             data.keys().hasAll([
+               'title', 'body', 'targetType', 'targetValue',
+               'priority', 'createdBy', 'createdByName', 'createdAt'
+             ]) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 160 &&
+             data.body is string && data.body.size() > 0 && data.body.size() <= 2000 &&
+             data.targetType is string && data.targetType in ['all', 'floor', 'room'] &&
+             data.targetValue is string && data.targetValue.size() <= 40 &&
+             data.priority is string && data.priority in ['normal', 'urgent'] &&
+             data.createdBy == request.auth.uid &&
+             data.createdByName is string && data.createdByName.size() <= 120 &&
+             serverTime('createdAt');
+    }
+
+    function isValidAnnouncementReads(data) {
+      return data.keys().hasOnly(['readIds', 'updatedAt']) &&
+             data.keys().hasAll(['readIds', 'updatedAt']) &&
+             data.readIds is list &&
+             data.readIds.size() <= 500 &&
+             serverTime('updatedAt');
+    }
+
 
     // ═══════════════ Koleksiyon grubu: kendi kaydını bulma ═══════════════
     //
@@ -413,6 +440,42 @@ service cloud.firestore {
           request.resource.data.actor == request.auth.uid && serverTime('at');
         allow update: if false;
         allow delete: if isSuperAdmin();
+      }
+
+      // ─────────────────────── Duyurular ───────────────────────
+      //
+      // Assumed Data Model:
+      //   Collection: tenants/{tid}/announcements/{announcementId}
+      //   Fields (all required, document immutable after create):
+      //     - title: string (1..160)
+      //     - body: string (1..2000)
+      //     - targetType: string ('all' | 'floor' | 'room')
+      //     - targetValue: string (0..40)
+      //     - priority: string ('normal' | 'urgent')
+      //     - createdBy: string (must equal request.auth.uid)
+      //     - createdByName: string (0..120)
+      //     - createdAt: timestamp (serverTime)
+      match /announcements/{announcementId} {
+        allow read: if memberOf(tid) || isSuperAdmin();
+        allow create: if isAdminOf(tid) && writable(tid) &&
+                         isValidAnnouncement(request.resource.data);
+        allow update: if false;
+        allow delete: if (isAdminOf(tid) && writable(tid)) || isSuperAdmin();
+      }
+
+      // Assumed Data Model:
+      //   Collection: tenants/{tid}/announcementReads/{uid}
+      //   Fields (all required):
+      //     - readIds: list (size <= 500)
+      //     - updatedAt: timestamp (serverTime)
+      match /announcementReads/{uid} {
+        allow get: if (memberOf(tid) && request.auth.uid == uid) ||
+                      isAdminOf(tid) || isSuperAdmin();
+        allow list: if isAdminOf(tid) || isSuperAdmin();
+        allow create, update: if memberOf(tid) && writable(tid) &&
+                                 request.auth.uid == uid &&
+                                 isValidAnnouncementReads(request.resource.data);
+        allow delete: if (isAdminOf(tid) && writable(tid)) || isSuperAdmin();
       }
     }
 

@@ -270,3 +270,107 @@ exports.expireTurnstileCommands = onSchedule('every 5 minutes',async()=>{
     if(Object.keys(patch).length)await ref.update(patch);
   }
 });
+
+async function deleteQueryInBatches(query) {
+  let deleted = 0;
+  while (true) {
+    const snap = await query.limit(400).get();
+    if (snap.empty) break;
+    const batch = db.batch();
+    for (const doc of snap.docs) {
+      batch.delete(doc.ref);
+    }
+    await batch.commit();
+    deleted += snap.size;
+    if (snap.size < 400) break;
+  }
+  return deleted;
+}
+
+exports.setUserActiveStatus = onCall(async request => {
+  const tid = await administrator(request);
+  const uid = request.data?.uid;
+  const active = request.data?.active;
+  if (typeof uid !== 'string' || !uid || uid.includes('/')) {
+    throw new HttpsError('invalid-argument', 'Geçersiz kullanıcı kimliği.');
+  }
+  if (typeof active !== 'boolean') {
+    throw new HttpsError('invalid-argument', 'Durum bilgisi geçersiz.');
+  }
+  if (uid === request.auth.uid) {
+    throw new HttpsError('failed-precondition', 'Kendi hesabınızı pasife alamazsınız.');
+  }
+
+  const userRef = db.doc(`tenants/${tid}/users/${uid}`);
+  const snap = await userRef.get();
+  if (!snap.exists) {
+    throw new HttpsError('not-found', 'Kullanıcı kaydı bulunamadı.');
+  }
+
+  try {
+    await auth.updateUser(uid, { disabled: !active });
+    if (!active) {
+      await auth.revokeRefreshTokens(uid);
+    }
+  } catch (e) {
+    if (e?.code !== 'auth/user-not-found') {
+      throw new HttpsError('internal', 'Kimlik doğrulama hesabı güncellenemedi.');
+    }
+  }
+
+  const nextStatus = active ? 'active' : 'inactive';
+  await userRef.update({
+    status: nextStatus,
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: request.auth.uid,
+  });
+
+  return { ok: true, status: nextStatus };
+});
+
+exports.deleteUserAccount = onCall({ timeoutSeconds: 60 }, async request => {
+  const tid = await administrator(request);
+  const uid = request.data?.uid;
+  if (typeof uid !== 'string' || !uid || uid.includes('/')) {
+    throw new HttpsError('invalid-argument', 'Geçersiz kullanıcı kimliği.');
+  }
+  if (uid === request.auth.uid) {
+    throw new HttpsError('failed-precondition', 'Kendi hesabınızı silemezsiniz.');
+  }
+
+  const userRef = db.doc(`tenants/${tid}/users/${uid}`);
+  const userSnap = await userRef.get();
+  const existed = userSnap.exists;
+
+  try {
+    await auth.deleteUser(uid);
+  } catch (e) {
+    if (e?.code !== 'auth/user-not-found') {
+      throw new HttpsError('internal', 'Kimlik doğrulama hesabı silinemedi.');
+    }
+  }
+
+  await deleteQueryInBatches(db.collection(`tenants/${tid}/leaves`).where('userId', '==', uid));
+  await deleteQueryInBatches(db.collection(`tenants/${tid}/attendance`).where('userId', '==', uid));
+  await deleteQueryInBatches(db.collection(`tenants/${tid}/attendanceDays`).where('userId', '==', uid));
+
+  const batch = db.batch();
+  batch.delete(userRef);
+  batch.delete(db.doc(`tenants/${tid}/presence/${uid}`));
+  batch.delete(db.doc(`tenants/${tid}/leaveLocks/${uid}`));
+  batch.delete(db.doc(`tenants/${tid}/announcementReads/${uid}`));
+  await batch.commit();
+
+  if (existed) {
+    const tenantRef = db.doc(`tenants/${tid}`);
+    await db.runTransaction(async tx => {
+      const tSnap = await tx.get(tenantRef);
+      const count = tSnap.data()?.counters?.userCount;
+      if (typeof count === 'number' && count > 0) {
+        tx.update(tenantRef, { 'counters.userCount': count - 1 });
+      }
+    });
+  }
+
+  return { ok: true, deletedUid: uid };
+});

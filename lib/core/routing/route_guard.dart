@@ -46,6 +46,10 @@ abstract final class RouteGuard {
           AppPermission.attendanceViewOwn,
           AppPermission.attendanceViewAll,
         ],
+        AppRoutes.announcements: <AppPermission>[
+          AppPermission.attendanceViewOwn,
+          AppPermission.attendanceViewAll,
+        ],
       };
 
   /// Bir bölümü açabilmek için gereken izinler — **hepsi** gereklidir.
@@ -60,6 +64,10 @@ abstract final class RouteGuard {
           AppPermission.attendanceViewAll,
         ],
         AppRoutes.rooms: <AppPermission>[
+          AppPermission.dashboardView,
+          AppPermission.attendanceViewAll,
+        ],
+        AppRoutes.attention: <AppPermission>[
           AppPermission.dashboardView,
           AppPermission.attendanceViewAll,
         ],

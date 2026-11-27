@@ -4,6 +4,7 @@ import 'package:ubsoft_pdks/core/result/result.dart';
 import 'package:ubsoft_pdks/data/mappers/attendance_mapper.dart';
 import 'package:ubsoft_pdks/data/mappers/tenant_mapper.dart';
 import 'package:ubsoft_pdks/data/repositories/firestore_repository_base.dart';
+import 'package:ubsoft_pdks/domain/entities/announcement.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_day.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
@@ -518,5 +519,105 @@ final class DormRepository extends FirestoreRepositoryBase {
         });
       }
     });
+  });
+
+  // ─────────────────────────── Duyurular ───────────────────────────
+
+  static DormAnnouncement _announcement(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) {
+    final Map<String, dynamic> d = doc.data();
+    return DormAnnouncement(
+      id: doc.id,
+      title: d['title'] as String? ?? '',
+      body: d['body'] as String? ?? '',
+      targetType: d['targetType'] as String? ?? 'all',
+      targetValue: d['targetValue'] as String? ?? '',
+      priority: d['priority'] as String? ?? 'normal',
+      createdBy: d['createdBy'] as String? ?? '',
+      createdByName: d['createdByName'] as String? ?? '',
+      createdAt: _date(d['createdAt']) ?? DateTime.now(),
+    );
+  }
+
+  Stream<List<DormAnnouncement>> watchAnnouncements(String tid) {
+    if (tid.isEmpty) return Stream.value(const <DormAnnouncement>[]);
+    final Query<Map<String, dynamic>> q = subcollection(
+      tid,
+      'announcements',
+    ).orderBy('createdAt', descending: true).limit(100);
+    List<DormAnnouncement> mapSnap(QuerySnapshot<Map<String, dynamic>> s) =>
+        s.docs.map(_announcement).toList(growable: false);
+    return guardLiveStream(
+      q.snapshots(includeMetadataChanges: true).map(mapSnap),
+      loadInitial: () async =>
+          mapSnap(await q.get(const GetOptions(source: Source.server))),
+    );
+  }
+
+  Future<Result<void>> createAnnouncement({
+    required String tid,
+    required String title,
+    required String body,
+    required String targetType,
+    required String targetValue,
+    required String priority,
+    required String createdBy,
+    required String createdByName,
+  }) => guardVoid(() async {
+    final String t = title.trim();
+    final String b = body.trim();
+    if (t.isEmpty || b.isEmpty) {
+      throw const ValidationFailure('Başlık ve duyuru metni zorunludur.');
+    }
+    await subcollection(tid, 'announcements').add(<String, Object?>{
+      'title': t,
+      'body': b,
+      'targetType': targetType,
+      'targetValue': targetValue.trim(),
+      'priority': priority,
+      'createdBy': createdBy,
+      'createdByName': createdByName.trim(),
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  });
+
+  Future<Result<void>> deleteAnnouncement(String tid, String id) => guardVoid(
+    () => subcollection(tid, 'announcements').doc(id).delete(),
+  );
+
+  Stream<Set<String>> watchReadAnnouncementIds(String tid, String uid) {
+    if (tid.isEmpty || uid.isEmpty) return Stream.value(const <String>{});
+    final DocumentReference<Map<String, dynamic>> ref = subcollection(
+      tid,
+      'announcementReads',
+    ).doc(uid);
+    Set<String> extract(DocumentSnapshot<Map<String, dynamic>> snap) {
+      final Object? raw = snap.data()?['readIds'];
+      if (raw is! List<Object?>) return const <String>{};
+      return raw.whereType<String>().toSet();
+    }
+
+    return guardLiveStream(
+      ref.snapshots(includeMetadataChanges: true).map(extract),
+      loadInitial: () async =>
+          extract(await ref.get(const GetOptions(source: Source.server))),
+    );
+  }
+
+  Future<Result<void>> markAnnouncementsRead(
+    String tid,
+    String uid,
+    Iterable<String> ids,
+  ) => guardVoid(() async {
+    final List<String> list = ids.where((e) => e.isNotEmpty).toSet().toList();
+    if (list.isEmpty) return;
+    await subcollection(tid, 'announcementReads').doc(uid).set(
+      <String, Object?>{
+        'readIds': FieldValue.arrayUnion(list),
+        'updatedAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   });
 }

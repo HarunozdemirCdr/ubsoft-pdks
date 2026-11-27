@@ -296,10 +296,28 @@ class _DormRoomsPageState extends ConsumerState<DormRoomsPage> {
                     value: _filter,
                     options: const [
                       DormSegmentedOption('all', 'Tümü'),
-                      DormSegmentedOption('inside', 'İçeride (Yeşil)'),
-                      DormSegmentedOption('outside', 'Dışarıda (Kırmızı)'),
-                      DormSegmentedOption('late', 'Dönüşü geciken'),
-                      DormSegmentedOption('unknown', 'Kayıt yok'),
+                      DormSegmentedOption(
+                        'inside',
+                        'İçeride',
+                        icon: Icons.login_rounded,
+                        dotColor: AppColors.entry,
+                      ),
+                      DormSegmentedOption(
+                        'outside',
+                        'Dışarıda',
+                        icon: Icons.logout_rounded,
+                        dotColor: AppColors.exit,
+                      ),
+                      DormSegmentedOption(
+                        'late',
+                        'Dönüşü geciken',
+                        dotColor: AppColors.warning,
+                      ),
+                      DormSegmentedOption(
+                        'unknown',
+                        'Kayıt yok',
+                        dotColor: AppColors.neutral,
+                      ),
                     ],
                     onChanged: (v) => setState(() => _filter = v),
                   ),

@@ -4,13 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ubsoft_pdks/application/auth/auth_controller.dart';
 import 'package:ubsoft_pdks/application/auth/session_provider.dart';
+import 'package:ubsoft_pdks/application/dorm/dorm_providers.dart';
 import 'package:ubsoft_pdks/core/extensions/context_x.dart';
+import 'package:ubsoft_pdks/core/routing/app_routes.dart';
 import 'package:ubsoft_pdks/core/theme/app_colors.dart';
 import 'package:ubsoft_pdks/core/theme/app_radius.dart';
 import 'package:ubsoft_pdks/core/theme/app_shadows.dart';
 import 'package:ubsoft_pdks/core/theme/app_spacing.dart';
 import 'package:ubsoft_pdks/core/theme/app_typography.dart';
 import 'package:ubsoft_pdks/core/utils/date_x.dart';
+import 'package:ubsoft_pdks/domain/entities/announcement.dart';
 import 'package:ubsoft_pdks/domain/entities/session.dart';
 import 'package:ubsoft_pdks/domain/entities/tenant.dart';
 import 'package:ubsoft_pdks/domain/permissions/permission_set.dart';
@@ -18,6 +21,7 @@ import 'package:ubsoft_pdks/presentation/shell/nav_destinations.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
 import 'package:ubsoft_pdks/presentation/widgets/ubs_logo.dart';
 import 'package:ubsoft_pdks/services/location/location_service.dart';
+import 'package:ubsoft_pdks/services/notification/web_notification_service.dart';
 
 /// Uygulama kabuğu.
 ///
@@ -41,6 +45,8 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final Set<String> _notifiedAnnouncementIds = <String>{};
+  bool _announcementsPrimed = false;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +59,48 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
 
     final bool isStaff = session is SessionActive && session.user.role.isStaff;
+    final bool isAdmin = session is SessionActive && session.user.role.isAdmin;
+
+    final int unreadAnnouncements = isStaff
+        ? ref.watch(unreadAnnouncementsCountProvider)
+        : 0;
+    final int attentionCount = isAdmin
+        ? ref.watch(dormAttentionCountProvider)
+        : 0;
+
+    // Öğrenciye yeni duyuru düştüğünde (ve bildirim izni açıksa) anlık bildirim gönder.
+    if (isStaff) {
+      ref.listen<List<DormAnnouncement>>(visibleAnnouncementsProvider, (
+        List<DormAnnouncement>? prev,
+        List<DormAnnouncement> next,
+      ) {
+        if (!_announcementsPrimed) {
+          _announcementsPrimed = true;
+          _notifiedAnnouncementIds.addAll(next.map((a) => a.id));
+          return;
+        }
+        final Set<String> readIds =
+            ref.read(myAnnouncementReadsProvider).value ?? const <String>{};
+        for (final DormAnnouncement a in next) {
+          if (_notifiedAnnouncementIds.add(a.id) && !readIds.contains(a.id)) {
+            WebNotificationService.show(
+              title: '${a.targetLabel}: ${a.title}',
+              body: a.body,
+            );
+          }
+        }
+      });
+    }
+
+    int? badgeFor(String path) {
+      if (path == AppRoutes.announcements && isStaff && unreadAnnouncements > 0) {
+        return unreadAnnouncements;
+      }
+      if (path == AppRoutes.attention && isAdmin) {
+        return attentionCount;
+      }
+      return null;
+    }
 
     // Aboneliği bitmiş hesapta yönetici salt okunur devam eder; bandı her
     // düzende (dar, geniş, menüsüz) görmesi gerekir, bu yüzden içerik burada
@@ -77,6 +125,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             _CorporateSidebar(
               destinations: destinations,
               location: location,
+              badgeFor: badgeFor,
               onSelect: (destination) => context.go(destination.path),
             ),
             Expanded(child: body),
@@ -117,6 +166,7 @@ class _AppShellState extends ConsumerState<AppShell> {
               child: _CorporateSidebarContent(
                 destinations: destinations,
                 location: location,
+                badgeFor: badgeFor,
                 onSelect: (destination) {
                   _scaffoldKey.currentState?.closeDrawer();
                   context.go(destination.path);
@@ -156,8 +206,14 @@ class _AppShellState extends ConsumerState<AppShell> {
             destinations: <Widget>[
               for (final NavDestination destination in primary)
                 NavigationDestination(
-                  icon: Icon(destination.icon),
-                  selectedIcon: Icon(destination.selectedIcon),
+                  icon: _NavBadgeIcon(
+                    icon: destination.icon,
+                    count: badgeFor(destination.path),
+                  ),
+                  selectedIcon: _NavBadgeIcon(
+                    icon: destination.selectedIcon,
+                    count: badgeFor(destination.path),
+                  ),
                   label: destination.label,
                 ),
               if (overflows)
@@ -279,11 +335,13 @@ class _CorporateSidebar extends StatelessWidget {
     required this.destinations,
     required this.location,
     required this.onSelect,
+    this.badgeFor,
   });
 
   final List<NavDestination> destinations;
   final String location;
   final ValueChanged<NavDestination> onSelect;
+  final int? Function(String path)? badgeFor;
 
   @override
   Widget build(BuildContext context) {
@@ -296,6 +354,7 @@ class _CorporateSidebar extends StatelessWidget {
       child: _CorporateSidebarContent(
         destinations: destinations,
         location: location,
+        badgeFor: badgeFor,
         onSelect: onSelect,
       ),
     );
@@ -307,12 +366,14 @@ class _CorporateSidebarContent extends ConsumerWidget {
     required this.destinations,
     required this.location,
     required this.onSelect,
+    this.badgeFor,
     this.onBeforeSignOut,
   });
 
   final List<NavDestination> destinations;
   final String location;
   final ValueChanged<NavDestination> onSelect;
+  final int? Function(String path)? badgeFor;
   final VoidCallback? onBeforeSignOut;
 
   @override
@@ -375,6 +436,7 @@ class _CorporateSidebarContent extends ConsumerWidget {
                       destination.path,
                       location,
                     ),
+                    badgeCount: badgeFor?.call(destination.path),
                     onTap: () => onSelect(destination),
                   ),
               ],
@@ -453,11 +515,13 @@ class _SidebarTile extends StatelessWidget {
     required this.destination,
     required this.selected,
     required this.onTap,
+    this.badgeCount,
   });
 
   final NavDestination destination;
   final bool selected;
   final VoidCallback onTap;
+  final int? badgeCount;
 
   @override
   Widget build(BuildContext context) {
@@ -498,11 +562,62 @@ class _SidebarTile extends StatelessWidget {
                         .copyWith(fontSize: 13.5),
                   ),
                 ),
+                if (badgeCount case final int count) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: count > 0
+                          ? AppColors.danger
+                          : (dark
+                                ? AppColors.surfaceMutedDark
+                                : AppColors.gray200),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      count > 99 ? '99+' : '$count',
+                      style: AppTypography.caption(
+                        count > 0
+                            ? AppColors.white
+                            : context.colors.onSurfaceVariant,
+                      ).copyWith(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _NavBadgeIcon extends StatelessWidget {
+  const _NavBadgeIcon({required this.icon, this.count});
+
+  final IconData icon;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    final int? c = count;
+    if (c == null) return Icon(icon);
+    return Badge(
+      backgroundColor: c > 0 ? AppColors.danger : AppColors.gray400,
+      textColor: AppColors.white,
+      label: Text(
+        c > 99 ? '99+' : '$c',
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+      ),
+      child: Icon(icon),
     );
   }
 }
@@ -631,7 +746,7 @@ class _LocationGateState extends ConsumerState<_LocationGate>
                   ),
                   AppSpacing.vSm,
                   Text(
-                    'UBSoft Yurt Kontrol sistemini kullanabilmek ve turnike giriş-çıkışlarınızı '
+                    'UBS Yurt Yönetim Sistemi üzerinden turnike giriş-çıkışlarınızı '
                     'gerçekleştirebilmek için cihazınızın konum servisinin açık olması ve '
                     'tarayıcınıza izin vermeniz gerekmektedir.',
                     textAlign: TextAlign.center,

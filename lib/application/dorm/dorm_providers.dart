@@ -3,9 +3,11 @@ import 'package:ubsoft_pdks/application/auth/session_provider.dart';
 import 'package:ubsoft_pdks/application/providers.dart';
 import 'package:ubsoft_pdks/application/user/user_providers.dart';
 import 'package:ubsoft_pdks/data/repositories/dorm_repository.dart';
+import 'package:ubsoft_pdks/domain/entities/announcement.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
+import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_attention.dart';
 
 final dormRepositoryProvider = Provider<DormRepository>(
   (ref) => DormRepository(ref.watch(firestoreProvider)),
@@ -109,3 +111,72 @@ StudentLeave? relevantLeave(
         ..sort((a, b) => b.until.compareTo(a.until));
   return candidates.isEmpty ? null : candidates.first;
 }
+
+/// Yurt duyuruları akışı.
+final dormAnnouncementsProvider = StreamProvider<List<DormAnnouncement>>((ref) {
+  final String tid = ref.watch(tenantIdProvider);
+  if (tid.isEmpty) return Stream.value(const <DormAnnouncement>[]);
+  return ref.watch(dormRepositoryProvider).watchAnnouncements(tid);
+});
+
+/// Mevcut kullanıcının okuduğu duyuru kimlikleri.
+final myAnnouncementReadsProvider = StreamProvider<Set<String>>((ref) {
+  final user = ref.watch(
+    currentUserProvider.select(
+      (u) => u == null ? null : (tenantId: u.tenantId, uid: u.uid),
+    ),
+  );
+  if (user == null) return Stream.value(const <String>{});
+  return ref
+      .watch(dormRepositoryProvider)
+      .watchReadAnnouncementIds(user.tenantId, user.uid);
+});
+
+/// Kullanıcının kendisini ilgilendiren duyuruları.
+final visibleAnnouncementsProvider = Provider<List<DormAnnouncement>>((ref) {
+  final AppUser? user = ref.watch(currentUserProvider);
+  if (user == null) return const <DormAnnouncement>[];
+  final List<DormAnnouncement> all =
+      ref.watch(dormAnnouncementsProvider).value ?? const <DormAnnouncement>[];
+  return all.where((a) => a.appliesTo(user)).toList(growable: false);
+});
+
+/// Öğrencinin henüz görmediği (okumadığı) duyuru sayısı — menüdeki kırmızı rozet.
+final unreadAnnouncementsCountProvider = Provider<int>((ref) {
+  final AppUser? user = ref.watch(currentUserProvider);
+  if (user == null || !user.role.isStaff) return 0;
+  final List<DormAnnouncement> visible = ref.watch(
+    visibleAnnouncementsProvider,
+  );
+  final Set<String> readIds =
+      ref.watch(myAnnouncementReadsProvider).value ?? const <String>{};
+  return visible.where((a) => !readIds.contains(a.id)).length;
+});
+
+/// Yönetici için dikkat edilmesi gereken tüm yurt durumları (izni bitip
+/// dönmeyenler, dönüşü gecikenler, saat/konum uyarıları, kayıtsızlar).
+final dormAttentionItemsProvider = Provider<List<DormAttentionItem>>((ref) {
+  final tenant = ref.watch(currentTenantProvider);
+  if (tenant == null) return const <DormAttentionItem>[];
+  final List<AppUser> students = ref.watch(studentsProvider);
+  final List<Presence> states =
+      ref.watch(residentsProvider).value ?? const <Presence>[];
+  final List<StudentLeave> leaves =
+      ref.watch(dormLeavesProvider).value ?? const <StudentLeave>[];
+  final DateTime now = ref.watch(dormNowProvider);
+  final Map<String, Presence> byId = <String, Presence>{
+    for (final Presence p in states) p.userId: p,
+  };
+  return DormAttentionAnalyzer.analyzeAll(
+    students: students,
+    presenceById: byId,
+    leaves: leaves,
+    policy: tenant.settings.dormPolicy,
+    now: now,
+  );
+});
+
+/// Menüde rozet olarak gösterilen kritik/dikkat gerektiren durum sayısı.
+final dormAttentionCountProvider = Provider<int>(
+  (ref) => ref.watch(dormAttentionItemsProvider).length,
+);

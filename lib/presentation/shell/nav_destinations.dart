@@ -65,11 +65,31 @@ abstract final class AppNavigation {
       ],
     ),
     NavDestination(
+      label: 'Uyarılar',
+      icon: Icons.notifications_active_outlined,
+      selectedIcon: Icons.notifications_active_rounded,
+      path: AppRoutes.attention,
+      requiresAll: <AppPermission>[
+        AppPermission.dashboardView,
+        AppPermission.attendanceViewAll,
+      ],
+    ),
+    NavDestination(
       label: 'Okut',
       icon: Icons.qr_code_scanner_outlined,
       selectedIcon: Icons.qr_code_scanner_rounded,
       path: AppRoutes.punch,
       requires: <AppPermission>[AppPermission.punchCreate],
+    ),
+    NavDestination(
+      label: 'Duyurular',
+      icon: Icons.campaign_outlined,
+      selectedIcon: Icons.campaign_rounded,
+      path: AppRoutes.announcements,
+      requires: <AppPermission>[
+        AppPermission.attendanceViewOwn,
+        AppPermission.attendanceViewAll,
+      ],
     ),
     NavDestination(
       label: 'Geçmiş',

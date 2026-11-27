@@ -1,4 +1,6 @@
-// Gerçekçi yurt saha senaryosu (1, 2, 4, 6 kişilik odalar, 21 günlük hareketler, zengin izinler).
+// Gerçekçi UBS Yurt Yönetim Sistemi saha senaryosu:
+// - 1, 2, 4, 6 kişilik odalar, 21 günlük hareketler, zengin izinler, duyurular
+// - TÜRGEV -> UBS Yurt Yönetim Sistemi marka ve @ubs.com hesap göçü
 // Kullanım:
 //   node tool/seed_realistic_dorm.cjs --dry-run
 //   node tool/seed_realistic_dorm.cjs --apply
@@ -9,10 +11,12 @@ const auth = require(path.join(process.env.APPDATA, 'npm/node_modules/firebase-t
 
 const apply = process.argv.includes('--apply');
 const project = 'ubsoft-pdks';
-const tid = 'turgev-demo';
+const tid = 'turgev-demo'; // ESP32 donanım eşleştirmesini korumak için doküman kimliği sabit kalır.
 const root = `projects/${project}/databases/(default)/documents/`;
 const base = `https://firestore.googleapis.com/v1/${root.slice(0, -1)}`;
-const demoTag = 'realistic-dorm-v2';
+const idToolkitBase = `https://identitytoolkit.googleapis.com/v1/projects/${project}`;
+const demoTag = 'realistic-dorm-v3';
+const defaultDemoPassword = process.env.UBS_DEMO_PASSWORD || 'UbsYurt2026!';
 
 let token;
 
@@ -29,6 +33,43 @@ async function req(url, method = 'GET', body = null) {
     throw new Error(`HTTP ${r.status} ${url}: ${await r.text()}`);
   }
   return r.json();
+}
+
+async function lookupAuthByEmail(email) {
+  const res = await req(`${idToolkitBase}/accounts:lookup`, 'POST', { email: [email] });
+  return (res.users || [])[0] || null;
+}
+
+async function ensureAuthUser({ email, password, displayName }) {
+  const existing = await lookupAuthByEmail(email);
+  if (existing) {
+    if (apply) {
+      await req(`${idToolkitBase}/accounts:update`, 'POST', {
+        localId: existing.localId,
+        displayName,
+        password,
+        disableUser: false,
+      });
+    }
+    return existing.localId;
+  }
+  if (!apply) return `planned-uid-${email.split('@')[0]}`;
+  const created = await req(`${idToolkitBase}/accounts`, 'POST', {
+    email,
+    password,
+    displayName,
+    emailVerified: true,
+  });
+  return created.localId;
+}
+
+async function deleteAuthUserIfExists(email) {
+  const existing = await lookupAuthByEmail(email);
+  if (!existing) return null;
+  if (apply) {
+    await req(`${idToolkitBase}/accounts:delete`, 'POST', { localId: existing.localId });
+  }
+  return existing.localId;
 }
 
 const decode = (v) => {
@@ -159,10 +200,21 @@ const roster = [
   { uid: 'seed-student-61', name: 'Tuğçe Demirci', room: '404', num: '2026063' },
 ];
 
-// Şu an dışarıda / izinli / geciken / kayıtsız dağılımı (24 Kasım 2026 saha profili)
+// Şu an dışarıda / izinli / izni bitip dönmeyen / geciken / kayıtsız dağılımı
 const uninitializedUids = new Set(['seed-student-23', 'seed-student-61']);
+const expiredLeaveStillOutsideSpecs = {
+  'seed-student-04': {
+    cat: 'Evci izni',
+    dest: 'Ankara / Çankaya',
+    name: 'Fatma Şahin',
+    rel: 'Anne',
+    phone: '0532 411 22 10',
+    reason: 'Hafta içi aile yanı evci izni',
+    fromOffset: -4,
+    untilOffset: -1,
+  },
+};
 const activeLeaveSpecs = {
-  'seed-student-04': { cat: 'Evci izni', dest: 'Ankara / Çankaya', name: 'Fatma Şahin', rel: 'Anne', phone: '0532 411 22 10', reason: 'Hafta içi aile yanı evci izni', daysFwd: 2 },
   'seed-student-11': { cat: 'Aile ziyareti', dest: 'Bursa / Nilüfer', name: 'Mustafa Doğan', rel: 'Baba', phone: '0533 618 44 09', reason: 'Aile ziyareti için şehir dışı izin', daysFwd: 3 },
   'seed-student-21': { cat: 'Sağlık', dest: 'İstanbul / Üsküdar', name: 'Selma Çelik', rel: 'Teyze', phone: '0542 309 18 75', reason: 'Hastane kontrolü ve istirahat', daysFwd: 1 },
   'seed-student-28': { cat: 'Evci izni', dest: 'Kocaeli / İzmit', name: 'Kemal Karaca', rel: 'Dayı', phone: '0535 740 55 31', reason: 'Dayısının yanında hafta sonu öncesi evci', daysFwd: 2 },
@@ -205,13 +257,14 @@ async function main() {
     exceptions: {},
   };
 
-  const [existingUsers, existingAtt, existingDays, existingPres, existingLeaves, existingLocks] = await Promise.all([
+  const [existingUsers, existingAtt, existingDays, existingPres, existingLeaves, existingLocks, existingAnn] = await Promise.all([
     list('users'),
     list('attendance'),
     list('attendanceDays'),
     list('presence'),
     list('leaves'),
     list('leaveLocks'),
+    list('announcements'),
   ]);
 
   const now = new Date();
@@ -220,34 +273,72 @@ async function main() {
   const dayKey = (offset) => new Date(Date.parse(`${todayStr}T00:00:00Z`) + offset * 86400000).toISOString().slice(0, 10);
   const at = (offset, minute) => new Date(Date.parse(`${dayKey(offset)}T00:00:00+03:00`) + minute * 60000);
 
-  const actorDoc = existingUsers.find((d) => d.fields.email?.stringValue === 'mudire@turgevdemo.com');
-  const actorUid = actorDoc ? actorDoc.name.split('/').at(-1) : 'hRoXrTHy3QTjW4lYSwqLV08LOfI3';
+  // Yeni UBS hesapları (Auth + Firestore)
+  const adminUid = await ensureAuthUser({
+    email: 'mudire@ubs.com',
+    password: defaultDemoPassword,
+    displayName: 'Ayşe Demir',
+  });
+  const elifUid = await ensureAuthUser({
+    email: 'ogrenci1@ubs.com',
+    password: defaultDemoPassword,
+    displayName: 'Elif Yılmaz',
+  });
+  const actorUid = adminUid;
 
-  // Silinecek eski sentetik veriler (Yalnız seed-student-* ve seed-att-*! Elif Yılmaz, Enes ve Müdire ASLA silinmez!)
-  const seedStudentSet = new Set(roster.map((r) => r.uid));
+  // Eski @turgevdemo.com hesaplarını Auth ve Firestore'dan temizle
+  const legacyRemovedUids = new Set();
+  for (const d of existingUsers) {
+    const email = (decode(d.fields.email) || '').toLowerCase();
+    const uid = d.name.split('/').at(-1);
+    if (email.endsWith('@turgevdemo.com') && !uid.startsWith('seed-student-')) {
+      legacyRemovedUids.add(uid);
+      await deleteAuthUserIfExists(email);
+    }
+  }
+  await deleteAuthUserIfExists('mudire@turgevdemo.com');
+  await deleteAuthUserIfExists('ogrenci1@turgevdemo.com');
+
+  const effectiveRoster = [
+    { uid: elifUid, name: 'Elif Yılmaz', room: '101', num: '2026001', email: 'ogrenci1@ubs.com' },
+    ...roster.map((r, i) => ({
+      ...r,
+      email: `ogrenci${String(i + 2).padStart(2, '0')}@ubs.com`,
+    })),
+  ];
+
+  const seedStudentSet = new Set(effectiveRoster.map((r) => r.uid));
   const deletes = [];
+  for (const uid of legacyRemovedUids) {
+    deletes.push(`${root}tenants/${tid}/users/${uid}`);
+  }
   for (const d of existingAtt) {
     const id = d.name.split('/').at(-1);
     const uid = decode(d.fields.userId);
-    if (seedStudentSet.has(uid) || id.startsWith('seed-att-')) {
+    if (seedStudentSet.has(uid) || legacyRemovedUids.has(uid) || id.startsWith('seed-att-')) {
       deletes.push(d.name);
     }
   }
   for (const d of existingDays) {
     const uid = decode(d.fields.userId);
-    if (seedStudentSet.has(uid)) deletes.push(d.name);
+    if (seedStudentSet.has(uid) || legacyRemovedUids.has(uid)) deletes.push(d.name);
   }
   for (const d of existingPres) {
     const uid = d.name.split('/').at(-1);
-    if (seedStudentSet.has(uid)) deletes.push(d.name);
+    if (seedStudentSet.has(uid) || legacyRemovedUids.has(uid)) deletes.push(d.name);
   }
   for (const d of existingLeaves) {
     const id = d.name.split('/').at(-1);
-    if (id.startsWith('seed-leave-')) deletes.push(d.name);
+    const uid = decode(d.fields.userId);
+    if (id.startsWith('seed-leave-') || legacyRemovedUids.has(uid)) deletes.push(d.name);
   }
   for (const d of existingLocks) {
     const uid = d.name.split('/').at(-1);
-    if (seedStudentSet.has(uid)) deletes.push(d.name);
+    if (seedStudentSet.has(uid) || legacyRemovedUids.has(uid)) deletes.push(d.name);
+  }
+  for (const d of existingAnn) {
+    const id = d.name.split('/').at(-1);
+    if (id.startsWith('seed-ann-')) deletes.push(d.name);
   }
 
   const writes = [];
@@ -260,28 +351,32 @@ async function main() {
     });
   };
 
-  // Elif Yılmaz'a oda 101 ve öğrenci no 2026001 ekle (hareketlerine hiç dokunma)
-  const elifDoc = existingUsers.find((d) => d.fields.email?.stringValue === 'ogrenci1@turgevdemo.com');
-  if (elifDoc) {
-    writes.push({
-      update: {
-        name: elifDoc.name,
-        fields: fields({ room: '101', studentNumber: '2026001', updatedAt: now }),
-      },
-      updateMask: { fieldPaths: ['room', 'studentNumber', 'updatedAt'] },
-    });
-  }
+  // Müdire yönetici kaydı (mudire@ubs.com)
+  putDoc('users', adminUid, {
+    uid: adminUid,
+    email: 'mudire@ubs.com',
+    displayName: 'Ayşe Demir',
+    tenantId: tid,
+    role: 'admin',
+    status: 'active',
+    permissions: {},
+    studentNumber: '',
+    room: '',
+    note: 'Yurt Müdiresi',
+    createdAt: at(-30, 540),
+    updatedAt: now,
+  });
 
   let generatedEvents = 0;
   let generatedDays = 0;
   let generatedLeaves = 0;
-  const stats = { inside: 0, outside: 0, unknown: 0, overdue: 0, onLeave: 0 };
+  const stats = { inside: 0, outside: 0, unknown: 0, overdue: 0, onLeave: 0, expiredLeaveOutside: 0 };
 
-  for (let idx = 0; idx < roster.length; idx++) {
-    const s = roster[idx];
+  for (let idx = 0; idx < effectiveRoster.length; idx++) {
+    const s = effectiveRoster[idx];
     putDoc('users', s.uid, {
       uid: s.uid,
-      email: `${s.uid}@turgevdemo.com`,
+      email: s.email,
       displayName: s.name,
       tenantId: tid,
       role: 'staff',
@@ -292,7 +387,7 @@ async function main() {
       note: `${s.room} no'lu oda öğrencisi`,
       createdAt: at(-25, 600),
       updatedAt: now,
-      demoSource: demoTag,
+      ...(s.uid === elifUid ? {} : { demoSource: demoTag }),
     });
 
     if (uninitializedUids.has(s.uid)) {
@@ -305,7 +400,7 @@ async function main() {
       const t = at(offset, minute);
       if (t > now) return;
       const dKey = new Date(t.getTime() + 10800000).toISOString().slice(0, 10);
-      const id = `seed-att-v2-${s.uid}-${dKey}-${String(minute).padStart(4, '0')}-${type}`;
+      const id = `seed-att-v3-${s.uid}-${dKey}-${String(minute).padStart(4, '0')}-${type}`;
       const isPermitted = opts.permitted || false;
       const localMin = minute % 1440;
       const lateMin =
@@ -351,9 +446,17 @@ async function main() {
     const hasUnavailable = idx % 17 === 7;
     const hasLateHistory = idx % 7 === 2;
     const hasEarlyExitHistory = idx % 9 === 3;
+    const expiredLeaveSpec = expiredLeaveStillOutsideSpecs[s.uid];
 
     // 20 gün önceki günden düne (-20 .. -1) hareketler
     for (let d = -20; d <= -1; d++) {
+      if (expiredLeaveSpec) {
+        if (d > expiredLeaveSpec.fromOffset) continue;
+        if (d === expiredLeaveSpec.fromOffset) {
+          pushEv(d, 519, 'out', { permitted: true }); // 08:39 izinli çıkış, sonra hiç dönmedi!
+          continue;
+        }
+      }
       // Dönüşü gecikenlerde dün (-1) çıkış yapıp geri dönmemiş bırak
       if (d === -1 && (overdueUids.has(s.uid) || activeLeaveSpecs[s.uid])) {
         pushEv(d, 495 + (idx % 7) * 8, 'out', {
@@ -382,12 +485,12 @@ async function main() {
       pushEv(d, returnMin, 'in', { verdict: vOpt });
     }
 
-    // Bugünkü hareketler (offset 0, 24 Kasım 2026)
+    // Bugünkü hareketler (offset 0)
     const isLeaveNow = Boolean(activeLeaveSpecs[s.uid]);
     const isOverdueNow = overdueUids.has(s.uid);
     const isOutsideNormalNow = outsideNormalUids.has(s.uid);
 
-    if (!isLeaveNow && !isOverdueNow) {
+    if (!isLeaveNow && !isOverdueNow && !expiredLeaveSpec) {
       const todayOutMin = 490 + ((idx * 7) % 140);
       pushEv(0, todayOutMin, 'out');
       if (!isOutsideNormalNow) {
@@ -396,7 +499,6 @@ async function main() {
           pushEv(0, 860 + (idx % 35), 'out');
         }
         const todayInMin = idx % 11 === 1 ? 1245 + (idx % 30) : 1060 + ((idx * 17) % 195);
-        // Şu ana (yaklaşık 21:55) kadar gerçekleşmişse ekle
         pushEv(0, todayInMin, 'in');
       }
     }
@@ -408,8 +510,31 @@ async function main() {
       }
     }
 
-    // Aktif izin + tarihçe izinleri
-    if (isLeaveNow) {
+    // İzni bitip hâlâ dönmemiş öğrenci (Sümeyye Şahin vakası)
+    if (expiredLeaveSpec) {
+      const fromD = at(expiredLeaveSpec.fromOffset, 450);
+      const untilD = at(expiredLeaveSpec.untilOffset, 1260);
+      const leaveId = `seed-leave-expired-${s.uid}`;
+      const leaveBody = {
+        userId: s.uid,
+        from: fromD,
+        until: untilD,
+        reason: expiredLeaveSpec.reason,
+        category: expiredLeaveSpec.cat,
+        destination: expiredLeaveSpec.dest,
+        contactName: expiredLeaveSpec.name,
+        contactRelation: expiredLeaveSpec.rel,
+        contactPhone: expiredLeaveSpec.phone,
+        revoked: false,
+        actor: actorUid,
+        createdAt: at(expiredLeaveSpec.fromOffset - 1, 700),
+        updatedAt: now,
+        demoSource: demoTag,
+      };
+      putDoc('leaves', leaveId, leaveBody);
+      generatedLeaves++;
+      stats.expiredLeaveOutside++;
+    } else if (isLeaveNow) {
       const sp = activeLeaveSpecs[s.uid];
       const fromD = at(-1, 450);
       const untilD = at(sp.daysFwd, 1260);
@@ -544,28 +669,92 @@ async function main() {
     });
   }
 
-  // Tenant counters güncelle (63 aktif öğrenci + 1 yönetici = 64 toplam kullanıcı)
-  const adminCount = existingUsers.filter((d) => decode(d.fields.role) === 'admin').length;
+  // Örnek duyurular (Genel, 1. Kat, 2. Kat ve Oda 101)
+  const sampleAnnouncements = [
+    {
+      id: 'seed-ann-general-1',
+      title: 'Kış Dönemi Giriş–Çıkış Saatleri Hatırlatması',
+      body: 'Hafta içi son yurt giriş saati 22:30 olarak uygulanmaktadır. Geç kalma veya evci izni durumlarında idareden önceden izin kaydı oluşturulması rica olunur.',
+      targetType: 'all',
+      targetValue: '',
+      priority: 'urgent',
+      createdAt: new Date(now.getTime() - 2 * 3600000),
+    },
+    {
+      id: 'seed-ann-floor-1',
+      title: '1. Kat Çamaşırhane Planlı Bakımı',
+      body: 'Yarın 10:00 – 13:00 saatleri arasında 1. kat çamaşırhanesinde rutin bakım yapılacaktır. 1. kat öğrencilerimizin programlarını buna göre düzenlemeleri rica olunur.',
+      targetType: 'floor',
+      targetValue: '1',
+      priority: 'normal',
+      createdAt: new Date(now.getTime() - 5 * 3600000),
+    },
+    {
+      id: 'seed-ann-floor-2',
+      title: '2. Kat Etüt Salonu Düzenlemesi',
+      body: '2. kat etüt salonundaki yeni çalışma masaları hizmete açılmıştır. Sessiz çalışma saatlerine özen gösterilmesini rica ederiz.',
+      targetType: 'floor',
+      targetValue: '2',
+      priority: 'normal',
+      createdAt: new Date(now.getTime() - 9 * 3600000),
+    },
+    {
+      id: 'seed-ann-room-101',
+      title: 'Oda 101 Yedek Kart Teslimi',
+      body: 'Oda 101 için hazırlanan yeni dolap anahtarı yurt danışma biriminden teslim alınabilir.',
+      targetType: 'room',
+      targetValue: '101',
+      priority: 'normal',
+      createdAt: new Date(now.getTime() - 3600000),
+    },
+  ];
+  for (const a of sampleAnnouncements) {
+    putDoc('announcements', a.id, {
+      ...a,
+      createdBy: actorUid,
+      createdByName: 'Ayşe Demir',
+      demoSource: demoTag,
+    });
+  }
+
+  // Tenant adını UBS Yurt Yönetim Sistemi yap ve sayaçları güncelle
+  const preservedOthers = existingUsers.filter((d) => {
+    const uid = d.name.split('/').at(-1);
+    const email = (decode(d.fields.email) || '').toLowerCase();
+    return (
+      !seedStudentSet.has(uid) &&
+      !legacyRemovedUids.has(uid) &&
+      uid !== adminUid &&
+      !email.endsWith('@turgevdemo.com')
+    );
+  }).length;
   writes.push({
     update: {
       name: tenantDoc.name,
       fields: fields({
+        name: 'UBS Yurt Yönetim Sistemi',
         counters: {
           ...(tenantPlain.counters || {}),
-          userCount: roster.length + 2 + adminCount,
+          userCount: effectiveRoster.length + 1 + preservedOthers,
         },
         updatedAt: now,
       }),
     },
-    updateMask: { fieldPaths: ['counters', 'updatedAt'] },
+    updateMask: { fieldPaths: ['name', 'counters', 'updatedAt'] },
   });
 
   const summary = {
     mode: apply ? 'apply' : 'dry-run',
     targetTenant: tid,
+    tenantDisplayName: 'UBS Yurt Yönetim Sistemi',
+    newAccounts: {
+      admin: { email: 'mudire@ubs.com', uid: adminUid },
+      student: { email: 'ogrenci1@ubs.com', uid: elifUid },
+    },
+    legacyRemovedCount: legacyRemovedUids.size,
     rooms: { onePerson: 4, twoPerson: 5, fourPerson: 6, sixPerson: 4, enesSpecialRoom58: 1 },
-    seededStudents: roster.length,
-    preservedRealStudents: 2,
+    seededStudents: effectiveRoster.length,
+    announcementsSeeded: sampleAnnouncements.length,
     generatedEvents,
     generatedDays,
     generatedLeaves,

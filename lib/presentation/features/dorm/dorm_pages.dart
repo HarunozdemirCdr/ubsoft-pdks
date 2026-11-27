@@ -14,6 +14,7 @@ import 'package:ubsoft_pdks/core/utils/date_x.dart';
 import 'package:ubsoft_pdks/domain/entities/app_user.dart';
 import 'package:ubsoft_pdks/domain/entities/attendance_event.dart';
 import 'package:ubsoft_pdks/domain/entities/dormitory.dart';
+import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_attention.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/widgets/dorm_ui.dart';
 import 'package:ubsoft_pdks/presentation/widgets/app_button.dart';
@@ -938,13 +939,24 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
     final eventsAsync = ref.watch(
       movementsProvider((from: from, to: to, uid: uid)),
     );
-    final Duration personOutsideTotal = uid == null
-        ? Duration.zero
-        : DormDurationCalculator.summarize(
-            eventsAsync.value ?? const <AttendanceEvent>[],
-            userId: uid,
+    final tenant = ref.watch(currentTenantProvider);
+    final leaves = ref.watch(dormLeavesProvider).value ?? const <StudentLeave>[];
+    final List<StudentLeave> selectedLeaves = uid == null
+        ? const <StudentLeave>[]
+        : leaves.where((l) => l.userId == uid).toList();
+    final StudentLeave? activePersonLeave = uid == null
+        ? null
+        : leaveAt(selectedLeaves, uid, rawNow);
+    final DormAttentionItem? personAttention =
+        (uid == null || selected == null || tenant == null)
+        ? null
+        : DormAttentionAnalyzer.evaluateStudent(
+            user: selected,
+            presence: selectedPresence ?? Presence(userId: uid),
+            userLeaves: selectedLeaves,
+            policy: tenant.settings.dormPolicy,
             now: rawNow,
-          ).outsideDuration;
+          );
 
     return AppScaffold(
       title: uid == null ? 'Hareket Geçmişi' : 'Öğrenci Geçmişi',
@@ -962,7 +974,11 @@ class _DormHistoryState extends ConsumerState<DormHistoryPage> {
                   selected?.studentNumber ?? user?.studentNumber ?? '',
               presence: selectedPresence,
               ongoing: ongoing,
-              outsideDuration: personOutsideTotal,
+              attention: personAttention,
+              activeLeave: activePersonLeave,
+              onOpenDetail: user?.role.isAdmin == true
+                  ? () => context.push(AppRoutes.userEditPath(uid))
+                  : null,
             ),
             const SizedBox(height: 14),
           ] else ...[
@@ -1112,7 +1128,9 @@ class _PersonProfileCard extends StatelessWidget {
     required this.studentNumber,
     required this.presence,
     required this.ongoing,
-    required this.outsideDuration,
+    this.attention,
+    this.activeLeave,
+    this.onOpenDetail,
   });
 
   final String name;
@@ -1120,11 +1138,35 @@ class _PersonProfileCard extends StatelessWidget {
   final String studentNumber;
   final Presence? presence;
   final Duration? ongoing;
-  final Duration outsideDuration;
+  final DormAttentionItem? attention;
+  final StudentLeave? activeLeave;
+  final VoidCallback? onOpenDetail;
 
   @override
   Widget build(BuildContext context) {
     final bool? inside = presence?.inside;
+    final Color statusColor = inside == null
+        ? AppColors.neutral
+        : inside
+        ? AppColors.entry
+        : AppColors.exit;
+    final String statusText = inside == null
+        ? 'İlk okutma yok'
+        : '${presence!.label}${ongoing == null ? '' : ' · ${DormDurationCalculator.formatDuration(ongoing!)}'}';
+
+    final StudentLeave? expiredLeave =
+        attention?.kind == DormAttentionKind.leaveExpiredStillOutside
+        ? attention!.relatedLeave
+        : null;
+    final String expiredContact = expiredLeave == null
+        ? ''
+        : [
+            if (expiredLeave.contactName.isNotEmpty) expiredLeave.contactName,
+            if (expiredLeave.contactRelation.isNotEmpty)
+              '(${expiredLeave.contactRelation})',
+            if (expiredLeave.contactPhone.isNotEmpty) expiredLeave.contactPhone,
+          ].join(' ');
+
     return AppCard(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -1174,12 +1216,13 @@ class _PersonProfileCard extends StatelessWidget {
                   ],
                 ),
               ),
-              if (inside != null)
-                StatusChip(
-                  label:
-                      '${presence!.label}${ongoing == null ? '' : ' · ${DormDurationCalculator.formatDuration(ongoing!)}'}',
-                  icon: inside ? Icons.login_rounded : Icons.logout_rounded,
-                  tone: inside ? StatusTone.success : StatusTone.danger,
+              if (onOpenDetail != null)
+                AppButton(
+                  label: 'Öğrenci Detayı',
+                  icon: Icons.badge_outlined,
+                  variant: AppButtonVariant.outline,
+                  size: AppButtonSize.small,
+                  onPressed: onOpenDetail,
                 ),
             ],
           ),
@@ -1193,17 +1236,23 @@ class _PersonProfileCard extends StatelessWidget {
                     ? 'Henüz okutma yok'
                     : AppDate.dateTime(presence!.at!),
               );
-              final outsideItem = _ProfileMetricBox(
-                icon: Icons.logout_rounded,
-                label: 'DIŞARIDA TOPLAM SÜRE',
-                value: DormDurationCalculator.formatDuration(outsideDuration),
+              final liveStatusItem = _ProfileMetricBox(
+                icon: inside == null
+                    ? Icons.help_outline_rounded
+                    : inside
+                    ? Icons.login_rounded
+                    : Icons.logout_rounded,
+                iconColor: statusColor,
+                valueColor: statusColor,
+                label: 'ANLIK DURUM',
+                value: statusText,
               );
               if (bounds.maxWidth >= 460) {
                 return Row(
                   children: [
                     Expanded(child: lastScanItem),
                     const SizedBox(width: 12),
-                    Expanded(child: outsideItem),
+                    Expanded(child: liveStatusItem),
                   ],
                 );
               }
@@ -1211,11 +1260,111 @@ class _PersonProfileCard extends StatelessWidget {
                 children: [
                   lastScanItem,
                   const SizedBox(height: 8),
-                  outsideItem,
+                  liveStatusItem,
                 ],
               );
             },
           ),
+          if (attention != null && attention!.isCritical) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.isDark
+                    ? AppColors.exit.withValues(alpha: 0.14)
+                    : AppColors.exitSoft,
+                borderRadius: AppRadius.allSm,
+                border: Border.all(
+                  color: context.isDark
+                      ? AppColors.exit.withValues(alpha: 0.45)
+                      : AppColors.exitBorder,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        size: 18,
+                        color: AppColors.exit,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          attention!.title,
+                          style: AppTypography.bodyStrong(AppColors.exit),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  if (attention!.kind ==
+                          DormAttentionKind.leaveExpiredStillOutside &&
+                      attention!.expectedReturnAt != null)
+                    Text(
+                      'İzin bitişi: ${AppDate.dateTime(attention!.expectedReturnAt!)}'
+                      '${attention!.overdueBy == null ? '' : ' · ${DormDurationCalculator.formatDuration(attention!.overdueBy!)} süredir dönüş yapmadı'}',
+                      style: AppTypography.small(context.colors.onSurface),
+                    )
+                  else if (attention!.expectedReturnAt != null)
+                    Text(
+                      'Beklenen dönüş: ${AppDate.dateTime(attention!.expectedReturnAt!)}'
+                      '${attention!.overdueBy == null ? '' : ' · ${DormDurationCalculator.formatDuration(attention!.overdueBy!)} gecikti'}',
+                      style: AppTypography.small(context.colors.onSurface),
+                    ),
+                  if (expiredContact.isNotEmpty ||
+                      (expiredLeave?.destination ?? '').isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        [
+                          if ((expiredLeave?.destination ?? '').isNotEmpty)
+                            'Gittiği yer: ${expiredLeave!.destination}',
+                          if (expiredContact.isNotEmpty)
+                            'İzin iletişimi: $expiredContact',
+                        ].join(' · '),
+                        style: AppTypography.caption(
+                          context.colors.onSurface,
+                        ).copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ] else if (activeLeave != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.isDark
+                    ? AppColors.primarySurfaceDark
+                    : AppColors.primarySurface,
+                borderRadius: AppRadius.allSm,
+                border: Border.all(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.event_available_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Aktif izin kapsamında · Beklenen dönüş: ${AppDate.dateTime(activeLeave!.until)}'
+                      '${activeLeave!.destination.isNotEmpty ? ' · ${activeLeave!.destination}' : ''}',
+                      style: AppTypography.small(context.colors.onSurface),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1247,11 +1396,15 @@ class _ProfileMetricBox extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.iconColor = AppColors.primary,
+    this.valueColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final Color iconColor;
+  final Color? valueColor;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1263,7 +1416,7 @@ class _ProfileMetricBox extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Icon(icon, size: 18, color: AppColors.primary),
+        Icon(icon, size: 18, color: iconColor),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
@@ -1280,11 +1433,12 @@ class _ProfileMetricBox extends StatelessWidget {
                 value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.bodyStrong(context.colors.onSurface)
-                    .copyWith(
-                      fontSize: 13.5,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
+                style: AppTypography.bodyStrong(
+                  valueColor ?? context.colors.onSurface,
+                ).copyWith(
+                  fontSize: 13.5,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
             ],
           ),
@@ -1386,6 +1540,7 @@ class DormGroupedMovements extends StatefulWidget {
 class _DormGroupedMovementsState extends State<DormGroupedMovements> {
   final Set<String> _students = {};
   final Set<String> _days = {};
+  final Set<String> _expandedAllDays = {};
   int _limit = 30;
   void _toggle(Set<String> target, String key) => setState(() {
     if (!target.add(key)) target.remove(key);
@@ -1420,11 +1575,14 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
             builder: (context) {
               final stu = widget.usersById[uid];
               final list = groups[uid]!;
-              final summary = DormDurationCalculator.summarize(
-                list,
-                userId: uid,
-                now: widget.now,
-              );
+              final int warningCount = list
+                  .where(
+                    (e) =>
+                        e.lateMinutes > 0 ||
+                        e.earlyExit ||
+                        e.verdict.needsAttention,
+                  )
+                  .length;
               final metaParts = <String>[
                 if ((stu?.room ?? '').isNotEmpty) 'Oda ${stu!.room}',
                 if ((stu?.studentNumber ?? '').isNotEmpty)
@@ -1478,41 +1636,12 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
                                           context.colors.onSurfaceVariant,
                                         ),
                                       ),
-                                      if (widget.showDurationChips &&
-                                          (summary.insideDuration >
-                                                  Duration.zero ||
-                                              summary.outsideDuration >
-                                                  Duration.zero ||
-                                              summary.warningCount > 0)) ...[
+                                      if (warningCount > 0) ...[
                                         const SizedBox(height: 6),
-                                        Wrap(
-                                          spacing: 6,
-                                          runSpacing: 4,
-                                          children: [
-                                            if (summary.insideDuration >
-                                                Duration.zero)
-                                              StatusChip(
-                                                label:
-                                                    'İçeride: ${DormDurationCalculator.formatDuration(summary.insideDuration)}',
-                                                tone: StatusTone.success,
-                                                compact: true,
-                                              ),
-                                            if (summary.outsideDuration >
-                                                Duration.zero)
-                                              StatusChip(
-                                                label:
-                                                    'Dışarıda: ${DormDurationCalculator.formatDuration(summary.outsideDuration)}',
-                                                tone: StatusTone.danger,
-                                                compact: true,
-                                              ),
-                                            if (summary.warningCount > 0)
-                                              StatusChip(
-                                                label:
-                                                    '${summary.warningCount} uyarı',
-                                                tone: StatusTone.warning,
-                                                compact: true,
-                                              ),
-                                          ],
+                                        StatusChip(
+                                          label: '$warningCount uyarı',
+                                          tone: StatusTone.warning,
+                                          compact: true,
                                         ),
                                       ],
                                     ],
@@ -1541,7 +1670,16 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
                       if (_students.contains(uid))
                         Padding(
                           padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                          child: Column(children: _dayRows(list)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: _dayRows(
+                              list,
+                              maxDays: _expandedAllDays.contains(uid)
+                                  ? null
+                                  : 1,
+                              studentId: uid,
+                            ),
+                          ),
                         ),
                     ],
                   ),
@@ -1558,14 +1696,24 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
     );
   }
 
-  List<Widget> _dayRows(List<AttendanceEvent> events) {
+  List<Widget> _dayRows(
+    List<AttendanceEvent> events, {
+    int? maxDays,
+    String? studentId,
+  }) {
     final groups = <String, List<AttendanceEvent>>{};
     for (final e in events) {
       groups.putIfAbsent(e.dateKey, () => []).add(e);
     }
     final dates = groups.keys.toList()..sort((a, b) => b.compareTo(a));
+    final bool clipped = maxDays != null && dates.length > maxDays;
+    final List<String> visibleDates = clipped
+        ? dates.take(maxDays).toList()
+        : dates;
+    final int remaining = dates.length - visibleDates.length;
+
     return [
-      for (final date in dates)
+      for (final date in visibleDates)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
           child: AppCard(
@@ -1590,6 +1738,15 @@ class _DormGroupedMovementsState extends State<DormGroupedMovements> {
                   ),
               ],
             ),
+          ),
+        ),
+      if (clipped && studentId != null)
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => setState(() => _expandedAllDays.add(studentId)),
+            icon: const Icon(Icons.unfold_more_rounded, size: 17),
+            label: Text('Tüm günleri göster ($remaining gün daha)'),
           ),
         ),
     ];
@@ -1732,6 +1889,10 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
     final now = ref.watch(dormNowProvider);
     final students = ref.watch(studentsProvider);
     final usersById = ref.watch(usersByIdProvider);
+    final presenceList = ref.watch(residentsProvider).value ?? const <Presence>[];
+    final Map<String, Presence> presenceByUid = {
+      for (final p in presenceList) p.userId: p,
+    };
     return AppScaffold(
       title: 'İzinler',
       maxContentWidth: AppWidths.wide,
@@ -1798,10 +1959,26 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
             value: _statusFilter,
             options: const [
               DormSegmentedOption('all', 'Tümü'),
-              DormSegmentedOption('active', 'Aktif izinler'),
-              DormSegmentedOption('planned', 'Planlananlar'),
-              DormSegmentedOption('ended', 'Sona erenler'),
-              DormSegmentedOption('revoked', 'İptal edilenler'),
+              DormSegmentedOption(
+                'active',
+                'Aktif izinler',
+                dotColor: AppColors.entry,
+              ),
+              DormSegmentedOption(
+                'planned',
+                'Planlananlar',
+                dotColor: AppColors.primary,
+              ),
+              DormSegmentedOption(
+                'ended',
+                'Sona erenler',
+                dotColor: AppColors.neutral,
+              ),
+              DormSegmentedOption(
+                'revoked',
+                'İptal edilenler',
+                dotColor: AppColors.exit,
+              ),
             ],
             onChanged: (v) => setState(() => _statusFilter = v),
           ),
@@ -1853,6 +2030,7 @@ class _LeaveState extends ConsumerState<DormLeavePage> {
                     _LeaveCard(
                       leave: l,
                       student: usersById[l.userId],
+                      presence: presenceByUid[l.userId],
                       fallbackName: l.userId == user.uid
                           ? user.displayName
                           : 'Öğrenci',
@@ -1933,10 +2111,12 @@ class _LeaveCard extends StatelessWidget {
     required this.busy,
     required this.onRevoke,
     required this.onDelete,
+    this.presence,
   });
 
   final StudentLeave leave;
   final AppUser? student;
+  final Presence? presence;
   final String fallbackName;
   final DateTime now;
   final bool canManage;
@@ -1946,20 +2126,41 @@ class _LeaveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool expiredAndOutside =
+        !leave.revoked &&
+        !leave.until.isAfter(now) &&
+        presence?.inside == false;
+
     final String statusLabel = leave.revoked
         ? 'İptal edildi'
         : leave.covers(now)
         ? 'Aktif izin'
         : now.isBefore(leave.from)
         ? 'Planlandı'
+        : expiredAndOutside
+        ? 'İzni bitti · Dönmedi'
         : 'Sona erdi';
+
     final StatusTone statusTone = leave.revoked
-        ? StatusTone.neutral
+        ? StatusTone.danger
         : leave.covers(now)
         ? StatusTone.success
         : now.isBefore(leave.from)
         ? StatusTone.info
+        : expiredAndOutside
+        ? StatusTone.danger
         : StatusTone.neutral;
+
+    final Color stripColor = leave.revoked
+        ? AppColors.exit
+        : leave.covers(now)
+        ? AppColors.entry
+        : now.isBefore(leave.from)
+        ? AppColors.primary
+        : expiredAndOutside
+        ? AppColors.exit
+        : AppColors.neutral;
+
     final String contactSummary = [
       if (leave.contactName.isNotEmpty) leave.contactName,
       if (leave.contactRelation.isNotEmpty) '(${leave.contactRelation})',
@@ -1968,213 +2169,241 @@ class _LeaveCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: LayoutBuilder(
-        builder: (context, bounds) {
-          final Widget studentCard = AppCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        child: ClipRRect(
+          borderRadius: AppRadius.allLg,
+          child: LayoutBuilder(
+            builder: (context, bounds) {
+              final Widget studentSection = Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: const BoxDecoration(
-                        color: AppColors.primarySurface,
-                        borderRadius: AppRadius.allMd,
-                      ),
-                      child: const Icon(
-                        Icons.person_outline_rounded,
-                        size: 22,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            student?.displayName ?? fallbackName,
-                            style: AppTypography.bodyStrong(
-                              context.colors.onSurface,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          if (student != null && student!.room.isNotEmpty)
-                            _IconMeta(
-                              icon: Icons.meeting_room_outlined,
-                              text: 'Oda ${student!.room}',
-                            ),
-                          if (student != null &&
-                              student!.studentNumber.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            _IconMeta(
-                              icon: Icons.badge_outlined,
-                              text: 'No ${student!.studentNumber}',
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                StatusChip(label: statusLabel, tone: statusTone, compact: true),
-              ],
-            ),
-          );
-
-          final Widget leaveDetailCard = AppCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (leave.category.isNotEmpty)
-                          StatusChip(
-                            label: leave.category,
-                            tone: StatusTone.neutral,
-                            compact: true,
+                        Container(
+                          width: 42,
+                          height: 42,
+                          decoration: const BoxDecoration(
+                            color: AppColors.primarySurface,
+                            borderRadius: AppRadius.allMd,
                           ),
-                        StatusChip(
-                          label:
-                              'Süre: ${DormDurationCalculator.formatDuration(leave.duration)}',
-                          icon: Icons.timelapse_rounded,
-                          tone: StatusTone.info,
-                          compact: true,
+                          child: const Icon(
+                            Icons.person_outline_rounded,
+                            size: 21,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                student?.displayName ?? fallbackName,
+                                style: AppTypography.bodyStrong(
+                                  context.colors.onSurface,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              if (student != null && student!.room.isNotEmpty)
+                                _IconMeta(
+                                  icon: Icons.meeting_room_outlined,
+                                  text: 'Oda ${student!.room}',
+                                ),
+                              if (student != null &&
+                                  student!.studentNumber.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                _IconMeta(
+                                  icon: Icons.badge_outlined,
+                                  text: 'No ${student!.studentNumber}',
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                    Text(
-                      '${AppDate.dateTime(leave.from)} — ${AppDate.dateTime(leave.until)}',
-                      style: AppTypography.caption(
-                        context.colors.onSurfaceVariant,
-                      ).copyWith(
-                        fontWeight: FontWeight.w600,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                    const SizedBox(height: 12),
+                    StatusChip(
+                      label: statusLabel,
+                      tone: statusTone,
+                      compact: true,
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text(
-                  leave.reason,
-                  style: AppTypography.body(context.colors.onSurface),
+              );
+
+              final Widget detailSection = Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 4,
+                          children: [
+                            if (leave.category.isNotEmpty)
+                              StatusChip(
+                                label: leave.category,
+                                tone: StatusTone.neutral,
+                                compact: true,
+                              ),
+                            StatusChip(
+                              label:
+                                  'Süre: ${DormDurationCalculator.formatDuration(leave.duration)}',
+                              icon: Icons.timelapse_rounded,
+                              tone: StatusTone.info,
+                              compact: true,
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${AppDate.dateTime(leave.from)} — ${AppDate.dateTime(leave.until)}',
+                          style:
+                              AppTypography.caption(
+                                context.colors.onSurfaceVariant,
+                              ).copyWith(
+                                fontWeight: FontWeight.w600,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      leave.reason,
+                      style: AppTypography.body(context.colors.onSurface),
+                    ),
+                    if (expiredAndOutside) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'İzin bitişinden bu yana ${DormDurationCalculator.formatDuration(now.difference(leave.until))} geçti, öğrenci hâlâ giriş yapmadı.',
+                        style: AppTypography.caption(
+                          AppColors.exit,
+                        ).copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                    if (leave.destination.isNotEmpty ||
+                        contactSummary.isNotEmpty) ...[
+                      const Divider(height: 20),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 8,
+                        children: [
+                          if (leave.destination.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.location_on_outlined,
+                                  size: 16,
+                                  color: context.colors.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'Gideceği yer: ${leave.destination}',
+                                    style: AppTypography.small(
+                                      context.colors.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          if (contactSummary.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone_outlined,
+                                  size: 16,
+                                  color: context.colors.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'Yakın / İletişim: $contactSummary',
+                                    style: AppTypography.small(
+                                      context.colors.onSurface,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ],
+                    if (canManage) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (!leave.revoked && leave.until.isAfter(now))
+                            TextButton(
+                              onPressed: busy ? null : onRevoke,
+                              child: const Text('İzni iptal et'),
+                            ),
+                          if (leave.revoked || !leave.until.isAfter(now))
+                            TextButton.icon(
+                              onPressed: busy ? null : onDelete,
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.danger,
+                              ),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 18,
+                              ),
+                              label: const Text('Sil'),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
-                if (leave.destination.isNotEmpty ||
-                    contactSummary.isNotEmpty) ...[
-                  const Divider(height: 20),
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 8,
-                    children: [
-                      if (leave.destination.isNotEmpty)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.location_on_outlined,
-                              size: 16,
-                              color: context.colors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Gideceği yer: ${leave.destination}',
-                                style: AppTypography.small(
-                                  context.colors.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (contactSummary.isNotEmpty)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.phone_outlined,
-                              size: 16,
-                              color: context.colors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'Yakın / İletişim: $contactSummary',
-                                style: AppTypography.small(
-                                  context.colors.onSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ],
-                if (canManage) ...[
-                  const SizedBox(height: 6),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      if (!leave.revoked && leave.until.isAfter(now))
-                        TextButton(
-                          onPressed: busy ? null : onRevoke,
-                          child: const Text('İzni iptal et'),
-                        ),
-                      if (leave.revoked || !leave.until.isAfter(now))
-                        TextButton.icon(
-                          onPressed: busy ? null : onDelete,
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.danger,
-                          ),
-                          icon: const Icon(
-                            Icons.delete_outline_rounded,
-                            size: 18,
-                          ),
-                          label: const Text('Sil'),
-                        ),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          );
+              );
 
-          if (bounds.maxWidth >= 600) {
-            return IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(width: 230, child: studentCard),
-                  const SizedBox(width: 12),
-                  Expanded(child: leaveDetailCard),
-                ],
-              ),
-            );
-          }
+              final Widget content = bounds.maxWidth >= 605
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        SizedBox(width: 224, child: studentSection),
+                        const VerticalDivider(width: 1, thickness: 1),
+                        Expanded(child: detailSection),
+                      ],
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        studentSection,
+                        const Divider(height: 1, thickness: 1),
+                        detailSection,
+                      ],
+                    );
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              studentCard,
-              const SizedBox(height: 8),
-              leaveDetailCard,
-            ],
-          );
-        },
+              return IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(width: 5, color: stripColor),
+                    Expanded(child: content),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }
@@ -2210,11 +2439,13 @@ class _LeaveDialogState extends State<_LeaveDialog> {
   ];
 
   final _form = GlobalKey<FormState>();
+  final _studentSearch = TextEditingController();
   final _reason = TextEditingController();
   final _destination = TextEditingController();
   final _contactName = TextEditingController();
   final _contactPhone = TextEditingController();
   String? _uid;
+  String? _studentError;
   String _category = 'Aile ziyareti';
   String _relation = 'Anne';
   DateTime _from = DateTime.now();
@@ -2222,6 +2453,7 @@ class _LeaveDialogState extends State<_LeaveDialog> {
 
   @override
   void dispose() {
+    _studentSearch.dispose();
     _reason.dispose();
     _destination.dispose();
     _contactName.dispose();
@@ -2267,6 +2499,20 @@ class _LeaveDialogState extends State<_LeaveDialog> {
     final Duration totalDuration = _until.isAfter(_from)
         ? _until.difference(_from)
         : Duration.zero;
+    final String sq = dormSearchKey(_studentSearch.text);
+    final List<AppUser> matchedStudents = widget.students.where((u) {
+      if (sq.isEmpty) return true;
+      return dormSearchKey(
+        '${u.displayName} ${u.room} ${u.studentNumber}',
+      ).contains(sq);
+    }).toList();
+    final AppUser? selectedStudent = _uid == null
+        ? null
+        : widget.students.cast<AppUser?>().firstWhere(
+            (u) => u?.uid == _uid,
+            orElse: () => null,
+          );
+
     return AlertDialog(
       title: const Text('Öğrenci izni'),
       content: SizedBox(
@@ -2278,24 +2524,137 @@ class _LeaveDialogState extends State<_LeaveDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButtonFormField<String>(
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Öğrenci'),
-                  items: [
-                    for (final u in widget.students)
-                      DropdownMenuItem(
-                        value: u.uid,
-                        child: Text(
-                          u.room.isEmpty
-                              ? u.displayName
-                              : '${u.displayName} (Oda ${u.room})',
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                  ],
-                  onChanged: (v) => _uid = v,
-                  validator: (v) => v == null ? 'Öğrenci seçin.' : null,
+                TextField(
+                  key: const ValueKey('leave-dialog-student-search'),
+                  controller: _studentSearch,
+                  onChanged: (_) => setState(() {
+                    if (_uid != null) _uid = null;
+                    _studentError = null;
+                  }),
+                  decoration: InputDecoration(
+                    labelText: 'Öğrenci adı, oda no veya öğrenci no yazın',
+                    hintText: 'Örn: Elif Yılmaz veya 201',
+                    prefixIcon: const Icon(Icons.person_search_rounded),
+                    errorText: _studentError,
+                    suffixIcon: _studentSearch.text.isEmpty && _uid == null
+                        ? null
+                        : IconButton(
+                            tooltip: 'Temizle',
+                            onPressed: () {
+                              _studentSearch.clear();
+                              setState(() {
+                                _uid = null;
+                                _studentError = null;
+                              });
+                            },
+                            icon: const Icon(Icons.close_rounded),
+                          ),
+                  ),
                 ),
+                const SizedBox(height: 6),
+                if (selectedStudent != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.primarySurface,
+                      borderRadius: AppRadius.allSm,
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: AppColors.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            [
+                              selectedStudent.displayName,
+                              if (selectedStudent.room.isNotEmpty)
+                                'Oda ${selectedStudent.room}',
+                              if (selectedStudent.studentNumber.isNotEmpty)
+                                'No ${selectedStudent.studentNumber}',
+                            ].join(' · '),
+                            style: AppTypography.small(
+                              AppColors.primary,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 164),
+                    decoration: BoxDecoration(
+                      color: context.colors.surfaceContainerLowest,
+                      borderRadius: AppRadius.allSm,
+                      border: Border.all(color: context.colors.outline),
+                    ),
+                    child: matchedStudents.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(
+                              'Eşleşen öğrenci bulunamadı.',
+                              style: AppTypography.small(
+                                context.colors.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: matchedStudents.length,
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final u = matchedStudents[index];
+                              return ListTile(
+                                dense: true,
+                                visualDensity: VisualDensity.compact,
+                                leading: const Icon(
+                                  Icons.person_outline_rounded,
+                                  size: 18,
+                                ),
+                                title: Text(
+                                  u.displayName,
+                                  style: AppTypography.small(
+                                    context.colors.onSurface,
+                                  ).copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                subtitle:
+                                    u.room.isEmpty && u.studentNumber.isEmpty
+                                    ? null
+                                    : Text(
+                                        [
+                                          if (u.room.isNotEmpty)
+                                            'Oda ${u.room}',
+                                          if (u.studentNumber.isNotEmpty)
+                                            'No ${u.studentNumber}',
+                                        ].join(' · '),
+                                        style: AppTypography.caption(
+                                          context.colors.onSurfaceVariant,
+                                        ),
+                                      ),
+                                onTap: () {
+                                  setState(() {
+                                    _uid = u.uid;
+                                    _studentError = null;
+                                    _studentSearch.text = u.room.isEmpty
+                                        ? u.displayName
+                                        : '${u.displayName} (Oda ${u.room})';
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                  ),
                 const SizedBox(height: 12),
                 Text(
                   'İzin nedeni',
@@ -2430,6 +2789,10 @@ class _LeaveDialogState extends State<_LeaveDialog> {
         ),
         FilledButton(
           onPressed: () {
+            if (_uid == null) {
+              setState(() => _studentError = 'Listeden bir öğrenci seçin.');
+              return;
+            }
             if (!_form.currentState!.validate()) return;
             if (!_until.isAfter(_from)) {
               Toast.error('Dönüş zamanı başlangıçtan sonra olmalı.');

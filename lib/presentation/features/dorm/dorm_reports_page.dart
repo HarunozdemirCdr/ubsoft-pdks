@@ -48,7 +48,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
   String _focus = 'all';
   String _timeWindow = 'all';
   String _sortBy = 'name';
-  String _viewTab = 'students'; // students | analytics | rooms | raw
+  String _viewTab = 'students'; // students | analytics | raw
   bool _exporting = false;
   bool _loadingAll = false;
   final Map<String, String> _knownNames = {};
@@ -193,8 +193,24 @@ class _DormReportState extends ConsumerState<DormReportPage> {
     _ensureLoaded(tid, from, to);
 
     final users = ref.watch(usersProvider).value ?? <AppUser>[];
+    final activeStudents = ref.watch(studentsProvider);
+    final residents = ref.watch(residentsProvider).value ?? const <Presence>[];
+    final attentionCount = ref.watch(dormAttentionCountProvider);
     final usersById = ref.watch(usersByIdProvider);
     final leaves = ref.watch(dormLeavesProvider).value ?? const <StudentLeave>[];
+    final Map<String, Presence> presenceByUid = {
+      for (final p in residents) p.userId: p,
+    };
+    int insideNowCount = 0;
+    int outsideNowCount = 0;
+    for (final s in activeStudents) {
+      final p = presenceByUid[s.uid];
+      if (p?.inside == true) {
+        insideNowCount++;
+      } else if (p?.inside == false) {
+        outsideNowCount++;
+      }
+    }
     final names = {
       ..._knownNames,
       for (final u in users.where((u) => u.role.isStaff)) u.uid: u.displayName,
@@ -236,7 +252,7 @@ class _DormReportState extends ConsumerState<DormReportPage> {
             eyebrow: 'YÖNETİM VE DENETİM',
             title: 'Raporlama Merkezi',
             description:
-                'Tarih, oda, öğrenci, saat aralığı ve uyarı türüne göre verileri süzün; süre analizini inceleyin ve PDF veya Excel (CSV) çıktısı alın.',
+                'Tarih, oda, öğrenci, saat aralığı ve uyarı türüne göre verileri süzün; yoğunluk analizini inceleyin ve PDF veya Excel (CSV) çıktısı alın.',
           ),
           const SizedBox(height: 14),
           DormSegmentedBar<String>(
@@ -430,16 +446,6 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                           'late',
                           'En çok gecikme',
                           Icons.warning_amber_rounded,
-                        ),
-                        DormOption(
-                          'inside',
-                          'En uzun içeride',
-                          Icons.login_rounded,
-                        ),
-                        DormOption(
-                          'outside',
-                          'En uzun dışarıda',
-                          Icons.logout_rounded,
                         ),
                         DormOption(
                           'room',
@@ -667,11 +673,6 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                           icon: Icons.analytics_outlined,
                         ),
                         DormSegmentedOption(
-                          'rooms',
-                          'Oda & Gün Kırılımı',
-                          icon: Icons.meeting_room_outlined,
-                        ),
-                        DormSegmentedOption(
                           'raw',
                           'Ham Kayıt Tablosu',
                           icon: Icons.list_alt_rounded,
@@ -683,18 +684,10 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                     if (_viewTab == 'analytics')
                       _AnalyticsDashboardView(
                         analytics: analytics,
-                        onSelectRoom: (room) => setState(() {
-                          _roomFilter = room;
-                          _viewTab = 'students';
-                        }),
-                      )
-                    else if (_viewTab == 'rooms')
-                      _RoomAndDayMatrixView(
-                        analytics: analytics,
-                        onFilterRoom: (room) => setState(() {
-                          _roomFilter = room;
-                          _viewTab = 'students';
-                        }),
+                        insideNowCount: insideNowCount,
+                        outsideNowCount: outsideNowCount,
+                        totalActiveStudents: activeStudents.length,
+                        attentionCount: attentionCount,
                       )
                     else if (_viewTab == 'raw')
                       _RawEventTableView(
@@ -713,7 +706,6 @@ class _DormReportState extends ConsumerState<DormReportPage> {
                         usersById: usersById,
                         orderedUserIds: analytics.orderedUserIds,
                         now: rawNow,
-                        showDurationChips: true,
                       ),
                     ],
                     if (_hasMore) ...[
@@ -870,50 +862,10 @@ class _StudentRowData {
   final StudentMovementSummary summary;
 }
 
-class _RoomRowData {
-  const _RoomRowData({
-    required this.room,
-    required this.studentCount,
-    required this.entryCount,
-    required this.exitCount,
-    required this.lateCount,
-    required this.insideDuration,
-    required this.outsideDuration,
-  });
-
-  final String room;
-  final int studentCount;
-  final int entryCount;
-  final int exitCount;
-  final int lateCount;
-  final Duration insideDuration;
-  final Duration outsideDuration;
-}
-
-class _DayRowData {
-  const _DayRowData({
-    required this.dateKey,
-    required this.studentCount,
-    required this.entryCount,
-    required this.exitCount,
-    required this.lateCount,
-    required this.locationWarnings,
-  });
-
-  final String dateKey;
-  final int studentCount;
-  final int entryCount;
-  final int exitCount;
-  final int lateCount;
-  final int locationWarnings;
-}
-
 class _ReportAnalytics {
   const _ReportAnalytics({
     required this.studentSummaries,
     required this.orderedUserIds,
-    required this.roomRows,
-    required this.dayRows,
     required this.checkpointCounts,
     required this.hourlyEntries,
     required this.hourlyExits,
@@ -923,14 +875,10 @@ class _ReportAnalytics {
     required this.totalLate,
     required this.totalLateMinutes,
     required this.totalLocationWarnings,
-    required this.totalInside,
-    required this.totalOutside,
   });
 
   final List<_StudentRowData> studentSummaries;
   final List<String> orderedUserIds;
-  final List<_RoomRowData> roomRows;
-  final List<_DayRowData> dayRows;
   final List<MapEntry<String, int>> checkpointCounts;
   final List<int> hourlyEntries;
   final List<int> hourlyExits;
@@ -940,8 +888,6 @@ class _ReportAnalytics {
   final int totalLate;
   final int totalLateMinutes;
   final int totalLocationWarnings;
-  final Duration totalInside;
-  final Duration totalOutside;
 
   static _ReportAnalytics compute({
     required List<AttendanceEvent> events,
@@ -954,7 +900,6 @@ class _ReportAnalytics {
   }) {
     final byUser = <String, List<AttendanceEvent>>{};
     final cpMap = <String, int>{};
-    final dayMap = <String, List<AttendanceEvent>>{};
     final hEntries = List<int>.filled(24, 0);
     final hExits = List<int>.filled(24, 0);
 
@@ -967,7 +912,6 @@ class _ReportAnalytics {
     for (final e in events) {
       byUser.putIfAbsent(e.userId, () => []).add(e);
       cpMap[e.checkpointName] = (cpMap[e.checkpointName] ?? 0) + 1;
-      dayMap.putIfAbsent(e.dateKey, () => []).add(e);
       final h = DormClock.local(e.at).hour;
       if (e.type.isEntry) {
         entries++;
@@ -983,8 +927,6 @@ class _ReportAnalytics {
       if (e.verdict.needsAttention) locWarn++;
     }
 
-    Duration sumInside = Duration.zero;
-    Duration sumOutside = Duration.zero;
     final rows = <_StudentRowData>[];
 
     for (final entry in byUser.entries) {
@@ -996,8 +938,6 @@ class _ReportAnalytics {
         userId: uid,
         now: now,
       );
-      sumInside += summary.insideDuration;
-      sumOutside += summary.outsideDuration;
       rows.add(
         _StudentRowData(
           userName: list.first.userName,
@@ -1021,58 +961,12 @@ class _ReportAnalytics {
       final cmp = switch (sortBy) {
         'events' => b.summary.totalEvents.compareTo(a.summary.totalEvents),
         'late' => b.summary.lateMinutes.compareTo(a.summary.lateMinutes),
-        'inside' => b.summary.insideDuration.compareTo(
-          a.summary.insideDuration,
-        ),
-        'outside' => b.summary.outsideDuration.compareTo(
-          a.summary.outsideDuration,
-        ),
         'room' => compareRooms(a.room, b.room),
         _ => 0,
       };
       if (cmp != 0) return cmp;
       return dormSearchKey(a.userName).compareTo(dormSearchKey(b.userName));
     });
-
-    final roomAgg = <String, List<_StudentRowData>>{};
-    for (final r in rows) {
-      roomAgg.putIfAbsent(r.room, () => []).add(r);
-    }
-    final roomRows = roomAgg.entries.map((entry) {
-      Duration rIn = Duration.zero;
-      Duration rOut = Duration.zero;
-      int rEnt = 0;
-      int rEx = 0;
-      int rLate = 0;
-      for (final item in entry.value) {
-        rIn += item.summary.insideDuration;
-        rOut += item.summary.outsideDuration;
-        rEnt += item.summary.entryCount;
-        rEx += item.summary.exitCount;
-        rLate += item.summary.lateCount;
-      }
-      return _RoomRowData(
-        room: entry.key,
-        studentCount: entry.value.length,
-        entryCount: rEnt,
-        exitCount: rEx,
-        lateCount: rLate,
-        insideDuration: rIn,
-        outsideDuration: rOut,
-      );
-    }).toList()..sort((a, b) => compareRooms(a.room, b.room));
-
-    final dayRows = dayMap.entries.map((entry) {
-      final list = entry.value;
-      return _DayRowData(
-        dateKey: entry.key,
-        studentCount: list.map((e) => e.userId).toSet().length,
-        entryCount: list.where((e) => e.type.isEntry).length,
-        exitCount: list.where((e) => e.type.isExit).length,
-        lateCount: list.where((e) => e.lateMinutes > 0).length,
-        locationWarnings: list.where((e) => e.verdict.needsAttention).length,
-      );
-    }).toList()..sort((a, b) => b.dateKey.compareTo(a.dateKey));
 
     final cpList = cpMap.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -1091,8 +985,6 @@ class _ReportAnalytics {
     return _ReportAnalytics(
       studentSummaries: rows,
       orderedUserIds: rows.map((r) => r.summary.userId).toList(),
-      roomRows: roomRows,
-      dayRows: dayRows,
       checkpointCounts: cpList,
       hourlyEntries: hEntries,
       hourlyExits: hExits,
@@ -1102,8 +994,6 @@ class _ReportAnalytics {
       totalLate: late,
       totalLateMinutes: lateMin,
       totalLocationWarnings: locWarn,
-      totalInside: sumInside,
-      totalOutside: sumOutside,
     );
   }
 }
@@ -1111,11 +1001,17 @@ class _ReportAnalytics {
 class _AnalyticsDashboardView extends StatelessWidget {
   const _AnalyticsDashboardView({
     required this.analytics,
-    required this.onSelectRoom,
+    required this.insideNowCount,
+    required this.outsideNowCount,
+    required this.totalActiveStudents,
+    required this.attentionCount,
   });
 
   final _ReportAnalytics analytics;
-  final ValueChanged<String> onSelectRoom;
+  final int insideNowCount;
+  final int outsideNowCount;
+  final int totalActiveStudents;
+  final int attentionCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1157,15 +1053,17 @@ class _AnalyticsDashboardView extends StatelessWidget {
                 color: AppColors.primary,
               ),
               _AnalyticsKpi(
-                label: 'İÇERİDE SÜRE',
-                value: DormDurationCalculator.formatDuration(analytics.totalInside),
-                sub: '${analytics.studentSummaries.length} öğrenci toplamı',
+                label: 'ANLIK İÇERİDE',
+                value: '$insideNowCount öğrenci',
+                sub: 'Toplam $totalActiveStudents aktif öğrenci içinde',
                 color: AppColors.entry,
               ),
               _AnalyticsKpi(
-                label: 'DIŞARIDA SÜRE',
-                value: DormDurationCalculator.formatDuration(analytics.totalOutside),
-                sub: 'Ölçülen çıkış aralıkları',
+                label: 'ANLIK DIŞARIDA',
+                value: '$outsideNowCount öğrenci',
+                sub: attentionCount > 0
+                    ? '$attentionCount dikkat gerektiren durum'
+                    : 'Şu an yurt dışında olanlar',
                 color: AppColors.exit,
               ),
               _AnalyticsKpi(
@@ -1447,241 +1345,6 @@ class _AnalyticsKpi extends StatelessWidget {
           style: AppTypography.caption(context.colors.onSurfaceVariant),
         ),
       ],
-    ),
-  );
-}
-
-class _RoomAndDayMatrixView extends StatelessWidget {
-  const _RoomAndDayMatrixView({
-    required this.analytics,
-    required this.onFilterRoom,
-  });
-
-  final _ReportAnalytics analytics;
-  final ValueChanged<String> onFilterRoom;
-
-  @override
-  Widget build(BuildContext context) {
-    if (analytics.roomRows.isEmpty && analytics.dayRows.isEmpty) {
-      return const DormEmpty(
-        title: 'Bu aralıkta hareket yok',
-        message: 'Farklı bir tarih aralığı veya filtre seçin.',
-      );
-    }
-
-    final Color headerBg = context.isDark
-        ? AppColors.surfaceAltDark
-        : AppColors.gray50;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (analytics.roomRows.isNotEmpty) ...[
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: headerBg,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(AppRadius.lg),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'ODA BAZLI HAREKET ÖZETİ',
-                          style: AppTypography.eyebrow(
-                            context.colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${analytics.roomRows.length} oda · filtre için satıra dokunun',
-                        style: AppTypography.caption(
-                          context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                for (int i = 0; i < analytics.roomRows.length; i++) ...[
-                  _RoomMatrixRow(
-                    row: analytics.roomRows[i],
-                    onTap: analytics.roomRows[i].room.isEmpty
-                        ? null
-                        : () => onFilterRoom(analytics.roomRows[i].room),
-                  ),
-                  if (i < analytics.roomRows.length - 1) const Divider(height: 1),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-        ],
-        if (analytics.dayRows.isNotEmpty)
-          AppCard(
-            padding: EdgeInsets.zero,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: headerBg,
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(AppRadius.lg),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'GÜN BAZLI HAREKET DÖKÜMÜ',
-                          style: AppTypography.eyebrow(
-                            context.colors.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      Text(
-                        '${analytics.dayRows.length} gün',
-                        style: AppTypography.caption(
-                          context.colors.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                for (int i = 0; i < analytics.dayRows.length; i++) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 11,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                dormDisplayDate(analytics.dayRows[i].dateKey),
-                                style: AppTypography.bodyStrong(
-                                  context.colors.onSurface,
-                                ),
-                              ),
-                              Text(
-                                '${analytics.dayRows[i].studentCount} öğrenci · ${analytics.dayRows[i].entryCount} giriş · ${analytics.dayRows[i].exitCount} çıkış',
-                                style: AppTypography.caption(
-                                  context.colors.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (analytics.dayRows[i].lateCount > 0)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 6),
-                            child: StatusChip(
-                              label: '${analytics.dayRows[i].lateCount} geç',
-                              tone: StatusTone.warning,
-                              compact: true,
-                            ),
-                          ),
-                        if (analytics.dayRows[i].locationWarnings > 0)
-                          StatusChip(
-                            label: '${analytics.dayRows[i].locationWarnings} konum',
-                            tone: StatusTone.warning,
-                            compact: true,
-                          ),
-                      ],
-                    ),
-                  ),
-                  if (i < analytics.dayRows.length - 1) const Divider(height: 1),
-                ],
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _RoomMatrixRow extends StatelessWidget {
-  const _RoomMatrixRow({required this.row, this.onTap});
-
-  final _RoomRowData row;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 6,
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                row.room.isEmpty ? 'Oda atanmamış' : 'Oda ${row.room}',
-                style: AppTypography.bodyStrong(context.colors.onSurface),
-              ),
-              Text(
-                '${row.studentCount} öğrenci · ${row.entryCount} giriş · ${row.exitCount} çıkış',
-                style: AppTypography.caption(context.colors.onSurfaceVariant),
-              ),
-            ],
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              StatusChip(
-                label:
-                    'İçeride: ${DormDurationCalculator.formatDuration(row.insideDuration)}',
-                tone: StatusTone.success,
-                compact: true,
-              ),
-              StatusChip(
-                label:
-                    'Dışarıda: ${DormDurationCalculator.formatDuration(row.outsideDuration)}',
-                tone: StatusTone.danger,
-                compact: true,
-              ),
-              if (row.lateCount > 0)
-                StatusChip(
-                  label: '${row.lateCount} gecikme',
-                  tone: StatusTone.warning,
-                  compact: true,
-                ),
-              if (onTap != null)
-                Icon(
-                  Icons.chevron_right_rounded,
-                  size: 16,
-                  color: context.colors.onSurfaceVariant,
-                ),
-            ],
-          ),
-        ],
-      ),
     ),
   );
 }

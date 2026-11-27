@@ -445,7 +445,8 @@ class _ExistingUserActions extends ConsumerWidget {
               contentPadding: EdgeInsets.zero,
               title: const Text('Hesap etkin'),
               subtitle: const Text(
-                'Kapatıldığında giriş yapamaz; kayıtları korunur.',
+                'Kapatıldığında öğrenci sisteme erişemez (oturumu kapatılır); '
+                'dilediğinizde yeniden etkinleştirebilirsiniz.',
               ),
               onChanged: (bool value) async {
                 final Result<void> result = await controller.setActive(
@@ -455,8 +456,8 @@ class _ExistingUserActions extends ConsumerWidget {
                 Toast.result(
                   result,
                   successMessage: value
-                      ? 'Hesap etkinleştirildi.'
-                      : 'Hesap devre dışı bırakıldı.',
+                      ? 'Hesap yeniden etkinleştirildi.'
+                      : 'Hesap pasife alındı ve erişimi engellendi.',
                 );
               },
             ),
@@ -468,11 +469,12 @@ class _ExistingUserActions extends ConsumerWidget {
                 color: context.colors.error,
               ),
               title: Text(
-                'Öğrenciyi sil',
+                'Öğrenciyi kalıcı olarak sil',
                 style: AppTypography.bodyStrong(context.colors.error),
               ),
               subtitle: const Text(
-                'Listeden kaldırılır; geçmiş devam kayıtları durur.',
+                'Giriş hesabı (Auth), profil, izin ve tüm hareket kayıtları '
+                'veritabanından kalıcı olarak silinir.',
               ),
               contentPadding: EdgeInsets.zero,
               onTap: () => _confirmDelete(context, controller),
@@ -488,11 +490,13 @@ class _ExistingUserActions extends ConsumerWidget {
   ) async {
     final bool ok = await ConfirmDialog.show(
       context,
-      title: 'Öğrenci silinsin mi?',
+      title: 'Öğrenci kalıcı olarak silinsin mi?',
       message:
-          '${user.displayName} listeden kaldırılacak ve giriş yapamayacak. '
-          'Geçmiş devam kayıtları raporlarda görünmeye devam eder.',
-      confirmLabel: 'Sil',
+          '${user.displayName} giriş hesabı (Authentication) ve veritabanındaki '
+          'tüm izin/hareket kayıtlarıyla birlikte kalıcı olarak silinecek. '
+          'Yalnızca erişimini geçici olarak durdurmak istiyorsanız "Hesap etkin" '
+          'anahtarını kapatabilirsiniz.',
+      confirmLabel: 'Kalıcı olarak sil',
       isDestructive: true,
     );
     if (!ok || !context.mounted) return;
@@ -500,7 +504,7 @@ class _ExistingUserActions extends ConsumerWidget {
     final Result<void> result = await controller.deleteUser(user);
     if (!context.mounted) return;
 
-    Toast.result(result, successMessage: 'Öğrenci silindi.');
+    Toast.result(result, successMessage: 'Öğrenci kalıcı olarak silindi.');
     if (result.isOk) context.go(AppRoutes.users);
   }
 }

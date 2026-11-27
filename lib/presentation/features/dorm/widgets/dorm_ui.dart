@@ -802,10 +802,6 @@ class DormDaySummary extends StatelessWidget {
     final alert = events.any(
       (e) => e.lateMinutes > 0 || e.earlyExit || e.earlyEntry,
     );
-    final summary = DormDurationCalculator.summarize(sorted);
-    final hasDurations =
-        summary.insideDuration > Duration.zero ||
-        summary.outsideDuration > Duration.zero;
     return Semantics(
       button: true,
       expanded: expanded,
@@ -880,29 +876,6 @@ class DormDaySummary extends StatelessWidget {
                   ),
                 ],
               ),
-              if (hasDurations) ...[
-                const SizedBox(height: 7),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 4,
-                  children: [
-                    if (summary.insideDuration > Duration.zero)
-                      Text(
-                        'İçeride: ${DormDurationCalculator.formatDuration(summary.insideDuration)}',
-                        style: AppTypography.caption(
-                          AppColors.entry,
-                        ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                    if (summary.outsideDuration > Duration.zero)
-                      Text(
-                        'Dışarıda: ${DormDurationCalculator.formatDuration(summary.outsideDuration)}',
-                        style: AppTypography.caption(
-                          AppColors.exit,
-                        ).copyWith(fontSize: 11, fontWeight: FontWeight.w600),
-                      ),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -1088,11 +1061,12 @@ class _StudentDialogState extends State<_StudentDialog> {
 }
 
 class DormSegmentedOption<T> {
-  const DormSegmentedOption(this.value, this.label, {this.icon});
+  const DormSegmentedOption(this.value, this.label, {this.icon, this.dotColor});
 
   final T value;
   final String label;
   final IconData? icon;
+  final Color? dotColor;
 }
 
 /// Kurumsal segmente sekme / filtre çubuğu.
@@ -1220,11 +1194,22 @@ class _SegmentedItem<T> extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              if (option.dotColor != null) ...[
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: option.dotColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
               if (option.icon != null) ...[
                 Icon(
                   option.icon,
                   size: 15,
-                  color: selected ? activeFg : inactiveFg,
+                  color: option.dotColor ?? (selected ? activeFg : inactiveFg),
                 ),
                 const SizedBox(width: 5),
               ],

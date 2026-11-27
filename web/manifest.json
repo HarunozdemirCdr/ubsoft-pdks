@@ -1,11 +1,11 @@
 {
-    "name": "UBSoft Yurt Kontrol",
-    "short_name": "Yurt Kontrol",
+    "name": "UBS Yurt Yönetim Sistemi",
+    "short_name": "UBS Yurt",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FAFAF9",
     "theme_color": "#1E3A8A",
-    "description": "UBSoft Yurt Kontrol - QR kodlu öğrenci devam kontrol sistemi",
+    "description": "UBS Yurt Yönetim Sistemi - Kurumsal öğrenci yurt takip ve turnike yönetim sistemi",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
