@@ -511,21 +511,256 @@ class _DormDashboardState extends ConsumerState<DormDashboardPage> {
 
   Future<void> _explain() => showDialog<void>(
     context: context,
-    builder: (c) => AlertDialog(
-      title: const Text('Durumları doğru okuyun'),
-      content: const SingleChildScrollView(
-        child: Text(
-          'İçeride: Son geçerli kaydı giriş olan öğrenci.\n\nDışarıda: Son geçerli kaydı çıkış olan öğrenci. İzinli ve dönüşü geciken öğrenciler de bu sayıya dahildir.\n\nDönüşü geciken: Şu an hâlâ dışarıda olan, geçerli izni bulunmayan ve beklenen dönüş saati geçmiş öğrenci.\n\nİzinli dışarıda: Dışarıda olup aktif bir yurt izni kapsamında olan öğrenci.\n\nSaat uyarısı: Son okutmasında geç giriş, erken çıkış veya erken giriş uyarısı bulunan öğrenci (içeride olsa bile son girişi geç saatte yapılmışsa burada görünür).\n\nBaşlangıç kaydı yok: Henüz hareket veya doğrulanmış başlangıç durumu bulunmuyor. Öğrenci içeride ya da dışarıda varsayılmaz.\n\nDurumlar kayıtlı QR hareketlerine dayanır; okutulmamış bir fiziksel geçişi sistem kendiliğinden bilemez.',
+    builder: (BuildContext c) => const _StatusGuideDialog(),
+  );
+}
+
+class _StatusGuideDialog extends StatelessWidget {
+  const _StatusGuideDialog();
+
+  static const List<({
+    IconData icon,
+    Color color,
+    Color? surface,
+    String title,
+    String description,
+  })> _items = [
+    (
+      icon: Icons.login_rounded,
+      color: AppColors.entry,
+      surface: AppColors.entrySurface,
+      title: 'İçeride',
+      description: 'Son geçerli QR okutması giriş olan aktif öğrenci.',
+    ),
+    (
+      icon: Icons.logout_rounded,
+      color: AppColors.exit,
+      surface: AppColors.exitSurface,
+      title: 'Dışarıda',
+      description:
+          'Son geçerli QR okutması çıkış olan öğrenci. İzinli ve dönüşü geciken öğrenciler de bu sayıya dahildir.',
+    ),
+    (
+      icon: Icons.schedule_rounded,
+      color: AppColors.warning,
+      surface: AppColors.warningSurface,
+      title: 'Dönüşü geciken',
+      description:
+          'Aktif izni bulunmadan beklenen dönüş saatini aşan ve hâlâ dışarıda görünen öğrenci.',
+    ),
+    (
+      icon: Icons.event_available_outlined,
+      color: AppColors.primary,
+      surface: AppColors.primarySurface,
+      title: 'İzinli dışarıda',
+      description:
+          'Yurt dışında olup geçerli bir evci, aile veya mazeret izni kapsamında bulunan öğrenci.',
+    ),
+    (
+      icon: Icons.error_outline_rounded,
+      color: AppColors.warning,
+      surface: AppColors.warningSurface,
+      title: 'Saat uyarısı',
+      description:
+          'Son okutmasında geç giriş, erken çıkış veya erken giriş uyarısı bulunan öğrenci (içeride olsa bile son girişi geç saatte yapılmışsa burada görünür).',
+    ),
+    (
+      icon: Icons.help_outline_rounded,
+      color: AppColors.neutral,
+      surface: null,
+      title: 'Başlangıç kaydı yok',
+      description:
+          'Henüz ilk QR okutması veya yönetici doğrulaması yapılmamış öğrenci. İçeride ya da dışarıda varsayılmaz.',
+    ),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final bool dark = context.isDark;
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      backgroundColor: context.colors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.allLg),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 540, maxHeight: 680),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Üst derin lacivert kurumsal başlık bandı
+            Container(
+              color: AppColors.navy,
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.12),
+                      borderRadius: AppRadius.allSm,
+                      border: Border.all(
+                        color: AppColors.white.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.menu_book_outlined,
+                      size: 20,
+                      color: AppColors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'YURT TAKİP KILAVUZU',
+                          style: AppTypography.eyebrow(
+                            AppColors.white.withValues(alpha: 0.72),
+                          ).copyWith(fontSize: 10),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Durumları Doğru Okuyun',
+                          style: AppTypography.h3(AppColors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Kapat',
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: AppColors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Durum satırları
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? AppColors.surfaceAltDark
+                            : AppColors.surface,
+                        borderRadius: AppRadius.allMd,
+                        border: Border.all(color: context.colors.outline),
+                      ),
+                      child: Column(
+                        children: [
+                          for (int i = 0; i < _items.length; i++) ...[
+                            if (i > 0) const Divider(height: 1),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 11,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  DormCircleBadge(
+                                    icon: _items[i].icon,
+                                    color: _items[i].color,
+                                    surface: _items[i].surface,
+                                    size: 34,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _items[i].title,
+                                          style: AppTypography.bodyStrong(
+                                            context.colors.onSurface,
+                                          ).copyWith(fontSize: 13.5),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          _items[i].description,
+                                          style: AppTypography.caption(
+                                            context.colors.onSurfaceVariant,
+                                          ).copyWith(height: 1.45),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? AppColors.primarySurfaceDark
+                            : AppColors.primarySurface,
+                        borderRadius: AppRadius.allSm,
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.qr_code_2_rounded,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Durumlar kayıtlı QR hareketlerine dayanır; okutulmamış bir fiziksel geçişi sistem kendiliğinden bilemez.',
+                              style: AppTypography.caption(
+                                context.colors.onSurface,
+                              ).copyWith(height: 1.45),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  AppButton(
+                    label: 'Anladım',
+                    icon: Icons.check_rounded,
+                    size: AppButtonSize.small,
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(c),
-          child: const Text('Anladım'),
-        ),
-      ],
-    ),
-  );
+    );
+  }
 }
 
 class _SectionTitleRow extends StatelessWidget {
