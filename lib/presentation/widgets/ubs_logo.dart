@@ -18,6 +18,7 @@ class UbsLogo extends StatelessWidget {
       'assets/images/ubs_logo.png',
       width: width,
       fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
       semanticLabel: 'UBS Elektronik ve Güvenlik Sistemleri',
     );
 

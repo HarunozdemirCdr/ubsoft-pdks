@@ -393,7 +393,7 @@ class _CorporateSidebarContent extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const UbsLogo.mark(width: 128),
+                const UbsLogo.mark(width: 168),
                 if (tenantName.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   Text(

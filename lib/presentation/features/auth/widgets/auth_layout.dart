@@ -157,7 +157,7 @@ class _DesktopSplitAuth extends StatelessWidget {
                                   alignment: WrapAlignment.spaceBetween,
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   children: <Widget>[
-                                    const _UbsCrestBadge(logoWidth: 108),
+                                    const _UbsCrestBadge(logoWidth: 184),
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
@@ -427,7 +427,7 @@ class _MobileCorporateAuth extends StatelessWidget {
                         // Üst marka başlığı
                         Column(
                           children: <Widget>[
-                            const _UbsCrestBadge(logoWidth: 112),
+                            const _UbsCrestBadge(logoWidth: 176),
                             const SizedBox(height: 16),
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -644,7 +644,7 @@ class _UbsCrestBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: AppRadius.allMd,
@@ -656,25 +656,12 @@ class _UbsCrestBadge extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Container(
-            width: 3,
-            height: 24,
-            decoration: BoxDecoration(
-              color: AppColors.brandAccent,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Image.asset(
-            'assets/images/ubs_logo.png',
-            width: logoWidth,
-            fit: BoxFit.contain,
-            semanticLabel: CompanyInfo.legalName,
-          ),
-        ],
+      child: Image.asset(
+        'assets/images/ubs_logo.png',
+        width: logoWidth,
+        fit: BoxFit.contain,
+        filterQuality: FilterQuality.high,
+        semanticLabel: CompanyInfo.legalName,
       ),
     );
   }
