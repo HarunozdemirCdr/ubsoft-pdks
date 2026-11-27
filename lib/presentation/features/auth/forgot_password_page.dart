@@ -46,11 +46,13 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
 
     return AuthLayout(
       icon: Icons.lock_reset_rounded,
+      badgeText: 'HESAP KURTARMA',
       title: 'Şifremi Unuttum',
-      subtitle: sent
-          ? null
-          : 'Kayıtlı e-posta adresinizi girin, sıfırlama bağlantısı '
-                'gönderelim.',
+      cardTitle: 'Şifre Sıfırlama',
+      cardSubtitle: sent
+          ? 'Sıfırlama talebiniz işleme alındı.'
+          : 'Kayıtlı e-posta adresinizi girin, sıfırlama bağlantısı gönderelim.',
+      subtitle: 'Kurumsal hesap şifre yenileme adımı',
       child: Form(
         key: _formKey,
         child: Column(
@@ -69,9 +71,9 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
               ),
             ] else ...<Widget>[
               AppTextField(
-                label: 'E-posta',
+                label: 'Kurumsal E-posta',
                 controller: _email,
-                hint: 'ornek@sirket.com',
+                hint: 'ad.soyad@ubs.com',
                 validator: Validators.email,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.done,

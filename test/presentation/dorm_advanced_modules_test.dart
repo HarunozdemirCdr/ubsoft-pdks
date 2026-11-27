@@ -10,6 +10,7 @@ import 'package:ubsoft_pdks/domain/enums/location_verdict.dart';
 import 'package:ubsoft_pdks/domain/enums/punch_type.dart';
 import 'package:ubsoft_pdks/domain/enums/user_role.dart';
 import 'package:ubsoft_pdks/domain/usecases/dorm/dorm_duration.dart';
+import 'package:ubsoft_pdks/presentation/features/auth/login_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_announcements_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_attention_page.dart';
 import 'package:ubsoft_pdks/presentation/features/dorm/dorm_pages.dart';
@@ -507,6 +508,32 @@ void main() {
       await tester.tap(markAllBtn);
       await settle(tester);
       expect(find.text('Yeni'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Kurumsal giriş ekranı mobil, tablet ve masaüstü boyutlarda taşmadan çizilir',
+    (WidgetTester tester) async {
+      await initTestLocale();
+      final TestScope scope = await buildScope();
+      addTearDown(scope.dispose);
+
+      for (final Size size in const <Size>[
+        Size(360, 760),
+        Size(768, 900),
+        Size(1024, 620),
+        Size(1440, 900),
+      ]) {
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpWidget(
+          wrapPage(const LoginPage(), container: scope.container, size: size),
+        );
+        await settle(tester);
+        expect(find.text('Hoş Geldiniz'), findsOneWidget);
+        expect(find.text('Güvenli Giriş Yap'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+      addTearDown(() => tester.binding.setSurfaceSize(null));
     },
   );
 }
