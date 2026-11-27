@@ -70,7 +70,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Teknik Destek: ${CompanyInfo.phone} · ${CompanyInfo.website}',
+            CompanyInfo.website,
             textAlign: TextAlign.center,
             style: AppTypography.caption(
               context.colors.onSurfaceVariant.withValues(alpha: 0.8),

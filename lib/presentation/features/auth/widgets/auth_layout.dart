@@ -283,17 +283,9 @@ class _DesktopSplitAuth extends StatelessWidget {
                                   const SizedBox(height: 18),
                                   Row(
                                     children: <Widget>[
-                                      Icon(
-                                        Icons.verified_user_outlined,
-                                        size: 16,
-                                        color: AppColors.white.withValues(
-                                          alpha: 0.76,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
                                       Expanded(
                                         child: Text(
-                                          '256-bit SSL Şifreli Kurumsal Erişim · ${CompanyInfo.legalName}',
+                                          '${CompanyInfo.legalName} · ${CompanyInfo.website}',
                                           style: AppTypography.caption(
                                             AppColors.white.withValues(
                                               alpha: 0.72,
@@ -477,29 +469,8 @@ class _MobileCorporateAuth extends StatelessWidget {
                           subtitle: cardSubtitle,
                           child: child,
                         ),
-                        const SizedBox(height: 18),
-                        // Alt güvenlik & kurum bilgisi
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Icon(
-                              Icons.verified_user_outlined,
-                              size: 14,
-                              color: context.colors.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                'SSL Şifreli Kurumsal Bağlantı',
-                                style: AppTypography.caption(
-                                  context.colors.onSurfaceVariant,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
                         if (footer case final Widget value) ...<Widget>[
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 18),
                           value,
                         ],
                       ],
